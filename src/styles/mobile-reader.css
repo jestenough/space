@@ -1,0 +1,329 @@
+@layer responsive {
+  @media (max-width: 760px) {
+    :root {
+      --content-font-scale: 0.98;
+      --header-height-offset: 4.8rem;
+    }
+
+    body.terminal-only {
+      padding-bottom: 5.7rem;
+    }
+
+    .command-deck,
+    .control-room,
+    .dock {
+      width: min(100% - 0.75rem, var(--shell-width));
+    }
+
+    .command-deck {
+      position: static;
+      margin-block: 0.38rem;
+      min-height: auto;
+      padding: var(--mobile-panel-padding);
+      gap: 0.48rem;
+      box-shadow: var(--shadow-panel-soft);
+    }
+
+    .deck-brand {
+      width: 100%;
+      align-items: center;
+    }
+
+    .ascii-logo {
+      font-size: clamp(0.22rem, 1.35vw, 0.34rem);
+      max-width: 100%;
+      overflow: hidden;
+    }
+
+    .deck-controls {
+      gap: 0.4rem;
+    }
+
+    .control-box {
+      min-width: min(11.8rem, 100%);
+      flex: 1 1 9rem;
+    }
+
+    .control-room {
+      display: block;
+      padding-bottom: 1.1rem;
+    }
+
+    .left-stack,
+    .center-stream,
+    .right-feed,
+    .article-stage {
+      width: 100%;
+    }
+
+    .left-stack {
+      padding: 0.62rem;
+      margin-bottom: 0.56rem;
+      box-shadow: var(--shadow-panel-soft);
+    }
+
+    .prompt-line {
+      margin-bottom: 0.42rem;
+      font-size: 0.78rem;
+    }
+
+    .quick-nav {
+      margin-bottom: 0.42rem;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .quick-link {
+      min-height: var(--tap-target-compact);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.28rem 0.22rem;
+      font-size: 0.82rem;
+    }
+
+    .welcome-screen {
+      padding-top: 0.48rem;
+    }
+
+    .welcome-command {
+      margin-bottom: 0.32rem;
+      font-size: 0.72rem;
+    }
+
+    #welcome-title {
+      margin-bottom: 0.28rem;
+      font-size: 1.05rem;
+    }
+
+    #welcome-body {
+      display: none;
+    }
+
+    #welcome-lead {
+      margin-block: 0;
+      font-size: 0.84rem;
+      line-height: 1.45;
+    }
+
+    .toc-panel {
+      margin-top: 0.45rem;
+      padding: 0.45rem;
+    }
+
+    .toc-title {
+      margin-bottom: 0.3rem;
+      font-size: 0.74rem;
+    }
+
+    .toc-title::after {
+      content: " / swipe";
+      color: var(--color-muted);
+      font-weight: 400;
+    }
+
+    .toc-list {
+      display: flex;
+      gap: 0.34rem;
+      overflow-x: auto;
+      padding-bottom: 0.16rem;
+      scrollbar-width: thin;
+    }
+
+    .toc-item {
+      flex: 0 0 auto;
+      padding-left: 0;
+    }
+
+    .toc-list a {
+      min-height: var(--tap-target-compact);
+      max-width: 14rem;
+      padding: 0.3rem 0.62rem;
+      border-left: 0;
+      border-bottom: 2px solid transparent;
+      border-radius: var(--radius-pill);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      background: color-mix(in srgb, var(--color-surface-2) 55%, transparent);
+    }
+
+    .toc-list a.is-active {
+      border-left-color: transparent;
+      border-bottom-color: var(--color-accent);
+    }
+
+    .right-feed {
+      display: none;
+    }
+
+    .render-indicator {
+      margin-bottom: 0.45rem;
+      padding: 0.35rem 0.55rem;
+      font-size: 0.78rem;
+    }
+
+    .article-stage,
+    .panel {
+      padding: var(--mobile-panel-padding);
+      box-shadow: var(--shadow-panel-soft);
+    }
+
+    #articles-panel,
+    #tags-panel {
+      min-height: auto;
+    }
+
+    .tools-row {
+      margin: 0.48rem 0 0.7rem;
+      padding: 0.42rem;
+      grid-template-columns: 1fr;
+    }
+
+    .command-input,
+    .inline-tool {
+      min-height: var(--tap-target);
+      border-left: 0;
+      border-top: 1px dashed color-mix(in srgb, var(--color-border) 76%, transparent);
+    }
+
+    .command-input { border-top: 0; }
+
+    .inline-tool {
+      grid-template-columns: auto minmax(0, 1fr);
+      padding-inline-start: 0;
+    }
+
+    .search-input,
+    .inline-tool select {
+      min-height: var(--tap-target-compact);
+      font-size: 1rem;
+    }
+
+    .article-list {
+      gap: 0.48rem;
+    }
+
+    .article-card-link,
+    .article-card-full {
+      padding: 0.72rem;
+    }
+
+    .article-card .meta {
+      display: -webkit-box;
+      overflow: hidden;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
+    .tag-row {
+      min-height: var(--tap-target);
+      padding: 0.66rem 0.74rem;
+    }
+
+    .pager-row,
+    .tag-pager-row {
+      margin-bottom: 0.2rem;
+      padding-top: 0.74rem;
+    }
+
+    .pager-row button,
+    .tag-pager-row button {
+      min-width: 5.1rem;
+      min-height: var(--tap-target);
+    }
+
+    .info-file-tree {
+      padding: 0.62rem;
+      overflow-x: visible;
+    }
+
+    .info-file-link {
+      white-space: normal;
+      display: grid;
+      gap: 0.1rem;
+      line-height: 1.5;
+    }
+
+    .info-file-perms,
+    .info-file-name {
+      overflow-wrap: anywhere;
+    }
+
+    .article-actions {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 0.55rem;
+    }
+
+    .article-action-buttons {
+      width: 100%;
+      flex-wrap: wrap;
+    }
+
+    .article-action-buttons .action-chip {
+      flex: 1 1 4.2rem;
+      min-height: var(--tap-target);
+    }
+
+    #article-content {
+      line-height: 1.75;
+    }
+
+    #article-content pre,
+    .info-file-pre {
+      white-space: pre-wrap;
+      overflow-x: auto;
+      font-size: 0.84rem;
+    }
+
+    .dock {
+      min-height: 4.6rem;
+      padding: 0.52rem 0.6rem;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 0.34rem;
+      text-align: center;
+      box-shadow: var(--shadow-panel-soft);
+    }
+
+    .dock .motto {
+      max-width: 100%;
+      font-size: 0.78rem;
+      line-height: 1.25;
+    }
+
+    .dock nav {
+      width: 100%;
+      margin-left: 0;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 0.72rem;
+    }
+
+    .dock a {
+      min-height: 1.8rem;
+    }
+  }
+
+  @media (max-width: 420px) {
+    .ascii-logo {
+      font-size: clamp(0.2rem, 1.16vw, 0.28rem);
+    }
+
+    .deck-controls {
+      width: 100%;
+    }
+
+    .control-box {
+      min-width: 100%;
+    }
+
+    #page-prev::before,
+    #tag-page-prev::before,
+    #page-next::before,
+    #tag-page-next::before {
+      content: "";
+    }
+  }
+}

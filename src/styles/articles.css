@@ -1,0 +1,104 @@
+@layer components {
+  .article-stage {
+    min-width: 0;
+  }
+
+  .article-actions {
+    margin-bottom: 0.55rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .article-action-buttons {
+    display: flex;
+    gap: 0.45rem;
+    align-items: center;
+  }
+
+  .download-btn { cursor: pointer; }
+
+  #article-content {
+    font-size: calc(1rem * var(--content-font-scale));
+    line-height: 1.82;
+    overflow-wrap: anywhere;
+  }
+
+  #article-content,
+  #article-content * {
+    max-width: 100%;
+  }
+
+  #article-content > h1:first-child,
+  #article-content > h2:first-child {
+    display: none;
+  }
+
+  #article-content code {
+    padding: 0.08rem 0.28rem;
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--color-surface-2) 75%, transparent);
+  }
+
+  #article-content pre,
+  .info-file-pre {
+    overflow-x: auto;
+    border: 1px solid var(--color-border);
+    border-left: 3px solid var(--color-ok);
+    background: color-mix(in srgb, var(--color-bg) 78%, black 8%);
+    padding: 0.68rem;
+    white-space: pre-wrap;
+  }
+
+  .file-document {
+    border-top: 1px dashed var(--color-border);
+    padding-top: 0.85rem;
+  }
+
+  .file-document h1,
+  .file-document h2,
+  .file-document h3 {
+    margin-block: 0 0.65rem;
+  }
+
+  .article-breadcrumbs,
+  .article-seo-links {
+    display: none !important;
+  }
+
+  .anchored-heading {
+    scroll-margin-top: var(--header-height-offset);
+  }
+
+  .heading-anchor {
+    color: var(--color-muted);
+    text-decoration: none;
+    opacity: 0;
+    font-size: 0.82em;
+    transition: opacity var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
+  }
+
+  .anchored-heading:hover .heading-anchor,
+  .heading-anchor:focus-visible {
+    opacity: 1;
+  }
+
+  .heading-anchor:hover {
+    color: var(--color-accent);
+  }
+
+  .error-stage,
+  #error-view {
+    border-left: 3px solid var(--color-accent);
+  }
+
+  #error-text {
+    color: var(--color-muted);
+  }
+
+  #error-text .shell-prompt {
+    color: var(--color-accent);
+    font-weight: 800;
+  }
+}

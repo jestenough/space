@@ -1,0 +1,38 @@
+@layer components {
+  .control-box {
+    position: relative;
+    min-width: 6.6rem;
+    padding: 0.32rem 0.38rem 0.38rem;
+    border: 1px dashed var(--color-border);
+    background: color-mix(in srgb, var(--color-surface) 84%, transparent);
+    color: var(--color-muted);
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    font-size: 0.65rem;
+  }
+
+  .control-box span {
+    color: var(--color-ok);
+    font-size: 0.72rem;
+    letter-spacing: 0.02em;
+  }
+
+  select,
+  .search-input,
+  button,
+  .tag-row {
+    border: 1px solid var(--color-border);
+    background: color-mix(in srgb, var(--color-surface) 88%, black 12%);
+    color: var(--color-text);
+    padding: 0.24rem 0.35rem;
+    font-size: 0.86rem;
+  }
+
+  .control-box select {
+    width: 100%;
+    margin-top: 0.18rem;
+    border-style: dashed;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--color-surface-2) 86%, transparent), color-mix(in srgb, var(--color-surface) 92%, black 8%));
+  }
+}

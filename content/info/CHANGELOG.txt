@@ -1,0 +1,5 @@
+2026-05-02: Info files moved out of index.html into real content/info files.
+2026-05-02: Pseudo-filesystem permissions corrected: guest is read-only; owner/group keep write access.
+2026-05-02: CSS split into component files with shared design tokens.
+2026-05-02: TOC active-state layout shift removed.
+2026-05-01: Docker, Makefile, PDF generation, and SEO prerender pipeline introduced.

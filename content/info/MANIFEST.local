@@ -1,0 +1,5 @@
+KISS: every screen should have one clear job.
+DRY: file lists, routes, and metadata must have one source of truth.
+READ-ONLY: public users inspect the system; they do not mutate it.
+SOURCE-FIRST: LaTeX sources are committed; generated HTML/PDF artifacts are not.
+SEO-SAFE: HTML is the canonical document; PDF is a downloadable companion.
