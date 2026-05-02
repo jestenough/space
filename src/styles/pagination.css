@@ -1,0 +1,37 @@
+@layer components {
+  .pager-row,
+  .tag-pager-row {
+    width: 100%;
+    margin: auto auto 2.1rem;
+    padding-block: 1.15rem 0.35rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+  }
+
+  #page-prev,
+  #page-next,
+  #tag-page-prev,
+  #tag-page-next,
+  .action-chip {
+    min-height: var(--tap-target-compact);
+    border: 1px dashed var(--color-border);
+    background: color-mix(in srgb, var(--color-surface) 82%, transparent);
+    color: var(--color-text);
+    transition: color var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard), background-color var(--duration-fast) var(--ease-standard);
+  }
+
+  #page-prev::before,
+  #tag-page-prev::before { content: "page -- "; color: var(--color-muted); }
+  #page-next::before,
+  #tag-page-next::before { content: "page ++ "; color: var(--color-muted); }
+
+  #page-prev:disabled,
+  #page-next:disabled,
+  #tag-page-prev:disabled,
+  #tag-page-next:disabled {
+    cursor: not-allowed;
+    opacity: 0.48;
+  }
+}

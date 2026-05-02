@@ -1,0 +1,138 @@
+@layer components {
+  .welcome-screen {
+    border-top: 1px dashed var(--color-border);
+    padding-top: 0.62rem;
+  }
+
+  .welcome-command {
+    margin: 0 0 0.5rem;
+    color: var(--color-ok);
+    font-size: 0.78rem;
+  }
+
+  #welcome-title {
+    margin: 0 0 0.55rem;
+    font-size: clamp(1.35rem, 2.1vw, 1.75rem);
+    line-height: 1.12;
+  }
+
+  #welcome-title::before {
+    content: ">> ";
+    color: var(--color-accent);
+  }
+
+  .muted,
+  #welcome-lead,
+  #welcome-body {
+    color: var(--color-muted);
+  }
+
+  .panel { margin-top: 0.75rem; }
+  .info-panel { min-height: 14rem; }
+
+  .right-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--color-surface-2) 78%, transparent), color-mix(in srgb, var(--color-surface) 94%, black 5%));
+  }
+
+  #process-log {
+    display: block;
+    width: 100%;
+    margin: 0;
+    padding: 1rem 1.05rem;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    color: var(--color-ok);
+    font-size: 0.75rem;
+    line-height: 1.55;
+  }
+
+  #process-log .stat-command {
+    display: block;
+    margin-bottom: 0.38rem;
+    color: var(--color-text);
+  }
+
+  #process-log .shell-prompt {
+    color: var(--color-accent);
+    font-weight: 800;
+  }
+
+  #process-log .shell-cmd { color: var(--color-ok); }
+
+  #process-log .stat-row {
+    display: grid;
+    grid-template-columns: 4.3rem 0.7rem minmax(0, 1fr);
+    column-gap: 0.22rem;
+    align-items: baseline;
+  }
+
+  #process-log .stat-key,
+  #process-log .meta-key { color: var(--color-muted); }
+  #process-log .stat-sep { color: var(--color-muted); }
+  #process-log .meta-rule {
+    display: block;
+    height: 1px;
+    margin: 0.62rem 0;
+    background: linear-gradient(90deg, transparent, var(--color-border), transparent);
+  }
+
+  #process-log .meta-tag-link {
+    color: var(--color-ok);
+    text-decoration: none;
+    border-bottom: 1px dashed color-mix(in srgb, var(--color-ok) 65%, transparent);
+  }
+
+  #process-log .meta-tag-link:hover,
+  #process-log .meta-tag-link:focus-visible {
+    color: var(--color-accent);
+    border-bottom-color: var(--color-accent);
+  }
+
+  body.not-found-mode .right-feed {
+    border-style: dashed;
+    background: repeating-linear-gradient(180deg, color-mix(in srgb, var(--color-surface-2) 88%, black 12%) 0, color-mix(in srgb, var(--color-surface-2) 88%, black 12%) 6px, color-mix(in srgb, var(--color-surface) 86%, black 14%) 6px, color-mix(in srgb, var(--color-surface) 86%, black 14%) 12px);
+  }
+
+
+  body.not-found-mode #error-view {
+    min-height: 18rem;
+    display: grid;
+    place-content: center;
+    gap: 0.75rem;
+    text-align: center;
+  }
+
+  body.not-found-mode #error-title {
+    margin: 0;
+    color: var(--color-accent);
+    font-size: clamp(1.8rem, 6vw, 4.6rem);
+    letter-spacing: 0.02em;
+    text-transform: lowercase;
+  }
+
+  body.not-found-mode #error-text {
+    margin: 0;
+  }
+
+  .error-root-link {
+    color: var(--color-ok);
+    text-decoration: none;
+    border-bottom: 1px dashed var(--color-ok);
+    font-size: clamp(1rem, 2vw, 1.25rem);
+  }
+
+  .error-root-link:hover,
+  .error-root-link:focus-visible {
+    color: var(--color-accent);
+    border-bottom-color: var(--color-accent);
+  }
+
+  body.not-found-mode #process-log {
+    color: var(--color-danger);
+  }
+
+}

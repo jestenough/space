@@ -1,0 +1,66 @@
+@layer layout {
+  .command-deck,
+  .left-stack,
+  .article-stage,
+  .right-feed,
+  .dock {
+    border: 1px solid var(--color-border);
+    background: linear-gradient(180deg, var(--color-surface-2), var(--color-surface));
+    box-shadow: var(--shadow-panel);
+  }
+
+  .command-deck,
+  .control-room,
+  .dock {
+    width: min(var(--shell-width), calc(100% - 1.2rem));
+  }
+
+  .control-room {
+    margin-inline: auto;
+    padding-bottom: 4.5rem;
+    flex: 1;
+    display: grid;
+    grid-template-columns: 320px minmax(0, 1fr) 330px;
+    align-items: start;
+    gap: 0.8rem;
+  }
+
+  .left-stack,
+  .right-feed,
+  .article-stage {
+    padding: 0.82rem;
+  }
+
+  .left-stack,
+  .right-feed {
+    position: sticky;
+    top: var(--sticky-top);
+    align-self: start;
+  }
+
+  .right-feed {
+    min-width: 0;
+    max-width: 100%;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .center-stream {
+    min-width: 0;
+    align-self: start;
+  }
+  .left-stack,
+  .center-stream,
+  .right-feed {
+    margin-block-start: 0;
+  }
+
+  .center-stream > .render-indicator {
+    margin-block-start: 0;
+  }
+
+  .info-panel {
+    margin-block-start: 0;
+  }
+
+}

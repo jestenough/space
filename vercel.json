@@ -1,0 +1,795 @@
+{
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "headers": [
+    {
+      "source": "/404.html",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    },
+    {
+      "source": "/ru/articles/first-steps.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/ru/articles/first-steps>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/en/articles/first-steps.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/en/articles/first-steps>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/ru/articles/daily-notes.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/ru/articles/daily-notes>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/en/articles/daily-notes.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/en/articles/daily-notes>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/ru/articles/node-03.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/ru/articles/node-03>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/en/articles/node-03.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/en/articles/node-03>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/ru/articles/node-04.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/ru/articles/node-04>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/en/articles/node-04.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/en/articles/node-04>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/ru/articles/node-05.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/ru/articles/node-05>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/en/articles/node-05.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/en/articles/node-05>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/ru/articles/node-06.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/ru/articles/node-06>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/en/articles/node-06.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/en/articles/node-06>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/ru/articles/node-07.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/ru/articles/node-07>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/en/articles/node-07.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/en/articles/node-07>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/ru/articles/node-08.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/ru/articles/node-08>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/en/articles/node-08.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/en/articles/node-08>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/ru/articles/node-09.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/ru/articles/node-09>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/en/articles/node-09.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/en/articles/node-09>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/ru/articles/node-10.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/ru/articles/node-10>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/en/articles/node-10.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/en/articles/node-10>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/ru/articles/node-11.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/ru/articles/node-11>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/en/articles/node-11.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/en/articles/node-11>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/ru/articles/node-12.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/ru/articles/node-12>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/en/articles/node-12.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/en/articles/node-12>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/ru/articles/node-13.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/ru/articles/node-13>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/en/articles/node-13.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/en/articles/node-13>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/ru/articles/node-14.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/ru/articles/node-14>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/en/articles/node-14.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/en/articles/node-14>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/ru/articles/node-15.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/ru/articles/node-15>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/en/articles/node-15.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/en/articles/node-15>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/ru/articles/node-16.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/ru/articles/node-16>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/en/articles/node-16.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/en/articles/node-16>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/ru/articles/node-17.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/ru/articles/node-17>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/en/articles/node-17.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/en/articles/node-17>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/ru/articles/node-18.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/ru/articles/node-18>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/en/articles/node-18.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/en/articles/node-18>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/ru/articles/node-19.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/ru/articles/node-19>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/en/articles/node-19.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/en/articles/node-19>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/ru/articles/node-20.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/ru/articles/node-20>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/en/articles/node-20.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/en/articles/node-20>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/ru/articles/node-21.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/ru/articles/node-21>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/en/articles/node-21.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/en/articles/node-21>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/ru/articles/node-22.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/ru/articles/node-22>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/en/articles/node-22.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/en/articles/node-22>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/ru/articles/node-23.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/ru/articles/node-23>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/en/articles/node-23.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/en/articles/node-23>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/ru/articles/node-24.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/ru/articles/node-24>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/en/articles/node-24.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/en/articles/node-24>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/ru/articles/node-25.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/ru/articles/node-25>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/en/articles/node-25.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/en/articles/node-25>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/ru/articles/node-26.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/ru/articles/node-26>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/en/articles/node-26.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/en/articles/node-26>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/ru/articles/node-27.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/ru/articles/node-27>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/en/articles/node-27.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/en/articles/node-27>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/ru/articles/node-28.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/ru/articles/node-28>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/en/articles/node-28.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/en/articles/node-28>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/ru/articles/node-29.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/ru/articles/node-29>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/en/articles/node-29.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/en/articles/node-29>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/ru/articles/node-30.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/ru/articles/node-30>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    },
+    {
+      "source": "/en/articles/node-30.pdf",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://autophany.space/en/articles/node-30>; rel=\"canonical\""
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    }
+  ]
+}

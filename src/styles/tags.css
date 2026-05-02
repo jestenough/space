@@ -1,0 +1,50 @@
+@layer components {
+  .tag-card { min-width: 0; }
+
+  .tag-row {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+    min-height: var(--tap-target);
+    padding: 0.78rem 0.86rem;
+    border: 1px solid var(--color-border);
+    border-left: 3px solid color-mix(in srgb, var(--color-accent) 45%, transparent);
+    border-radius: var(--radius-md);
+    background:
+      linear-gradient(135deg, color-mix(in srgb, var(--color-surface-2) 72%, transparent), color-mix(in srgb, var(--color-surface) 92%, transparent));
+    color: var(--color-text);
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    transition: color var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard), background-color var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard);
+  }
+
+  .tag-row:hover,
+  .tag-row:focus-visible,
+  .tag-row.is-active {
+    color: var(--color-accent);
+    border-color: var(--color-border-strong);
+    background: linear-gradient(135deg, var(--color-accent-soft), color-mix(in srgb, var(--color-surface-2) 78%, transparent));
+    box-shadow: 0 12px 36px color-mix(in srgb, var(--color-accent) 14%, transparent);
+  }
+
+  .tag-name {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+
+  .tag-count {
+    flex: 0 0 auto;
+    padding: 0.1rem 0.42rem;
+    border: 1px solid color-mix(in srgb, var(--color-border) 76%, transparent);
+    border-radius: var(--radius-pill);
+    color: var(--color-muted);
+    background: color-mix(in srgb, var(--color-bg) 34%, transparent);
+    font-size: 0.82rem;
+  }
+}

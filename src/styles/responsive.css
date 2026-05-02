@@ -1,0 +1,43 @@
+@layer responsive {
+  @media (max-width: 1180px) {
+    .control-room { grid-template-columns: 290px minmax(0, 1fr); }
+    .right-feed { grid-column: 1 / -1; position: static; max-height: none; }
+  }
+
+  @media (max-width: 880px) {
+    .control-room { grid-template-columns: 1fr; padding-bottom: 5.2rem; }
+    .left-stack,
+    .right-feed { position: static; max-height: none; }
+    .command-deck { align-items: flex-start; flex-direction: column; }
+    .deck-controls { width: 100%; margin-left: 0; flex-wrap: wrap; }
+    .ascii-logo { font-size: clamp(0.18rem, 0.9vw, 0.32rem); overflow-x: auto; }
+  }
+
+  @media (max-width: 720px) {
+    .tools-row { grid-template-columns: 1fr; }
+    .command-input,
+    .inline-tool {
+      border-left: 0;
+      border-top: 1px dashed color-mix(in srgb, var(--color-border) 76%, transparent);
+    }
+    .command-input { border-top: 0; }
+    .dock { align-items: center; flex-direction: column; min-height: 4rem; text-align: center; }
+    .dock nav { width: 100%; margin-left: 0; justify-content: center; flex-wrap: wrap; }
+  }
+
+  @media (max-width: 560px) {
+    .ascii-logo { font-size: clamp(0.16rem, 1.25vw, 0.24rem); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      scroll-behavior: auto !important;
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+    }
+    .dock .motto { animation: none; }
+  }
+}

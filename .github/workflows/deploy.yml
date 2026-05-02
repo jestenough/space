@@ -1,0 +1,117 @@
+name: Deploy production site
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+concurrency:
+  group: autophany-production-deploy
+  cancel-in-progress: true
+
+env:
+  SITE_URL: ${{ vars.SITE_URL || 'https://autophany.space' }}
+
+jobs:
+  validate-source-code:
+    name: Validate source code
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Build project toolchain image
+        run: docker build -t autophany-toolchain .
+
+      - name: Check TypeScript and build scripts
+        run: |
+          docker run --rm \
+            autophany-toolchain \
+            sh -lc '
+              npm run check:types &&
+              node --check scripts/generate-articles.mjs &&
+              node --check scripts/generate-pdfs.mjs &&
+              node --check scripts/smoke-check.mjs &&
+              node --check scripts/prerender-seo.mjs &&
+              node --check scripts/clean.mjs
+            '
+
+  build-and-deploy-production:
+    name: Build and deploy production site
+    runs-on: ubuntu-latest
+    needs: validate-source-code
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Restore generated PDF cache
+        uses: actions/cache@v5
+        with:
+          path: |
+            public/*/articles/*.pdf
+            .cache/pdf-manifest.json
+          key: autophany-pdf-cache-${{ runner.os }}-${{ hashFiles('content/articles/*.tex') }}
+          restore-keys: |
+            autophany-pdf-cache-${{ runner.os }}-
+
+      - name: Build project toolchain image
+        run: docker build -t autophany-toolchain .
+
+      - name: Build production site inside Docker
+        run: |
+          mkdir -p dist public .cache
+
+          docker run --rm \
+            -e SITE_URL="${SITE_URL}" \
+            -e STRICT_PDF=1 \
+            -v "$PWD/public:/app/public" \
+            -v "$PWD/dist:/app/dist" \
+            -v "$PWD/.cache:/app/.cache" \
+            autophany-toolchain \
+            sh -lc '
+              npm run prepare:content &&
+              npm run prepare:pdf &&
+              STRICT_PDF=1 npm run check:content &&
+              npm run check:types &&
+              vite build &&
+              node ./scripts/prerender-seo.mjs
+            '
+
+      - name: Verify production artifact
+        run: |
+          test -d dist
+          test -f dist/index.html
+          test -f dist/404.html
+          test "$(find dist -path '*/articles/*.pdf' -type f | wc -l)" -gt 0
+          find dist -maxdepth 4 -type f | head -80
+
+      - name: Validate deploy configuration
+        run: |
+          test -n "${{ vars.DEPLOY_HOST }}"
+          test -n "${{ vars.DEPLOY_USER }}"
+          test -n "${{ vars.DEPLOY_PATH }}"
+          test -n "${{ secrets.DEPLOY_SSH_KEY }}"
+
+      - name: Configure SSH access
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/autophany_deploy_key
+          chmod 600 ~/.ssh/autophany_deploy_key
+          ssh-keyscan -T 30 -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+
+      - name: Sync production files to server
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+        run: |
+          rsync -az --delete \
+            -e "ssh -i ~/.ssh/autophany_deploy_key" \
+            dist/ \
+            "${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/"

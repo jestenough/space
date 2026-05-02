@@ -1,0 +1,64 @@
+@layer components {
+  .tools-row {
+    margin: 0.6rem 0;
+    padding: 0.48rem;
+    border: 1px dashed var(--color-border);
+    background: color-mix(in srgb, var(--color-surface) 72%, transparent);
+    display: grid;
+    grid-template-columns: minmax(10rem, 1fr) auto auto;
+    align-items: center;
+    column-gap: 0.45rem;
+    row-gap: 0.45rem;
+  }
+
+  .command-input,
+  .inline-tool {
+    min-height: 2.1rem;
+    display: grid;
+    align-items: center;
+    gap: 0.35rem;
+    border-left: 1px dashed color-mix(in srgb, var(--color-border) 76%, transparent);
+    background: transparent;
+  }
+
+  .command-input {
+    grid-template-columns: auto minmax(0, 1fr);
+    border-left: 0;
+  }
+
+  .inline-tool {
+    grid-template-columns: auto minmax(6.5rem, 1fr);
+    padding-inline-start: 0.5rem;
+  }
+
+  .command-input span,
+  .inline-tool span {
+    color: var(--color-ok);
+    white-space: nowrap;
+    font-size: 0.78rem;
+  }
+
+  .search-input,
+  .inline-tool select {
+    min-width: 0;
+    width: 100%;
+    border: 0;
+    background: transparent;
+  }
+
+  .search-input::placeholder {
+    color: color-mix(in srgb, var(--color-muted) 74%, transparent);
+  }
+
+  #sort-label,
+  #size-label,
+  #tag-sort-label,
+  #tag-size-label { font-size: 0; }
+  #sort-label::before,
+  #tag-sort-label::before { content: "$ sort -k "; font-size: 0.78rem; }
+  #size-label::before,
+  #tag-size-label::before { content: "$ head -n "; font-size: 0.78rem; }
+  #page-size-select,
+  #tag-page-size-select { max-width: 3.25rem; }
+  #tag-sort-select { max-width: 5.9rem; }
+}

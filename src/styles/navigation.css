@@ -1,0 +1,41 @@
+@layer components {
+  .prompt-line {
+    margin: 0 0 0.7rem;
+    color: var(--color-ok);
+    font-size: 0.84rem;
+  }
+
+  .quick-nav {
+    margin-bottom: 0.7rem;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.35rem;
+  }
+
+  .quick-link {
+    padding: 0.25rem;
+    border: 1px solid var(--color-border);
+    color: var(--color-text);
+    text-align: center;
+    text-decoration: none;
+    transition: color var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard), background-color var(--duration-fast) var(--ease-standard);
+  }
+
+  .quick-link:hover,
+  .quick-link.is-active {
+    color: var(--color-accent);
+    border-color: var(--color-border-strong);
+    background: var(--color-accent-soft);
+  }
+
+  .render-indicator {
+    margin: 0 0 0.5rem;
+    padding: 0.42rem 1rem;
+    border: 1px dashed var(--color-border);
+    color: var(--color-ok);
+    background: color-mix(in srgb, var(--color-surface) 84%, transparent);
+    white-space: pre-wrap;
+    text-align: left;
+    line-height: 1.48;
+  }
+}

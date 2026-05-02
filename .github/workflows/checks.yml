@@ -1,0 +1,48 @@
+name: Checks pull request
+
+on:
+  pull_request:
+    branches:
+      - master
+
+concurrency:
+  group: autophany-pr-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  SITE_URL: ${{ vars.SITE_URL || 'https://autophany.space' }}
+
+jobs:
+  validate-source-code:
+    name: Validate source code
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Build project toolchain image
+        run: docker build -t autophany-toolchain .
+
+      - name: Check TypeScript and build scripts
+        run: |
+          docker run --rm \
+            autophany-toolchain \
+            sh -lc '
+              npm run check:types &&
+              node --check scripts/generate-articles.mjs &&
+              node --check scripts/generate-pdfs.mjs &&
+              node --check scripts/smoke-check.mjs &&
+              node --check scripts/prerender-seo.mjs &&
+              node --check scripts/clean.mjs
+            '
+
+      - name: Generate and validate article content
+        run: |
+          docker run --rm \
+            -e SITE_URL="${SITE_URL}" \
+            autophany-toolchain \
+            sh -lc '
+              npm run prepare:content &&
+              npm run check:content
+            '

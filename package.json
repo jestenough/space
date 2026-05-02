@@ -1,0 +1,30 @@
+{
+  "name": "autophany-space",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0",
+    "npm": ">=10.0.0"
+  },
+  "scripts": {
+    "prepare:content": "node ./scripts/generate-articles.mjs",
+    "prepare:pdf": "node ./scripts/generate-pdfs.mjs",
+    "prepare:all": "npm run prepare:content && npm run prepare:pdf && npm run check:content",
+    "predev": "npm run prepare:content",
+    "dev": "vite",
+    "build": "npm run prepare:all && npm run check:types && vite build && node ./scripts/prerender-seo.mjs",
+    "preview": "vite preview",
+    "check:types": "tsc --noEmit",
+    "check:content": "node ./scripts/smoke-check.mjs",
+    "check:lighthouse": "lhci autorun --config=./lighthouserc.json",
+    "check:seo": "npm run prepare:content && npm run check:content && npm run check:types && npm run build",
+    "clean": "node ./scripts/clean.mjs"
+  },
+  "devDependencies": {
+    "@lhci/cli": "0.15.1",
+    "typescript": "6.0.3",
+    "vite": "8.0.10",
+    "vite-plugin-compression": "0.5.1"
+  }
+}

@@ -1,0 +1,56 @@
+@layer components {
+  .toc-panel {
+    margin-top: 0.6rem;
+    padding: 0.5rem;
+    max-height: none;
+    overflow: visible;
+    border: 1px dashed var(--color-border);
+  }
+
+  .toc-title {
+    margin: 0 0 0.35rem;
+    color: var(--color-ok);
+    font-size: 0.82rem;
+    text-transform: lowercase;
+  }
+
+  .toc-list {
+    margin: 0;
+    padding-left: 0;
+    display: grid;
+    gap: 0.28rem;
+    list-style: none;
+  }
+
+  .toc-item {
+    padding-left: calc((var(--toc-level, 1) - 1) * 0.72rem);
+  }
+
+  .toc-level-1 { --toc-level: 1; }
+  .toc-level-2 { --toc-level: 2; }
+  .toc-level-3 { --toc-level: 3; }
+  .toc-level-4 { --toc-level: 4; }
+  .toc-level-5 { --toc-level: 5; }
+  .toc-level-6 { --toc-level: 6; }
+
+  .toc-list a {
+    display: block;
+    min-height: 1.35rem;
+    padding: 0.12rem 0.35rem 0.12rem 0.75rem;
+    border-left: 2px solid transparent;
+    color: var(--color-muted);
+    text-decoration: none;
+    background: transparent;
+    transition: color var(--duration-fast) var(--ease-standard), background-color var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard);
+  }
+
+  .toc-list a:hover,
+  .toc-list a.is-active {
+    color: var(--color-accent);
+  }
+
+  .toc-list a.is-active {
+    border-left-color: var(--color-accent);
+    background: var(--color-accent-soft);
+  }
+}

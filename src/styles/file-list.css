@@ -1,0 +1,29 @@
+@layer components {
+  .info-file-tree {
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    border: 1px dashed var(--color-border);
+    background: color-mix(in srgb, var(--color-surface) 86%, transparent);
+    overflow-x: auto;
+  }
+
+  .info-file-link {
+    display: block;
+    color: var(--color-ok);
+    text-decoration: none;
+    white-space: pre;
+  }
+
+  .info-file-link:hover,
+  .info-file-link:focus-visible {
+    color: var(--color-accent);
+  }
+
+  .info-file-perms {
+    color: var(--color-muted);
+  }
+
+  .info-file-name {
+    color: inherit;
+  }
+}

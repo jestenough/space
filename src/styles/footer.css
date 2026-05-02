@@ -1,0 +1,86 @@
+@layer components {
+  .dock {
+    position: fixed;
+    inset-inline-start: 50%;
+    inset-block-end: 0;
+    transform: translateX(-50%);
+    z-index: 60;
+    min-height: 2.9rem;
+    margin: 0;
+    padding: 0.52rem 0.62rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+  }
+
+  .dock .motto {
+    margin: 0;
+    color: var(--color-muted);
+    font-size: clamp(0.78rem, 1vw, 0.95rem);
+    line-height: 1.2;
+    background: linear-gradient(
+      110deg,
+      var(--color-muted) 0%,
+      var(--color-accent) 34%,
+      var(--color-accent-2) 56%,
+      var(--color-muted) 100%
+    );
+    background-size: 180% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: motto-gradient 14s ease-in-out infinite;
+  }
+
+  @keyframes motto-gradient {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+
+  .dock nav {
+    margin-left: auto;
+    display: flex;
+    gap: 0.9rem;
+    justify-content: flex-end;
+  }
+
+  .dock a {
+    position: relative;
+    isolation: isolate;
+    min-height: var(--tap-target);
+    display: inline-flex;
+    align-items: center;
+    padding-inline: 0.2rem;
+    color: inherit;
+    text-decoration: none;
+    font-size: 1.1rem;
+    line-height: 1;
+    border-radius: var(--radius-sm);
+  }
+
+  .dock a::before {
+    content: "";
+    position: absolute;
+    inset: 0.18rem -0.28rem;
+    z-index: -1;
+    opacity: 0;
+    border-radius: var(--radius-md);
+    background-image: radial-gradient(circle, var(--color-accent) 0 1px, transparent 1.45px);
+    background-size: 7px 7px;
+    background-position: 0 0;
+    transition: opacity var(--duration-fast) var(--ease-standard), transform var(--duration-fast) var(--ease-standard);
+    transform: translateY(1px);
+  }
+
+  .dock a:hover,
+  .dock a:focus-visible {
+    color: var(--color-accent);
+  }
+
+  .dock a:hover::before,
+  .dock a:focus-visible::before {
+    opacity: 0.24;
+    transform: translateY(0);
+  }
+}
