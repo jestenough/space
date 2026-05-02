@@ -1,0 +1,16 @@
+{
+  "slug": "hello-world",
+  "date": "2026-05-03",
+  "tags": [
+    "notes",
+    "performance"
+  ],
+  "title": {
+    "ru": "Привет, Мир!",
+    "en": "Hello World!"
+  },
+  "description": {
+    "ru": "Первая тестовая статья",
+    "en": "First article"
+  }
+}

@@ -19,5 +19,20 @@ public/*/articles/*.pdf
 *.blg
 *.bcf
 *.run.xml
+*.nav
+*.snm
+*.vrb
+*.lof
+*.lot
+*.idx
+*.ilg
+*.ind
+*.acn
+*.acr
+*.alg
+*.glg
+*.glo
+*.gls
+*.ist
 
 .DS_Store

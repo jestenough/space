@@ -1,8 +1,7 @@
-import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 const root = resolve(process.cwd());
-const metadataPath = resolve(root, "content", "articles-index.json");
 const sourceDir = resolve(root, "content", "articles");
 const generatedDir = resolve(root, "generated");
 const outputDir = resolve(generatedDir, "articles");
@@ -14,91 +13,110 @@ const XML_HEADER = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>";
 const SITEMAP_ROOT = '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">';
 const sectionLevels = new Map([["part", 1], ["chapter", 1], ["section", 1], ["subsection", 2], ["subsubsection", 3], ["paragraph", 4], ["subparagraph", 5]]);
 
+const SUPPORTED_LANGS = new Set(["en", "ru"]);
+const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
 const normalizeLang = (value) => {
   const match = String(value).match(/^([a-z]{2,3})(?:-([A-Za-z]{2}))?$/);
   if (!match) throw new Error(`Invalid language code: ${value}`);
-  return match[2] ? `${match[1].toLowerCase()}-${match[2].toUpperCase()}` : match[1].toLowerCase();
+  const lang = match[2] ? `${match[1].toLowerCase()}-${match[2].toUpperCase()}` : match[1].toLowerCase();
+  if (!SUPPORTED_LANGS.has(lang)) throw new Error(`Unsupported article language: ${lang}`);
+  return lang;
 };
 
-const parseArticleFilename = (fileName) => {
+const parseArticleFilename = (fileName, folderSlug) => {
   const match = fileName.match(/^(.+)\.([a-z]{2,3}(?:-[A-Za-z]{2})?)\.tex$/);
   if (!match) return null;
   const [, slug, rawLang] = match;
-  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) throw new Error(`Invalid article slug in filename: ${fileName}`);
+  if (slug !== folderSlug) throw new Error(`Article source filename must start with folder slug: content/articles/${folderSlug}/${fileName}`);
   const lang = normalizeLang(rawLang);
   return { slug, lang, key: `${slug}.${lang}` };
 };
 
-const readSourceFiles = async (dir) => {
-  const entries = await readdir(dir, { withFileTypes: true });
-  const files = new Map();
-  for (const entry of entries) {
-    if (entry.isDirectory()) throw new Error(`Language subdirectories are not allowed in content/articles/: ${entry.name}`);
-    if (!entry.isFile() || !entry.name.endsWith(".tex")) continue;
-    const parsed = parseArticleFilename(entry.name);
-    if (!parsed) throw new Error(`Article source filename must be <slug>.<lang>.tex: ${entry.name}`);
-    if (files.has(parsed.key)) throw new Error(`Duplicate article source: ${entry.name}`);
-    files.set(parsed.key, entry.name);
-  }
-  return files;
+const readArticleFolders = async () => {
+  const entries = await readdir(sourceDir, { withFileTypes: true });
+  const folders = entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort((a, b) => a.localeCompare(b));
+  const rootTexFiles = entries.filter((entry) => entry.isFile() && entry.name.endsWith(".tex"));
+  if (rootTexFiles.length > 0) throw new Error(`Article sources must live in content/articles/<slug>/ folders. Found root .tex: ${rootTexFiles.map((entry) => entry.name).join(", ")}`);
+  return folders;
 };
 
-const validateSourcesAgainstIndex = (files, articles) => {
-  const expected = new Set();
+const scanArticles = async () => {
+  const articles = [];
+  const sources = new Map();
   const seenSlugs = new Set();
-  for (const article of articles) {
-    if (seenSlugs.has(article.slug)) throw new Error(`Duplicate article slug in metadata: ${article.slug}`);
-    seenSlugs.add(article.slug);
-    for (const lang of article.languages) {
-      const key = `${article.slug}.${lang}`;
-      expected.add(key);
-      if (!files.has(key)) throw new Error(`Missing source file: content/articles/${key}.tex`);
+
+  for (const folderSlug of await readArticleFolders()) {
+    if (!SLUG_RE.test(folderSlug)) throw new Error(`Invalid article folder slug: content/articles/${folderSlug}`);
+    if (seenSlugs.has(folderSlug)) throw new Error(`Duplicate article slug: ${folderSlug}`);
+    seenSlugs.add(folderSlug);
+
+    const articleDir = resolve(sourceDir, folderSlug);
+    const metaFileName = `${folderSlug}.meta.json`;
+    const entries = await readdir(articleDir, { withFileTypes: true });
+    const hasMeta = entries.some((entry) => entry.isFile() && entry.name === metaFileName);
+    if (!hasMeta) throw new Error(`Missing article metadata: content/articles/${folderSlug}/${metaFileName}`);
+
+    const sourceFiles = [];
+    const seenLangs = new Set();
+    for (const entry of entries) {
+      if (!entry.isFile() || !entry.name.endsWith(".tex")) continue;
+      const parsed = parseArticleFilename(entry.name, folderSlug);
+      if (!parsed) throw new Error(`Article source filename must be <slug>.<lang>.tex: content/articles/${folderSlug}/${entry.name}`);
+      if (seenLangs.has(parsed.lang)) throw new Error(`Duplicate language source for ${folderSlug}.${parsed.lang}`);
+      seenLangs.add(parsed.lang);
+      sourceFiles.push({ ...parsed, fileName: entry.name, path: resolve(articleDir, entry.name), articleDir });
+      sources.set(parsed.key, { fileName: entry.name, path: resolve(articleDir, entry.name), articleDir });
     }
+    if (sourceFiles.length === 0) throw new Error(`Missing article sources: content/articles/${folderSlug}/*.tex`);
+
+    const rawMeta = JSON.parse(await readFile(resolve(articleDir, metaFileName), "utf8"));
+    articles.push(normalizeArticleMeta(rawMeta, folderSlug, [...seenLangs].sort((a, b) => a.localeCompare(b))));
   }
-  for (const key of files.keys()) if (!expected.has(key)) throw new Error(`Source file is not listed in content/articles-index.json: content/articles/${key}.tex`);
+
+  return { articles: articles.sort((a, b) => b.date.localeCompare(a.date) || a.slug.localeCompare(b.slug)), sources };
 };
 
-const normalizeArticleIndex = (value) => {
-  if (!Array.isArray(value)) throw new Error("Invalid article index: expected an array");
-  return value.map((item, index) => normalizeArticleMeta(item, index));
-};
-
-const normalizeArticleMeta = (value, index) => {
-  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error(`Invalid article index item at ${index}: expected object`);
-  const slug = requiredString(value.slug, `item ${index}.slug`);
-  const date = requiredString(value.date, `item ${index}.date`);
-  const tags = requiredStringArray(value.tags, `item ${index}.tags`);
-  const title = requiredLangRecord(value.title, `item ${index}.title`);
-  const description = requiredLangRecord(value.description, `item ${index}.description`);
-  const languages = requiredLangArray(value.languages, `item ${index}.languages`, title, description);
+const normalizeArticleMeta = (value, folderSlug, languages) => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error(`Invalid article metadata for ${folderSlug}: expected object`);
+  if ("languages" in value) throw new Error(`Do not set languages manually in content/articles/${folderSlug}/${folderSlug}.meta.json`);
+  const slug = requiredString(value.slug, `${folderSlug}.slug`);
+  if (slug !== folderSlug) throw new Error(`Article slug mismatch: folder is '${folderSlug}', meta slug is '${slug}'`);
+  if (!SLUG_RE.test(slug)) throw new Error(`Invalid article slug: ${slug}`);
+  const date = requiredDate(value.date, `${folderSlug}.date`);
+  const tags = requiredStringArray(value.tags, `${folderSlug}.tags`);
+  const title = requiredLangRecord(value.title, `${folderSlug}.title`);
+  const description = requiredLangRecord(value.description, `${folderSlug}.description`);
+  for (const lang of languages) {
+    if (!title[lang]) throw new Error(`Missing title.${lang} in ${folderSlug}.meta.json`);
+    if (!description[lang]) throw new Error(`Missing description.${lang} in ${folderSlug}.meta.json`);
+  }
   return { slug, date, tags, title, description, languages };
 };
 
 const requiredString = (value, path) => {
-  if (typeof value !== "string" || value.trim() === "") throw new Error(`Invalid article index: ${path} must be a non-empty string`);
-  return value;
+  if (typeof value !== "string" || value.trim() === "") throw new Error(`Invalid article metadata: ${path} must be a non-empty string`);
+  return value.trim();
+};
+
+const requiredDate = (value, path) => {
+  const date = requiredString(value, path);
+  if (!DATE_RE.test(date) || Number.isNaN(Date.parse(`${date}T00:00:00Z`))) throw new Error(`Invalid article metadata: ${path} must use YYYY-MM-DD`);
+  return date;
 };
 
 const requiredStringArray = (value, path) => {
-  if (!Array.isArray(value) || value.some((item) => typeof item !== "string" || item.trim() === "")) throw new Error(`Invalid article index: ${path} must be a string array`);
-  return [...new Set(value)];
+  if (!Array.isArray(value) || value.length === 0 || value.some((item) => typeof item !== "string" || item.trim() === "")) throw new Error(`Invalid article metadata: ${path} must be a non-empty string array`);
+  return [...new Set(value.map((item) => item.trim()))];
 };
 
 const requiredLangRecord = (value, path) => {
-  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error(`Invalid article index: ${path} must be an object`);
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error(`Invalid article metadata: ${path} must be an object`);
   const result = {};
   for (const [lang, text] of Object.entries(value)) result[normalizeLang(lang)] = requiredString(text, `${path}.${lang}`);
-  if (Object.keys(result).length === 0) throw new Error(`Invalid article index: ${path} must not be empty`);
+  if (Object.keys(result).length === 0) throw new Error(`Invalid article metadata: ${path} must not be empty`);
   return result;
-};
-
-const requiredLangArray = (value, path, title, description) => {
-  const languages = [...new Set(requiredStringArray(value, path).map(normalizeLang))];
-  for (const lang of languages) {
-    if (!title[lang]) throw new Error(`Missing title.${lang}`);
-    if (!description[lang]) throw new Error(`Missing description.${lang}`);
-  }
-  return languages;
 };
 
 const articleMetaForLang = (articles, article, lang, source) => {
@@ -165,7 +183,7 @@ const parseSectionCommand = (line) => {
   return null;
 };
 
-const convertLatexToHtml = (source) => {
+const convertLatexToHtml = (source, assetBasePath = "") => {
   const lines = source.replace(/\r\n?/g, "\n").split("\n");
   const out = [], paragraph = [], listItem = [], counters = new Map();
   let mode = "normal", listTag = "", envLines = [], quoteLines = [];
@@ -192,6 +210,13 @@ const convertLatexToHtml = (source) => {
     if (line === "\\begin{quote}") { flushParagraph(paragraph, out); mode = "quote"; continue; }
     if (line === "\\begin{itemize}") { startList("ul"); continue; }
     if (line === "\\begin{enumerate}") { startList("ol"); continue; }
+    const image = line.match(/^\\includegraphics(?:\[[^\]]*\])?\{([^{}]+)\}$/);
+    if (image) {
+      flushParagraph(paragraph, out);
+      const src = image[1].startsWith("images/") && assetBasePath ? `${assetBasePath}/${image[1]}` : image[1];
+      out.push(`<figure class="article-figure"><img src="${escapeHtml(src)}" alt="" loading="lazy" decoding="async"></figure>`);
+      continue;
+    }
     const section = parseSectionCommand(line);
     if (section) {
       flushParagraph(paragraph, out);
@@ -261,10 +286,25 @@ const render404 = () => `<!doctype html>
   <body><main aria-label="404"><h1>signal lost</h1><a href="/">cd /</a></main></body>
 </html>`;
 
+const copyArticleAssets = async (article, source) => {
+  const imagesDir = resolve(source.articleDir, "images");
+  try {
+    const entries = await readdir(imagesDir, { withFileTypes: true });
+    if (entries.length === 0) return;
+    const targetDir = resolve(outputDir, article.slug, "images");
+    await mkdir(targetDir, { recursive: true });
+    for (const entry of entries) {
+      if (!entry.isFile()) continue;
+      await copyFile(resolve(imagesDir, entry.name), resolve(targetDir, entry.name));
+    }
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") return;
+    throw error;
+  }
+};
+
 const main = async () => {
-  const articleIndex = normalizeArticleIndex(JSON.parse(await readFile(metadataPath, "utf8")));
-  const sourceFiles = await readSourceFiles(sourceDir);
-  validateSourcesAgainstIndex(sourceFiles, articleIndex);
+  const { articles: articleIndex, sources } = await scanArticles();
 
   await rm(generatedDir, { recursive: true, force: true });
   await mkdir(outputDir, { recursive: true });
@@ -273,10 +313,12 @@ const main = async () => {
 
   for (const article of articleIndex) {
     for (const lang of article.languages) {
-      const sourcePath = resolve(sourceDir, `${article.slug}.${lang}.tex`);
-      const source = await readFile(sourcePath, "utf8");
-      await writeFile(resolve(outputDir, `${article.slug}.${lang}.html`), convertLatexToHtml(source), "utf8");
-      await writeFile(resolve(metaDir, `${article.slug}.${lang}.json`), JSON.stringify(articleMetaForLang(articleIndex, article, lang, source), null, 2) + "\n", "utf8");
+      const source = sources.get(`${article.slug}.${lang}`);
+      if (!source) throw new Error(`Missing source file for ${article.slug}.${lang}`);
+      const sourceText = await readFile(source.path, "utf8");
+      await writeFile(resolve(outputDir, `${article.slug}.${lang}.html`), convertLatexToHtml(sourceText, `/generated/articles/${article.slug}`), "utf8");
+      await writeFile(resolve(metaDir, `${article.slug}.${lang}.json`), JSON.stringify(articleMetaForLang(articleIndex, article, lang, sourceText), null, 2) + "\n", "utf8");
+      await copyArticleAssets(article, source);
     }
   }
 
@@ -289,7 +331,7 @@ const main = async () => {
   await writeFile(resolve(root, "public", "404.html"), render404(), "utf8");
   await writeFile(resolve(root, "public", "_headers"), renderHeaders(articleIndex, siteUrl), "utf8");
   for (const lang of languages) await writeFile(resolve(feedsDir, `${lang}.xml`), renderRssFeed(lang, articleIndex, siteUrl), "utf8");
-  console.log(`content_ok: ${articleIndex.length} articles, ${sourceFiles.size} source files, generated/ updated`);
+  console.log(`content_ok: ${articleIndex.length} articles, ${sources.size} source files, generated/ updated`);
 };
 
 await main();

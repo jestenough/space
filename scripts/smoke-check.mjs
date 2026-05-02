@@ -1,4 +1,4 @@
-import { access, readFile } from "node:fs/promises";
+import { access, readdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 const root = resolve(process.cwd());
@@ -9,6 +9,7 @@ const robots = await readFile(resolve(root, "public", "robots.txt"), "utf8");
 const headers = await readTextIfExists(resolve(root, "public", "_headers"));
 
 const errors = [], warnings = [], slugs = new Set(), titles = new Map(), descriptions = new Map();
+await validateArticleSourceLayout();
 if (!robots.includes("Sitemap:")) errors.push("robots.txt must reference sitemap.xml");
 if (!robots.includes("Disallow: /generated/")) errors.push("robots.txt should keep generated fragments out of the index");
 if (sitemap.includes("/404") || sitemap.includes("404.html")) errors.push("sitemap.xml must not contain 404 pages");
@@ -60,6 +61,33 @@ if (errors.length) {
   process.exit(1);
 }
 console.log(`seo_smoke_ok: ${index.length} articles checked${warnings.length ? `, ${warnings.length} PDF warnings` : ""}`);
+
+async function validateArticleSourceLayout() {
+  const legacyIndexPath = resolve(root, "content", "articles-index.json");
+  try { await access(legacyIndexPath); errors.push("content/articles-index.json must not be used"); } catch { /* legacy index is absent as expected. */ }
+  const articlesDir = resolve(root, "content", "articles");
+  const entries = await readdir(articlesDir, { withFileTypes: true });
+  if (entries.some((entry) => entry.isFile() && entry.name.endsWith(".tex"))) errors.push("Article .tex files must live in content/articles/<slug>/ folders");
+  if (entries.some((entry) => entry.isFile() && entry.name === "articles-index.json")) errors.push("content/articles/articles-index.json must not be used");
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const slug = entry.name;
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) errors.push(`Invalid article folder slug: ${slug}`);
+    const articleDir = resolve(articlesDir, slug);
+    const articleEntries = await readdir(articleDir, { withFileTypes: true });
+    const metaName = `${slug}.meta.json`;
+    if (!articleEntries.some((item) => item.isFile() && item.name === metaName)) errors.push(`Missing article meta: content/articles/${slug}/${metaName}`);
+    const texFiles = articleEntries.filter((item) => item.isFile() && item.name.endsWith(".tex"));
+    if (texFiles.length === 0) errors.push(`Missing article tex source: content/articles/${slug}/`);
+    for (const item of texFiles) {
+      if (!new RegExp(`^${escapeRegExp(slug)}\\.[a-z]{2,3}(?:-[A-Za-z]{2})?\\.tex$`).test(item.name)) errors.push(`Invalid article tex filename: content/articles/${slug}/${item.name}`);
+    }
+  }
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 async function readTextIfExists(path, message) {
   try { return await readFile(path, "utf8"); }

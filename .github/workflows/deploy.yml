@@ -54,7 +54,7 @@ jobs:
           path: |
             public/*/articles/*.pdf
             .cache/pdf-manifest.json
-          key: autophany-pdf-cache-${{ runner.os }}-${{ hashFiles('content/articles/*.tex') }}
+          key: autophany-pdf-cache-${{ runner.os }}-${{ hashFiles('content/articles/**/*.tex', 'content/articles/**/*.meta.json') }}
           restore-keys: |
             autophany-pdf-cache-${{ runner.os }}-
 

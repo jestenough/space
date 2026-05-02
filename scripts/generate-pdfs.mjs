@@ -13,7 +13,7 @@ const dockerImage = process.env.PDF_DOCKER_IMAGE || "autophany-space";
 async function main() {
   const compiler = await resolveCompiler();
   const sources = await listSources();
-  if (sources.length === 0) throw new Error("No article sources found in content/articles/*.tex");
+  if (sources.length === 0) throw new Error("No article sources found in content/articles/<slug>/<slug>.<lang>.tex");
 
   let built = 0;
   let skipped = 0;
@@ -36,22 +36,35 @@ const listSources = async () => {
   const entries = await readdir(sourceDir, { withFileTypes: true });
   const result = [];
   const seen = new Set();
+
   for (const entry of entries) {
-    if (entry.isDirectory()) throw new Error(`Language subdirectories are not allowed in content/articles/: ${entry.name}`);
-    if (!entry.isFile() || !entry.name.endsWith(".tex")) continue;
-    const parsed = parseArticleFilename(entry.name);
-    if (!parsed) throw new Error(`Article source filename must be <slug>.<lang>.tex: ${entry.name}`);
-    if (seen.has(parsed.key)) throw new Error(`Duplicate article source: ${entry.name}`);
-    seen.add(parsed.key);
-    result.push({ ...parsed, fileName: entry.name, path: resolve(sourceDir, entry.name) });
+    if (entry.isFile() && entry.name.endsWith(".tex")) throw new Error(`Article sources must live in content/articles/<slug>/ folders. Found root .tex: ${entry.name}`);
+    if (!entry.isDirectory()) continue;
+
+    const slug = entry.name;
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) throw new Error(`Invalid article folder slug: ${slug}`);
+    const articleDir = resolve(sourceDir, slug);
+    const articleEntries = await readdir(articleDir, { withFileTypes: true });
+    const metaFileName = `${slug}.meta.json`;
+    if (!articleEntries.some((item) => item.isFile() && item.name === metaFileName)) throw new Error(`Missing article metadata for PDF generation: content/articles/${slug}/${metaFileName}`);
+
+    for (const item of articleEntries) {
+      if (!item.isFile() || !item.name.endsWith(".tex")) continue;
+      const parsed = parseArticleFilename(item.name, slug);
+      if (!parsed) throw new Error(`Article source filename must be <slug>.<lang>.tex: content/articles/${slug}/${item.name}`);
+      if (seen.has(parsed.key)) throw new Error(`Duplicate article source: ${item.name}`);
+      seen.add(parsed.key);
+      result.push({ ...parsed, fileName: item.name, path: resolve(articleDir, item.name), articleDir });
+    }
   }
   return result.sort((a, b) => a.key.localeCompare(b.key));
 };
 
-const parseArticleFilename = (fileName) => {
+const parseArticleFilename = (fileName, folderSlug) => {
   const match = fileName.match(/^(.+)\.([a-z]{2,3}(?:-[A-Za-z]{2})?)\.tex$/);
   if (!match) return null;
   const [, slug, rawLang] = match;
+  if (slug !== folderSlug) throw new Error(`Article source filename must start with folder slug: content/articles/${folderSlug}/${fileName}`);
   const lang = normalizeLang(rawLang);
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) throw new Error(`Invalid article slug in filename: ${fileName}`);
   return { slug, lang, key: `${slug}.${lang}` };
