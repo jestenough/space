@@ -1,7 +1,7 @@
-import { DEFAULT_LANG, SUPPORTED_LANGS } from "./config";
-import { INFO_FILES, toRouteSlug } from "./infoFiles";
-import type { Lang, Route } from "./types";
-import { safeDecodeURIComponent } from "./url";
+import { DEFAULT_LANG, isLangCode, normalizeLang } from "../core/languages";
+import { INFO_FILES, toRouteSlug } from "../features/info/infoFiles";
+import type { Lang, Route } from "../core/types";
+import { safeDecodeURIComponent } from "../core/url";
 
 const INFO_FILE_ROUTE_SLUGS = new Set(
   INFO_FILES.flatMap((file) => [file.slug.toLowerCase(), toRouteSlug(file.slug)])
@@ -9,25 +9,21 @@ const INFO_FILE_ROUTE_SLUGS = new Set(
 const ROUTE_SECTION_ARTICLES = "articles";
 const ROUTE_SECTION_TAGS = "tags";
 
-export function toLang(value: string | undefined): Lang {
-  return SUPPORTED_LANGS.includes(value as Lang) ? (value as Lang) : DEFAULT_LANG;
-}
+export const toLang = (value: string | undefined): Lang => normalizeLang(value);
 
 const decodedSegment = (value: string | undefined): string | null => {
   if (value === undefined) return null;
   return safeDecodeURIComponent(value);
 };
 
-export function parseRoute(): Route {
+export const parseRoute = (): Route => {
   const path = window.location.pathname.replace(/^\/+|\/+$/g, "");
-  if (!path || path === "root") return { lang: DEFAULT_LANG, page: "home", panel: "home" };
+  if (!path) return { lang: DEFAULT_LANG, page: "home", panel: "home" };
 
   const [langCandidate, section, slug, extra] = path.split("/");
-  if (!SUPPORTED_LANGS.includes(langCandidate as Lang)) {
-    return { lang: DEFAULT_LANG, page: "not-found", slug: path };
-  }
+  if (!isLangCode(langCandidate)) return { lang: DEFAULT_LANG, page: "not-found", slug: path };
 
-  const lang = langCandidate as Lang;
+  const lang = normalizeLang(langCandidate);
   if (extra) return { lang, page: "not-found", slug: path };
   if (section === undefined) return { lang, page: "home", panel: "home" };
 
@@ -55,8 +51,8 @@ export function parseRoute(): Route {
   }
 
   return { lang, page: "not-found", slug: path };
-}
+};
 
-export function navigateHome(lang: Lang): void {
+export const navigateHome = (lang: Lang): void => {
   window.location.href = `/${lang}`;
-}
+};

@@ -6,7 +6,6 @@ import { spawn } from "node:child_process";
 const root = resolve(process.cwd());
 const sourceDir = resolve(root, "content", "articles");
 const publicDir = resolve(root, "public");
-const supportedLangs = new Set(["en", "ru"]);
 const force = process.env.FORCE_PDF === "1";
 const strictPdf = process.env.STRICT_PDF === "1";
 const dockerImage = process.env.PDF_DOCKER_IMAGE || "autophany-space";
@@ -50,11 +49,10 @@ const listSources = async () => {
 };
 
 const parseArticleFilename = (fileName) => {
-  const match = fileName.match(/^(.+)\.([a-z]{2})\.tex$/i);
+  const match = fileName.match(/^(.+)\.([a-z]{2,3}(?:-[A-Za-z]{2})?)\.tex$/);
   if (!match) return null;
   const [, slug, rawLang] = match;
-  const lang = rawLang.toLowerCase();
-  if (!supportedLangs.has(lang)) return null;
+  const lang = normalizeLang(rawLang);
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) throw new Error(`Invalid article slug in filename: ${fileName}`);
   return { slug, lang, key: `${slug}.${lang}` };
 };
@@ -86,8 +84,21 @@ const buildPdf = async (source, pdfPath, compiler) => {
 
 const isStandaloneLatex = (sourceText) => /\\documentclass\b/.test(sourceText) && /\\begin\{document\}/.test(sourceText);
 
+const DEFAULT_POLYGLOSSIA_LANGUAGES = {
+  en: "english",
+  ru: "russian"
+};
+
+const polyglossiaLanguage = (lang) => DEFAULT_POLYGLOSSIA_LANGUAGES[lang.split("-")[0]] ?? "english";
+
+const normalizeLang = (value) => {
+  const match = String(value).match(/^([a-z]{2,3})(?:-([A-Za-z]{2}))?$/);
+  if (!match) throw new Error(`Invalid language code: ${value}`);
+  return match[2] ? `${match[1].toLowerCase()}-${match[2].toUpperCase()}` : match[1].toLowerCase();
+};
+
 const wrapLatexFragment = (sourceText, source) => {
-  const language = source.lang === "ru" ? "russian" : "english";
+  const language = polyglossiaLanguage(source.lang);
   return String.raw`\documentclass[11pt]{article}
 \usepackage[a4paper,margin=25mm]{geometry}
 \usepackage{fontspec}

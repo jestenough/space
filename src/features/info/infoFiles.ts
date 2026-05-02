@@ -1,5 +1,5 @@
-import type { InfoFileMeta, Lang } from "./types";
-import { safeDecodeURIComponent } from "./url";
+import type { InfoFileMeta } from "../../core/types";
+import { safeDecodeURIComponent } from "../../core/url";
 
 const OWNER = "root";
 const GROUP = "operators";
@@ -7,6 +7,10 @@ const READABLE_PUBLIC_FILE = "-rw-rw-r--";
 const INFO_PUBLIC_BASE = "/info";
 
 type InfoFileInput = Omit<InfoFileMeta, "routeSlug">;
+
+export const toRouteSlug = (fileSlug: string): string => {
+  return fileSlug.replace(/\.[^.]+$/, "").trim().toLowerCase();
+};
 
 const makeInfoFile = (file: InfoFileInput): InfoFileMeta => ({
   ...file,
@@ -82,23 +86,19 @@ export const INFO_FILES: readonly InfoFileMeta[] = [
 
 const infoContentCache = new Map<string, Promise<string>>();
 
-export function findInfoFile(slug: string): InfoFileMeta | undefined {
+export const findInfoFile = (slug: string): InfoFileMeta | undefined => {
   const decoded = safeDecodeURIComponent(slug) ?? slug;
   const normalized = decoded.trim().toLowerCase();
   return INFO_FILES.find((file) => file.slug.toLowerCase() === normalized || file.routeSlug === normalized);
-}
+};
 
-export function toRouteSlug(fileSlug: string): string {
-  return fileSlug.replace(/\.[^.]+$/, "").trim().toLowerCase();
-}
-
-export async function renderInfoFileHtml(file: InfoFileMeta, _lang: Lang): Promise<string> {
+export const renderInfoFileHtml = async (file: InfoFileMeta, _lang: string): Promise<string> => {
   const content = await loadInfoFileContent(file);
   const body = file.kind === "markdown" ? renderMarkdown(content) : renderPlainText(content);
   return `<section class="file-document" data-source="${escapeHtml(file.sourcePath)}">${body}</section>`;
-}
+};
 
-async function loadInfoFileContent(file: InfoFileMeta): Promise<string> {
+const loadInfoFileContent = async (file: InfoFileMeta): Promise<string> => {
   const cached = infoContentCache.get(file.publicPath);
   if (cached) return cached;
 
@@ -114,7 +114,7 @@ async function loadInfoFileContent(file: InfoFileMeta): Promise<string> {
 
   infoContentCache.set(file.publicPath, request);
   return request;
-}
+};
 
 const renderMarkdown = (markdown: string): string => {
   const lines = stripLeadingMarkdownHeading(markdown).replace(/\r\n/g, "\n").split("\n");

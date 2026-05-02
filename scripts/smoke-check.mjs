@@ -7,7 +7,6 @@ const index = JSON.parse(await readFile(resolve(root, "generated", "articles-ind
 const sitemap = await readFile(resolve(root, "generated", "sitemap.xml"), "utf8");
 const robots = await readFile(resolve(root, "public", "robots.txt"), "utf8");
 const headers = await readTextIfExists(resolve(root, "public", "_headers"));
-const vercel = await readTextIfExists(resolve(root, "vercel.json"));
 
 const errors = [], warnings = [], slugs = new Set(), titles = new Map(), descriptions = new Map();
 if (!robots.includes("Sitemap:")) errors.push("robots.txt must reference sitemap.xml");
@@ -22,11 +21,13 @@ for (const article of index) {
   for (const lang of article.languages ?? []) {
     const title = article.title?.[lang], description = article.description?.[lang];
     const htmlPath = resolve(root, "generated", "articles", `${article.slug}.${lang}.html`);
+    const metaPath = resolve(root, "generated", "articles-meta", `${article.slug}.${lang}.json`);
     const pdfPath = resolve(root, "public", lang, "articles", `${article.slug}.pdf`);
     const canonicalPath = `/${lang}/articles/${encodeURIComponent(article.slug)}`;
     const shortLegacyPath = `/${lang}/${encodeURIComponent(article.slug)}`;
     const pdfRoute = `${canonicalPath}.pdf`;
     const html = await readTextIfExists(htmlPath, `Missing generated HTML: ${htmlPath}`);
+    const metaText = await readTextIfExists(metaPath, `Missing generated article metadata: ${metaPath}`);
 
     if (!article.slug?.trim()) errors.push(`Missing slug: ${article.slug}.${lang}`);
     if (!title?.trim()) errors.push(`Missing title: ${article.slug}.${lang}`);
@@ -34,10 +35,11 @@ for (const article of index) {
     if (title) pushUnique(titles, title, `${article.slug}.${lang}`, "Duplicate title");
     if (description) pushUnique(descriptions, description, `${article.slug}.${lang}`, "Duplicate description");
     if (html && !/<h1\b/i.test(html)) errors.push(`Generated article has no h1: ${article.slug}.${lang}`);
+    if (metaText) validateArticleMeta(metaText, article, lang, metaPath);
     if (!sitemap.includes(canonicalPath)) errors.push(`Sitemap is missing canonical route: ${canonicalPath}`);
     if (sitemap.includes(shortLegacyPath)) errors.push(`Sitemap contains legacy short article route: ${shortLegacyPath}`);
     if (sitemap.includes(pdfRoute)) errors.push(`Sitemap must not include duplicate PDF route: ${pdfRoute}`);
-    if (!headers.includes(pdfRoute) && !vercel.includes(pdfRoute)) errors.push(`PDF canonical headers missing for ${pdfRoute}`);
+    if (!headers.includes(pdfRoute)) errors.push(`PDF canonical headers missing for ${pdfRoute}`);
     try {
       await access(pdfPath);
     } catch {
@@ -63,6 +65,17 @@ async function readTextIfExists(path, message) {
   try { return await readFile(path, "utf8"); }
   catch { if (message) errors.push(message); return ""; }
 }
+
+function validateArticleMeta(metaText, article, lang, path) {
+  let meta;
+  try { meta = JSON.parse(metaText); } catch { errors.push(`Invalid JSON metadata: ${path}`); return; }
+  if (meta.slug !== article.slug) errors.push(`Metadata slug mismatch: ${path}`);
+  if (meta.lang && meta.lang !== lang) errors.push(`Metadata lang mismatch: ${path}`);
+  if (typeof meta.canonicalPath !== "string" || !meta.canonicalPath.endsWith(`/articles/${encodeURIComponent(article.slug)}`)) errors.push(`Invalid canonicalPath in ${path}`);
+  if (typeof meta.pdfPath !== "string" || !meta.pdfPath.endsWith(`/${encodeURIComponent(article.slug)}.pdf`)) errors.push(`Invalid pdfPath in ${path}`);
+  if (/<(p|h1|article|section)\b/i.test(metaText)) errors.push(`Article metadata must not contain HTML content: ${path}`);
+}
+
 function pushUnique(map, value, location, message) {
   const key = value.trim().toLowerCase();
   const previous = map.get(key);

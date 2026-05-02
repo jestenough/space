@@ -1,4 +1,5 @@
-import type { ArticleMeta, InfoFileMeta, Lang } from "../types";
+import { tagPath } from "../router/routePaths";
+import type { ArticleMeta, InfoFileMeta, Lang } from "../core/types";
 
 const PUBLIC_FILE_PERMISSIONS = "-rw-rw-r--";
 const PUBLIC_FILE_OWNER = "root";
@@ -58,7 +59,6 @@ type SnapshotArgs = {
   query?: string;
   article?: ArticleMeta;
   infoFile?: InfoFileMeta;
-  reads?: number;
   matches?: number;
   words?: number;
   chars?: number;
@@ -148,7 +148,6 @@ const articleMetadataSnapshot = (args: SnapshotArgs): string => {
     `lang   : ${args.lang}`,
     `langs  : ${article.languages.join(", ")}`,
     `tags   : ${article.tags.map((tag) => `#${tag}`).join(" ")}`,
-    `reads  : ${args.reads ?? 0}`,
     `words  : ${args.words ?? 0}`,
     `chars  : ${args.chars ?? 0}`,
     `pdf    : ~/articles/${article.slug}.pdf`
@@ -161,7 +160,7 @@ const articleMetadataSnapshotHtml = (args: SnapshotArgs): string => {
   const filePath = `~/articles/${article.slug}.tex`;
   const stamp = `${article.date} 00:00:00 +0000`;
   const tags = article.tags
-    .map((tag) => `<a class="meta-tag-link" href="/${args.lang}/tags/${encodeURIComponent(tag)}" data-internal="true">#${escapeHtml(tag)}</a>`)
+    .map((tag) => `<a class="meta-tag-link" href="${tagPath(args.lang, tag)}" data-internal="true">#${escapeHtml(tag)}</a>`)
     .join(" ");
 
   return [
@@ -183,7 +182,6 @@ const articleMetadataSnapshotHtml = (args: SnapshotArgs): string => {
     statRow("lang", args.lang),
     statRow("langs", article.languages.join(", ")),
     statRowHtml("tags", tags),
-    statRow("reads", String(args.reads ?? 0)),
     statRow("words", String(args.words ?? 0)),
     statRow("chars", String(args.chars ?? 0)),
     statRow("pdf", `~/articles/${article.slug}.pdf`)

@@ -1,0 +1,7 @@
+import { text } from "../i18n";
+import { dom } from "../dom";
+import { setView } from "../view";
+import { escapeHtml } from "../../core/escape";
+import { CssClass, ViewMode } from "../../core/enums";
+import type { Lang } from "../../core/types";
+export const notFoundView = { render(lang: Lang, path: string): void { document.body.classList.add(CssClass.NotFoundMode); dom.treeHome.classList.remove(CssClass.Active); dom.treeArticles.classList.remove(CssClass.Active); dom.treeTags.classList.remove(CssClass.Active); dom.welcomeCommand.textContent = "$ dmesg | tail -2"; dom.welcomeTitle.textContent = "signal lost"; dom.welcomeLead.textContent = "cd /"; dom.welcomeBody.textContent = ""; dom.errorTitle.textContent = "signal lost"; dom.errorText.innerHTML = '<a class="error-root-link" href="/" data-internal="true" aria-label="cd /">cd /</a>'; dom.renderIndicator.textContent = "$ dmesg | grep ENOENT"; document.title = "signal lost :: " + text(lang).brand; dom.processLog.innerHTML = ['<span class="shell-prompt">guest@cray-1:~$</span> <span class="shell-cmd">dmesg | tail -4</span>', '<span class="meta-rule" aria-hidden="true"></span>', '<span class="meta-key">errno</span>: ENOENT', '<span class="meta-key">route</span>: ' + escapeHtml(path), '<span class="meta-key">signal</span>: lost', '<span class="meta-key">recovery</span>: <a class="meta-tag-link" href="/" data-internal="true">cd /</a>'].join("<br>"); setView(ViewMode.Error); } } as const;

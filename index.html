@@ -1,8 +1,20 @@
 <!doctype html>
-<html lang="en" data-theme="system">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <script>
+      (() => {
+        const key = "theme";
+        const allowed = ["reading", "light", "system", "dark"];
+        const saved = (() => { try { return localStorage.getItem(key); } catch { return null; } })();
+        const choice = allowed.includes(saved) ? saved : "system";
+        const resolved = choice === "system" ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : choice;
+        document.documentElement.dataset.theme = resolved;
+        document.documentElement.dataset.themeChoice = choice;
+      })();
+    </script>
     <title>autophany.space — LaTeX articles and notes</title>
     <meta name="description" content="autophany.space: terminal-style LaTeX articles, notes, tags, metadata, and printable PDF versions." />
     <meta name="robots" content="index,follow" />
@@ -113,7 +125,6 @@
 
           <section id="tags-panel" class="panel hidden directory-panel" aria-label="Tags panel">
             <p id="tags-headline" class="sr-only">Tags</p>
-            <p id="tags-subtitle" class="muted"></p>
             <div class="tools-row tags-tools" role="group" aria-label="Tag controls">
               <label class="command-input" aria-label="Filter tags">
                 <span>$ grep -i --</span>
@@ -151,7 +162,7 @@
           <div class="article-actions">
             <a id="back-link" href="/en" class="back-link">cd ..</a>
             <div class="article-action-buttons">
-               <button id="download-pdf-btn" class="download-btn action-chip" type="button">pdf</button>
+              <button id="download-pdf-btn" class="download-btn action-chip" type="button">pdf</button>
               <button id="edit-article-btn" class="download-btn action-chip" type="button">edit</button>
               <button id="zen-mode-btn" class="download-btn action-chip" type="button">zen</button>
             </div>

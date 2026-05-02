@@ -1,5 +1,5 @@
-import { tagPath } from "../routePaths";
-import type { Lang, TagInfo } from "../types";
+import { tagPath } from "../router/routePaths";
+import type { TagInfo } from "../core/types";
 
 const make = <K extends keyof HTMLElementTagNameMap>(
   tagName: K,
@@ -12,7 +12,7 @@ const make = <K extends keyof HTMLElementTagNameMap>(
   return element;
 };
 
-export function createTagListItem(lang: Lang, tag: TagInfo, activeTag: string): HTMLLIElement {
+export const createTagListItem = (lang: string, tag: TagInfo, activeTag: string): HTMLLIElement => {
   const item = make("li", "tag-card");
   const link = make("a", `tag-row ${activeTag === tag.name ? "is-active" : ""}`);
   link.href = tagPath(lang, tag.name);
@@ -24,4 +24,4 @@ export function createTagListItem(lang: Lang, tag: TagInfo, activeTag: string): 
   );
   item.append(link);
   return item;
-}
+};

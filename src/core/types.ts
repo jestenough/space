@@ -1,4 +1,4 @@
-export type Lang = "ru" | "en";
+export type Lang = string;
 export type Theme = "reading" | "light" | "system" | "dark";
 
 export type Panel = "home" | "articles" | "tags";
@@ -10,13 +10,30 @@ export type InfoFileRoute = { lang: Lang; page: "info-file"; slug: string };
 export type NotFoundRoute = { lang: Lang; page: "not-found"; slug?: string };
 export type Route = HomeRoute | ArticlesRoute | TagsRoute | ArticleRoute | InfoFileRoute | NotFoundRoute;
 
+export type ArticleNeighbor = {
+  title: string;
+  path: string;
+};
+
 export type ArticleMeta = {
   slug: string;
   date: string;
   tags: string[];
-  title: Record<Lang, string>;
-  description: Record<Lang, string>;
+  title: Record<string, string>;
+  description: Record<string, string>;
   languages: Lang[];
+  pdfPath?: string;
+  canonicalPath?: string;
+  translations?: Partial<Record<Lang, string>>;
+  prev?: ArticleNeighbor | null;
+  next?: ArticleNeighbor | null;
+  wordCount?: number;
+  readingTime?: number;
+};
+
+export type ArticlePayload = {
+  meta: ArticleMeta;
+  html: string;
 };
 
 export type InfoFileMeta = {
@@ -30,8 +47,8 @@ export type InfoFileMeta = {
   permissions: string;
   owner: string;
   group: string;
-  title: Record<Lang, string>;
-  description: Record<Lang, string>;
+  title: Record<string, string>;
+  description: Record<string, string>;
 };
 
 export type TagInfo = {
@@ -64,7 +81,6 @@ export type UiText = {
   sizeLabel: string;
   pagePrev: string;
   pageNext: string;
-  views: string;
   footerMotto: string;
   errorTitle: string;
   errorText: string;
@@ -72,4 +88,14 @@ export type UiText = {
   themeSystem: string;
   themeLight: string;
   themeDark: string;
+  articlesDescription: string;
+  tagsDescription: string;
+  taggedDescription: string;
+  routeLostDescription: string;
+  panelArticlesLead: string;
+  panelArticlesBody: string;
+  panelTagsLead: string;
+  panelTagsBody: string;
+  panelTagLead: string;
+  panelTagBody: string;
 };

@@ -41,7 +41,6 @@ export const dom = {
   tagSizeLabel: byId<HTMLElement>("tag-size-label"),
   tagPageSizeSelect: byId<HTMLSelectElement>("tag-page-size-select"),
   tagsHeadline: byId<HTMLElement>("tags-headline"),
-  tagsSubtitle: byId<HTMLElement>("tags-subtitle"),
   tagList: byId<HTMLUListElement>("tag-list"),
   articleList: byId<HTMLUListElement>("article-list"),
   pagePrev: byId<HTMLButtonElement>("page-prev"),

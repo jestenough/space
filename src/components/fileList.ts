@@ -1,5 +1,6 @@
-import { infoFilePath } from "../routePaths";
-import type { InfoFileMeta, Lang } from "../types";
+import { infoFilePath } from "../router/routePaths";
+import type { InfoFileMeta } from "../core/types";
+import { pickLangText } from "../core/languages";
 
 const make = <K extends keyof HTMLElementTagNameMap>(
   tagName: K,
@@ -12,7 +13,7 @@ const make = <K extends keyof HTMLElementTagNameMap>(
   return element;
 };
 
-export function createInfoFileList(lang: Lang, files: readonly InfoFileMeta[]): HTMLUListElement {
+export const createInfoFileList = (lang: string, files: readonly InfoFileMeta[]): HTMLUListElement => {
   const list = make("ul", "info-file-tree");
   const fragment = document.createDocumentFragment();
 
@@ -22,15 +23,15 @@ export function createInfoFileList(lang: Lang, files: readonly InfoFileMeta[]): 
 
   list.append(fragment);
   return list;
-}
+};
 
-function createInfoFileRow(lang: Lang, file: InfoFileMeta): HTMLLIElement {
+const createInfoFileRow = (lang: string, file: InfoFileMeta): HTMLLIElement => {
   const item = make("li", "info-file-row");
   const link = make("a", "info-file-link");
   link.href = infoFilePath(lang, file.routeSlug);
   link.dataset.infoFileSlug = file.slug;
   link.dataset.internal = "true";
-  link.setAttribute("aria-label", `${file.slug}: ${file.description[lang]}`);
+  link.setAttribute("aria-label", `${file.slug}: ${pickLangText(file.description, lang)}`);
 
   link.append(
     make("span", "info-file-perms", formatFileListMeta(file)),
@@ -39,8 +40,8 @@ function createInfoFileRow(lang: Lang, file: InfoFileMeta): HTMLLIElement {
   );
   item.append(link);
   return item;
-}
+};
 
-function formatFileListMeta(file: InfoFileMeta): string {
+const formatFileListMeta = (file: InfoFileMeta): string => {
   return `${file.permissions}  ${file.owner.padEnd(4, " ")}  ${file.modified}`;
-}
+};
