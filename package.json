@@ -8,18 +8,11 @@
     "npm": ">=10.0.0"
   },
   "scripts": {
-    "prepare:content": "node ./scripts/generate-articles.mjs",
-    "prepare:pdf": "node ./scripts/generate-pdfs.mjs",
-    "prepare:all": "npm run prepare:content && npm run prepare:pdf && npm run check:content",
-    "predev": "npm run prepare:content",
     "dev": "vite",
-    "build": "npm run prepare:all && npm run check:types && vite build && node ./scripts/prerender-seo.mjs",
+    "build": "vite build",
     "preview": "vite preview",
-    "check:types": "tsc --noEmit",
-    "check:content": "node ./scripts/smoke-check.mjs",
-    "check:lighthouse": "lhci autorun --config=./lighthouserc.json",
-    "check:seo": "npm run prepare:content && npm run check:content && npm run check:types && npm run build",
-    "clean": "node ./scripts/clean.mjs"
+    "typecheck": "tsc --noEmit",
+    "lighthouse": "lhci autorun --config=./lighthouserc.json"
   },
   "devDependencies": {
     "@lhci/cli": "0.15.1",

@@ -7,7 +7,7 @@ export const SITE_URL = "https://autophany.space";
 export const ALL_TAGS = "__all__";
 export const PAGE_SIZE_OPTIONS = [4, 8, 16, 32] as const;
 export const DEFAULT_PAGE_SIZE: number = PAGE_SIZE_OPTIONS[0];
-export const GITHUB_EDIT_BASE = "https://github.com/jestenough/personal/edit/main/blog/content/articles";
+export const GITHUB_EDIT_BASE = "https://github.com/jestenough/personal/edit/main/content/articles";
 export const ROUTE_PREFIX = /^(\/|\/[a-z]{2,3}(?:-[A-Z]{2})?(\/|$))/;
 
 export const ASCII_LOGO = `#                                                                                                             

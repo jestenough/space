@@ -1,6 +1,7 @@
 import { ALL_TAGS } from "../../core/config";
 import { buildArticlePage, buildTagPage } from "../../components/directory";
 import { text } from "../../ui/i18n";
+import { siteMetaService } from "../../services/siteMetaService";
 import type { ArticleMeta, Lang, SortBy, TagInfo, TagSortBy } from "../../core/types";
 import { setView } from "../../ui/view";
 import { ViewMode } from "../../core/enums";
@@ -43,8 +44,9 @@ export class TagPageController {
     const currentPage = Math.min(this.deps.getTagPage(), page.totalPages);
     this.deps.setTagPage(currentPage);
     listView.renderTags(lang, page, currentPage, this.deps.getActiveTag(), ui.tagsHeadline);
-    document.title = `${ui.tagsHeadline} :: ${ui.brand}`;
-    this.deps.updateSeo(lang, ui.tagsHeadline, ui.tagsDescription);
+    const meta = siteMetaService.pageMeta("tags", lang);
+    document.title = `${meta.title} :: ${ui.brand}`;
+    this.deps.updateSeo(lang, meta.title, meta.description);
     this.deps.updateRightProcess(lang, { matches: page.totalItems });
     setView(ViewMode.List);
   }
@@ -69,8 +71,9 @@ export class TagPageController {
     const currentPage = Math.min(this.deps.getArticlePage(), page.totalPages);
     this.deps.setArticlePage(currentPage);
     listView.renderArticles(lang, page, currentPage, `#${tag}`);
-    document.title = `#${tag} :: ${ui.brand}`;
-    this.deps.updateSeo(lang, `#${tag}`, `${ui.taggedDescription} #${tag}.`);
+    const meta = siteMetaService.tagMeta(lang, tag);
+    document.title = `${meta.title} :: ${ui.brand}`;
+    this.deps.updateSeo(lang, meta.title, meta.description);
     this.deps.updateRightProcess(lang, { tag, matches: page.totalItems });
     setView(ViewMode.List);
   }

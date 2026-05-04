@@ -1,5 +1,6 @@
 import { buildArticlePage } from "../../components/directory";
 import { text } from "../../ui/i18n";
+import { siteMetaService } from "../../services/siteMetaService";
 import type { ArticleMeta, Lang, SortBy } from "../../core/types";
 import { setView } from "../../ui/view";
 import { ViewMode } from "../../core/enums";
@@ -34,8 +35,9 @@ export class ArticleListController {
     const currentPage = Math.min(this.deps.getPage(), page.totalPages);
     this.deps.setPage(currentPage);
     listView.renderArticles(lang, page, currentPage, ui.listTitle);
-    document.title = `${ui.listTitle} :: ${ui.brand}`;
-    this.deps.updateSeo(lang, ui.listTitle, ui.articlesDescription);
+    const meta = siteMetaService.pageMeta("articles", lang);
+    document.title = `${meta.title} :: ${ui.brand}`;
+    this.deps.updateSeo(lang, meta.title, meta.description);
     this.deps.updateRightProcess(lang, { matches: page.totalItems });
     setView(ViewMode.List);
   }

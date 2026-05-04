@@ -12,6 +12,7 @@ import { articlePath, articlesPath, homePath, infoFilePath, tagPath, tagsPath } 
 import { pdfService } from "../services/pdfService";
 import { zenModeController } from "../features/zen/zenModeController";
 import { seoService } from "../services/seoService";
+import { siteMetaService } from "../services/siteMetaService";
 import { storageService } from "../services/storageService";
 import { DebounceDelay, StorageKey, SessionKey } from "../core/enums";
 import { countTextStats } from "../features/articles/textStats";
@@ -168,6 +169,7 @@ export class AppController {
       openHeadingAnchor: (id, pushState) => this.openHeadingAnchor(id, pushState),
       changeLanguage: () => this.changeLanguage()
     });
+    await siteMetaService.load();
     await this.renderRoute({ resetScroll: false });
   }
 
@@ -233,7 +235,6 @@ export class AppController {
     const theme = themeService.apply(value);
     storageService.set(StorageKey.Theme, theme);
     dom.themeSwitcher.value = theme;
-    dom.themeLabel.textContent = `${text(parseRoute().lang).theme}${theme}`;
   }
 
   private normalizePageSize(value: number): number {
@@ -262,7 +263,8 @@ export class AppController {
     this.applyPanelState(lang);
     const path = slug || window.location.pathname;
     notFoundView.render(lang, path);
-    this.updateSeo(lang, "signal lost", text(lang).routeLostDescription, false);
+    const meta = siteMetaService.pageMeta("notFound", lang);
+    this.updateSeo(lang, meta.title, meta.description, false);
   }
 
   private applyPanelState(lang: Lang): void {
@@ -460,7 +462,8 @@ export class AppController {
   private openCurrentArticleEditor(): void {
     if (!this.state.activeArticle) return;
     const route = parseRoute();
-    const url = `${GITHUB_EDIT_BASE}/${encodeURIComponent(this.state.activeArticle.slug)}.${route.lang}.tex`;
+    const slug = encodeURIComponent(this.state.activeArticle.slug);
+    const url = `${GITHUB_EDIT_BASE}/${slug}/${slug}.${route.lang}.tex`;
     window.open(url, "_blank", "noopener,noreferrer");
   }
 

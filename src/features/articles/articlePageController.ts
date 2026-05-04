@@ -1,6 +1,6 @@
 import { articleOpenCommand } from "../../components/shell";
 import { text } from "../../ui/i18n";
-import { articleDescription, articleTitle, hasTranslation, loadArticle } from "../../services/articleService";
+import { articleDescription, articleFallbackMeta, articleTitle, hasTranslation, loadArticle } from "../../services/articleService";
 import type { ArticleMeta, Lang } from "../../core/types";
 import { setView } from "../../ui/view";
 import { ViewMode } from "../../core/enums";
@@ -27,18 +27,25 @@ export class ArticlePageController {
   constructor(private readonly deps: ArticlePageControllerDeps) {}
 
   async render(lang: Lang, slug: string, renderId: number): Promise<void> {
+    const prerenderedHtml = dom.articleContent.querySelector("article") ? dom.articleContent.innerHTML : null;
     const payload = await loadArticle(slug, lang);
     if (renderId !== this.deps.currentRenderId()) return;
-    if (!payload || !hasTranslation(payload.meta, lang)) {
+    if (!payload && !prerenderedHtml) {
       this.deps.renderNotFound(lang, slug);
       return;
     }
 
-    const article = payload.meta;
+    const article = payload?.meta ?? articleFallbackMeta(slug, lang);
+    if (payload && !hasTranslation(article, lang)) {
+      this.deps.renderNotFound(lang, slug);
+      return;
+    }
+
     this.deps.setArticlesContext();
     this.deps.setActiveArticle(article);
     this.deps.applyPanelState(lang);
-    articleView.renderHtml(payload.html);
+    if (payload) articleView.renderHtml(payload.html);
+    else if (prerenderedHtml) dom.articleContent.innerHTML = prerenderedHtml;
     articleView.finalize(lang, article);
     this.deps.cacheCurrentArticleStats(lang, slug);
     this.deps.renderArticleToc();

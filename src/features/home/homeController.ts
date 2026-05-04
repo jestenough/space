@@ -1,5 +1,6 @@
 import { INFO_FILES } from "../info/infoFiles";
 import { text } from "../../ui/i18n";
+import { siteMetaService } from "../../services/siteMetaService";
 import type { Lang } from "../../core/types";
 import { setView } from "../../ui/view";
 import { ViewMode } from "../../core/enums";
@@ -18,8 +19,9 @@ export class HomeController {
     const ui = text(lang);
     this.deps.applyPanelState(lang);
     listView.renderInfoFiles(lang, INFO_FILES);
-    document.title = "root :: " + ui.brand;
-    this.deps.updateSeo(lang, ui.welcomeTitle, ui.welcomeBody);
+    const meta = siteMetaService.pageMeta("home", lang);
+    document.title = `${meta.title} :: ${ui.brand}`;
+    this.deps.updateSeo(lang, meta.title, meta.description);
     this.deps.updateRightProcess(lang);
     setView(ViewMode.List);
   }

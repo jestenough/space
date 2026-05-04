@@ -10,3 +10,5 @@ public/*/articles/*.pdf
 *.aux
 *.out
 *.toc
+__pycache__
+*.pyc
