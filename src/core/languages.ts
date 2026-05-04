@@ -1,4 +1,4 @@
-import type { ArticleMeta, Lang } from "./types";
+import type { ArticleMeta, Lang } from "@/core/types";
 
 export const DEFAULT_LANG: Lang = "en";
 export const DEFAULT_HREFLANG = "x-default" as const;

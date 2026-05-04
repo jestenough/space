@@ -1,4 +1,4 @@
-import { dom } from "../dom";
+import { dom } from "@/ui/dom";
 
 export const infoFileView = {
   renderHtml(html: string): void {

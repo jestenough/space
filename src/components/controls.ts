@@ -1,4 +1,4 @@
-import { dom } from "../ui/dom";
+import { dom } from "@/ui/dom";
 
 export type ControlGroup = {
   searchInput: HTMLInputElement;

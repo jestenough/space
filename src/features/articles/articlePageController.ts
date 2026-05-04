@@ -1,11 +1,11 @@
-import { articleOpenCommand } from "../../components/shell";
-import { text } from "../../ui/i18n";
-import { articleDescription, articleFallbackMeta, articleTitle, hasTranslation, loadArticle } from "../../services/articleService";
-import type { ArticleMeta, Lang } from "../../core/types";
-import { setView } from "../../ui/view";
-import { ViewMode } from "../../core/enums";
-import { articleView } from "../../ui/views/articleView";
-import { dom } from "../../ui/dom";
+import { articleOpenCommand } from "@/components/shell";
+import { text } from "@/ui/i18n";
+import { articleDescription, articleFallbackMeta, articleTitle, hasTranslation, loadArticle } from "@/services/articleService";
+import type { ArticleMeta, Lang } from "@/core/types";
+import { setView } from "@/ui/view";
+import { ViewMode } from "@/core/enums";
+import { articleView } from "@/ui/views/articleView";
+import { dom } from "@/ui/dom";
 
 type ArticleRenderContext = { article?: ArticleMeta; matches?: number };
 

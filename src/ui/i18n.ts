@@ -1,8 +1,8 @@
-import { ASCII_LOGO, UI } from "../core/config";
-import { controls } from "../components/controls";
-import { dom } from "./dom";
-import { DEFAULT_LANG, formatLangLabel, pickLangText } from "../core/languages";
-import type { Lang, UiText } from "../core/types";
+import { ASCII_LOGO, UI } from "@/core/config";
+import { controls } from "@/components/controls";
+import { dom } from "@/ui/dom";
+import { DEFAULT_LANG, formatLangLabel, pickLangText } from "@/core/languages";
+import type { Lang, UiText } from "@/core/types";
 
 export const text = (lang: Lang): UiText => UI[lang] ?? UI[DEFAULT_LANG] ?? Object.values(UI)[0];
 

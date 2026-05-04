@@ -1,7 +1,7 @@
-import { articleDescription, articleTitle } from "../features/articles/articles";
-import { articlePath } from "../router/routePaths";
-import { text } from "../ui/i18n";
-import type { ArticleMeta, Lang } from "../core/types";
+import { articleDescription, articleTitle } from "@/features/articles/articles";
+import { articlePath } from "@/router/routePaths";
+import { text } from "@/ui/i18n";
+import type { ArticleMeta, Lang } from "@/core/types";
 
 const make = <K extends keyof HTMLElementTagNameMap>(
   tagName: K,

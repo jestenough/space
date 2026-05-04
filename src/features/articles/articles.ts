@@ -1,6 +1,6 @@
-import { articlePath, articlePdfPath } from "../../router/routePaths";
-import type { ArticleMeta, ArticlePayload, Lang } from "../../core/types";
-import { DEFAULT_LANG, isLangCode, pickLangText } from "../../core/languages";
+import { articlePath, articlePdfPath } from "@/router/routePaths";
+import type { ArticleMeta, ArticlePayload, Lang } from "@/core/types";
+import { DEFAULT_LANG, isLangCode, pickLangText } from "@/core/languages";
 
 const MAX_HTML_CACHE_ITEMS = 20;
 const MAX_META_CACHE_ITEMS = 80;

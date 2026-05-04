@@ -1,4 +1,4 @@
-import { safeDecodeURIComponent } from "../core/url";
+import { safeDecodeURIComponent } from "@/core/url";
 
 type TocElements = {
   articleContent: HTMLElement;

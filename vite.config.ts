@@ -1,6 +1,7 @@
 import { defineConfig, type Plugin } from "vite";
 import viteCompression from "vite-plugin-compression";
 import { resolve, extname } from "node:path";
+import { fileURLToPath, URL } from "node:url";
 import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
 import { mkdir, readdir, rm, copyFile } from "node:fs/promises";
 
@@ -30,7 +31,7 @@ type ViteMiddlewareServer = {
   };
 };
 
-const rootDir = __dirname;
+const rootDir = fileURLToPath(new URL(".", import.meta.url));
 const generatedDir = resolve(rootDir, "generated");
 const infoDir = resolve(rootDir, "content", "info");
 
@@ -287,6 +288,12 @@ const contentType = (ext: string): string => {
 };
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
+    },
+  },
+
   plugins: [
     localizedRouteFallback(),
     generatedAssetsPlugin(),

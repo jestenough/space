@@ -1,7 +1,7 @@
-import { DEFAULT_LANG, isLangCode, normalizeLang } from "../core/languages";
-import { INFO_FILES, toRouteSlug } from "../features/info/infoFiles";
-import type { Lang, Route } from "../core/types";
-import { safeDecodeURIComponent } from "../core/url";
+import { DEFAULT_LANG, isLangCode, normalizeLang } from "@/core/languages";
+import { INFO_FILES, toRouteSlug } from "@/features/info/infoFiles";
+import type { Lang, Route } from "@/core/types";
+import { safeDecodeURIComponent } from "@/core/url";
 
 const INFO_FILE_ROUTE_SLUGS = new Set(
   INFO_FILES.flatMap((file) => [file.slug.toLowerCase(), toRouteSlug(file.slug)])

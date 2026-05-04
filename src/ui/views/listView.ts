@@ -1,9 +1,9 @@
-import { controls } from "../../components/controls";
-import type { PageModel } from "../../components/directory";
-import { dom } from "../dom";
-import type { ArticleMeta, Lang, TagInfo } from "../../core/types";
-import { renderArticleList, renderInfoFileList, renderTagIndex } from "../view";
-import type { InfoFileMeta } from "../../core/types";
+import { controls } from "@/components/controls";
+import type { PageModel } from "@/components/directory";
+import { dom } from "@/ui/dom";
+import type { ArticleMeta, Lang, TagInfo } from "@/core/types";
+import { renderArticleList, renderInfoFileList, renderTagIndex } from "@/ui/view";
+import type { InfoFileMeta } from "@/core/types";
 
 export const setPagerState = (group: (typeof controls)["articles"] | (typeof controls)["tags"], page: number, totalPages: number): void => {
   group.pageInfo.textContent = `${page}/${totalPages}`;

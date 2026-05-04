@@ -1,9 +1,9 @@
-import type { ArticleMeta, Lang, SortBy, TagInfo, TagSortBy } from "../core/types";
-import { filterArticles } from "../features/articles/articleFilters";
-import { sortArticles } from "../features/articles/articleSorting";
-import { paginate } from "../features/articles/articlePagination";
-import { filterTags } from "../features/tags/tagFilters";
-import { sortTags } from "../features/tags/tagSorting";
+import type { ArticleMeta, Lang, SortBy, TagInfo, TagSortBy } from "@/core/types";
+import { filterArticles } from "@/features/articles/articleFilters";
+import { sortArticles } from "@/features/articles/articleSorting";
+import { paginate } from "@/features/articles/articlePagination";
+import { filterTags } from "@/features/tags/tagFilters";
+import { sortTags } from "@/features/tags/tagSorting";
 export type PageModel<T> = { totalPages: number; totalItems: number; items: T[]; };
 type ArticlePageArgs = { articles: ArticleMeta[]; lang: Lang; query: string; sortBy: SortBy; page: number; pageSize: number; };
 type TagPageArgs = { tags: TagInfo[]; query: string; sortBy: TagSortBy; page: number; pageSize: number; };

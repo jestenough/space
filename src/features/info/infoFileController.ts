@@ -1,11 +1,11 @@
-import { infoFileOpenCommand } from "../../components/shell";
-import { dom } from "../../ui/dom";
-import { label, text } from "../../ui/i18n";
-import { findInfoFile, renderInfoFileHtml } from "./infoFiles";
-import type { InfoFileMeta, Lang } from "../../core/types";
-import { setView } from "../../ui/view";
-import { ViewMode } from "../../core/enums";
-import { infoFileView } from "../../ui/views/infoFileView";
+import { infoFileOpenCommand } from "@/components/shell";
+import { dom } from "@/ui/dom";
+import { label, text } from "@/ui/i18n";
+import { findInfoFile, renderInfoFileHtml } from "@/features/info/infoFiles";
+import type { InfoFileMeta, Lang } from "@/core/types";
+import { setView } from "@/ui/view";
+import { ViewMode } from "@/core/enums";
+import { infoFileView } from "@/ui/views/infoFileView";
 
 type InfoFileRenderContext = { infoFile?: InfoFileMeta };
 

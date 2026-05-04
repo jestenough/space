@@ -1,4 +1,4 @@
-import { AppController } from "./appController";
+import { AppController } from "@/app/appController";
 
 export class App {
   private readonly controller = new AppController();

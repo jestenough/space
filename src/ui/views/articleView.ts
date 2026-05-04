@@ -1,8 +1,8 @@
-import { dom } from "../dom";
-import { articlesPath, homePath, tagPath } from "../../router/routePaths";
-import { pdfService } from "../../services/pdfService";
-import { articleTitle } from "../../services/articleService";
-import type { ArticleMeta, Lang } from "../../core/types";
+import { dom } from "@/ui/dom";
+import { articlesPath, homePath, tagPath } from "@/router/routePaths";
+import { pdfService } from "@/services/pdfService";
+import { articleTitle } from "@/services/articleService";
+import type { ArticleMeta, Lang } from "@/core/types";
 
 const normalizeHeadingText = (value: string): string => value.replace(/#$/, "").replace(/\s+/g, " ").trim().toLowerCase();
 

@@ -1,10 +1,10 @@
-import { INFO_FILES } from "../info/infoFiles";
-import { text } from "../../ui/i18n";
-import { siteMetaService } from "../../services/siteMetaService";
-import type { Lang } from "../../core/types";
-import { setView } from "../../ui/view";
-import { ViewMode } from "../../core/enums";
-import { listView } from "../../ui/views/listView";
+import { INFO_FILES } from "@/features/info/infoFiles";
+import { text } from "@/ui/i18n";
+import { siteMetaService } from "@/services/siteMetaService";
+import type { Lang } from "@/core/types";
+import { setView } from "@/ui/view";
+import { ViewMode } from "@/core/enums";
+import { listView } from "@/ui/views/listView";
 
 export type HomeControllerDeps = {
   applyPanelState: (lang: Lang) => void;

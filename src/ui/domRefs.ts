@@ -1,1 +1,1 @@
-export { dom } from "./dom";
+export { dom } from "@/ui/dom";

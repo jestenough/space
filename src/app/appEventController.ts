@@ -1,15 +1,15 @@
-import { ROUTE_PREFIX, PAGE_SIZE_OPTIONS, DEFAULT_PAGE_SIZE } from "../core/config";
-import { controls } from "../components/controls";
-import { dom } from "../ui/dom";
-import { keyboardController } from "../features/keyboard/keyboardController";
-import { articleCopyController } from "../features/articles/articleCopyController";
-import { zenModeController } from "../features/zen/zenModeController";
-import { parseRoute } from "../router/router";
-import { articlesPath, homePath, tagsPath } from "../router/routePaths";
-import { storageService } from "../services/storageService";
-import { SessionKey } from "../core/enums";
-import { safeDecodeURIComponent } from "../core/url";
-import type { SortBy, TagSortBy } from "../core/types";
+import { ROUTE_PREFIX, PAGE_SIZE_OPTIONS, DEFAULT_PAGE_SIZE } from "@/core/config";
+import { controls } from "@/components/controls";
+import { dom } from "@/ui/dom";
+import { keyboardController } from "@/features/keyboard/keyboardController";
+import { articleCopyController } from "@/features/articles/articleCopyController";
+import { zenModeController } from "@/features/zen/zenModeController";
+import { parseRoute } from "@/router/router";
+import { articlesPath, homePath, tagsPath } from "@/router/routePaths";
+import { storageService } from "@/services/storageService";
+import { SessionKey } from "@/core/enums";
+import { safeDecodeURIComponent } from "@/core/url";
+import type { SortBy, TagSortBy } from "@/core/types";
 
 export type AppEventControllerOptions = {
   getActivePanel: () => "home" | "articles" | "tags";

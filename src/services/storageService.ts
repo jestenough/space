@@ -1,4 +1,4 @@
-import { SessionKey, StorageKey } from "../core/enums";
+import { SessionKey, StorageKey } from "@/core/enums";
 
 const safeGet = (storage: Storage, key: string): string | null => {
   try {

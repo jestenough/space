@@ -1,5 +1,5 @@
-import { text } from "../ui/i18n";
-import type { Lang } from "../core/types";
+import { text } from "@/ui/i18n";
+import type { Lang } from "@/core/types";
 
 export type PanelName = "home" | "articles" | "tags";
 

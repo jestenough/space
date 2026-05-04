@@ -1,5 +1,5 @@
-import { ALL_TAGS, DEFAULT_PAGE_SIZE } from "../core/config";
-import type { ArticleMeta, InfoFileMeta, Lang, SortBy, TagInfo, TagSortBy } from "../core/types";
+import { ALL_TAGS, DEFAULT_PAGE_SIZE } from "@/core/config";
+import type { ArticleMeta, InfoFileMeta, Lang, SortBy, TagInfo, TagSortBy } from "@/core/types";
 
 export class AppState {
   articles: ArticleMeta[] = [];

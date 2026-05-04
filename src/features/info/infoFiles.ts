@@ -1,5 +1,5 @@
-import type { InfoFileMeta } from "../../core/types";
-import { safeDecodeURIComponent } from "../../core/url";
+import type { InfoFileMeta } from "@/core/types";
+import { safeDecodeURIComponent } from "@/core/url";
 
 const OWNER = "root";
 const GROUP = "operators";

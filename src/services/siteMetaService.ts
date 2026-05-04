@@ -1,5 +1,5 @@
-import { DEFAULT_LANG, pickLangText } from "../core/languages";
-import type { Lang } from "../core/types";
+import { DEFAULT_LANG, pickLangText } from "@/core/languages";
+import type { Lang } from "@/core/types";
 
 export type PageMetaKey = "home" | "articles" | "tags" | "tag" | "notFound";
 

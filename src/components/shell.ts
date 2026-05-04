@@ -1,5 +1,5 @@
-import { tagPath } from "../router/routePaths";
-import type { ArticleMeta, InfoFileMeta, Lang } from "../core/types";
+import { tagPath } from "@/router/routePaths";
+import type { ArticleMeta, InfoFileMeta, Lang } from "@/core/types";
 
 const PUBLIC_FILE_PERMISSIONS = "-rw-rw-r--";
 const PUBLIC_FILE_OWNER = "root";

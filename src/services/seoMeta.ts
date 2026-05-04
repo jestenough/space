@@ -1,5 +1,5 @@
-import type { Lang } from "../core/types";
-import { DEFAULT_HREFLANG, formatOgLocale } from "../core/languages";
+import type { Lang } from "@/core/types";
+import { DEFAULT_HREFLANG, formatOgLocale } from "@/core/languages";
 
 type SeoArgs = {
   lang: Lang;

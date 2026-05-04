@@ -1,6 +1,6 @@
-import type { UiText } from "./types";
-import { DEFAULT_LANG } from "./languages";
-export { DEFAULT_HREFLANG, DEFAULT_LANG } from "./languages";
+import type { UiText } from "@/core/types";
+import { DEFAULT_LANG } from "@/core/languages";
+export { DEFAULT_HREFLANG, DEFAULT_LANG } from "@/core/languages";
 
 export const SITE_NAME = "autophany.space";
 export const SITE_URL = "https://autophany.space";

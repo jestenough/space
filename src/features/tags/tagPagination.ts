@@ -1,1 +1,1 @@
-export { paginate as paginateTags } from "../articles/articlePagination";
+export { paginate as paginateTags } from "@/features/articles/articlePagination";

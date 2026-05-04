@@ -1,11 +1,11 @@
-import { ALL_TAGS } from "../../core/config";
-import { buildArticlePage, buildTagPage } from "../../components/directory";
-import { text } from "../../ui/i18n";
-import { siteMetaService } from "../../services/siteMetaService";
-import type { ArticleMeta, Lang, SortBy, TagInfo, TagSortBy } from "../../core/types";
-import { setView } from "../../ui/view";
-import { ViewMode } from "../../core/enums";
-import { listView } from "../../ui/views/listView";
+import { ALL_TAGS } from "@/core/config";
+import { buildArticlePage, buildTagPage } from "@/components/directory";
+import { text } from "@/ui/i18n";
+import { siteMetaService } from "@/services/siteMetaService";
+import type { ArticleMeta, Lang, SortBy, TagInfo, TagSortBy } from "@/core/types";
+import { setView } from "@/ui/view";
+import { ViewMode } from "@/core/enums";
+import { listView } from "@/ui/views/listView";
 
 export type TagPageControllerDeps = {
   articlesForLang: (lang: Lang) => ArticleMeta[];

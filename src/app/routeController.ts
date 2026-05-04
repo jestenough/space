@@ -1,5 +1,5 @@
-import { parseRoute } from "../router/router";
-import type { Route } from "../core/types";
+import { parseRoute } from "@/router/router";
+import type { Route } from "@/core/types";
 
 export type RouteRenderOptions = { resetScroll: boolean };
 

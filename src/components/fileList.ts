@@ -1,6 +1,6 @@
-import { infoFilePath } from "../router/routePaths";
-import type { InfoFileMeta } from "../core/types";
-import { pickLangText } from "../core/languages";
+import { infoFilePath } from "@/router/routePaths";
+import type { InfoFileMeta } from "@/core/types";
+import { pickLangText } from "@/core/languages";
 
 const make = <K extends keyof HTMLElementTagNameMap>(
   tagName: K,

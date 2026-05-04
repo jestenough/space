@@ -1,9 +1,9 @@
-import { updateSeoMeta } from "./seoMeta";
-import { articlePath, articlesPath, homePath, infoFilePath, tagPath, tagsPath } from "../router/routePaths";
-import { articleDescription, articleTitle } from "./articleService";
-import { DEFAULT_HREFLANG, xDefaultPath } from "../core/languages";
-import { text } from "../ui/i18n";
-import type { ArticleMeta, InfoFileMeta, Lang, Route } from "../core/types";
+import { updateSeoMeta } from "@/services/seoMeta";
+import { articlePath, articlesPath, homePath, infoFilePath, tagPath, tagsPath } from "@/router/routePaths";
+import { articleDescription, articleTitle } from "@/services/articleService";
+import { DEFAULT_HREFLANG, xDefaultPath } from "@/core/languages";
+import { text } from "@/ui/i18n";
+import type { ArticleMeta, InfoFileMeta, Lang, Route } from "@/core/types";
 
 type SeoUpdateArgs = {
   lang: Lang;

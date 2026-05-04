@@ -1,4 +1,4 @@
-import type { Theme } from "../core/types";
+import type { Theme } from "@/core/types";
 export const DEFAULT_THEME: Theme = "system";
 export const THEMES: readonly Theme[] = ["reading", "light", "system", "dark"];
 const systemMedia = (): MediaQueryList => window.matchMedia("(prefers-color-scheme: dark)");

@@ -1,8 +1,8 @@
-import { dom } from "./dom";
-import { createArticleListItem, createEmptyArticleItem } from "../components/articleCard";
-import { createInfoFileList } from "../components/fileList";
-import { createTagListItem } from "../components/tagCard";
-import type { ArticleMeta, InfoFileMeta, Lang, TagInfo } from "../core/types";
+import { dom } from "@/ui/dom";
+import { createArticleListItem, createEmptyArticleItem } from "@/components/articleCard";
+import { createInfoFileList } from "@/components/fileList";
+import { createTagListItem } from "@/components/tagCard";
+import type { ArticleMeta, InfoFileMeta, Lang, TagInfo } from "@/core/types";
 
 const clear = (element: Element): void => {
   element.replaceChildren();

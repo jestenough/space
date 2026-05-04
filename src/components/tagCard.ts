@@ -1,5 +1,5 @@
-import { tagPath } from "../router/routePaths";
-import type { TagInfo } from "../core/types";
+import { tagPath } from "@/router/routePaths";
+import type { TagInfo } from "@/core/types";
 
 const make = <K extends keyof HTMLElementTagNameMap>(
   tagName: K,

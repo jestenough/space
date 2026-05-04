@@ -1,10 +1,10 @@
-import { buildArticlePage } from "../../components/directory";
-import { text } from "../../ui/i18n";
-import { siteMetaService } from "../../services/siteMetaService";
-import type { ArticleMeta, Lang, SortBy } from "../../core/types";
-import { setView } from "../../ui/view";
-import { ViewMode } from "../../core/enums";
-import { listView } from "../../ui/views/listView";
+import { buildArticlePage } from "@/components/directory";
+import { text } from "@/ui/i18n";
+import { siteMetaService } from "@/services/siteMetaService";
+import type { ArticleMeta, Lang, SortBy } from "@/core/types";
+import { setView } from "@/ui/view";
+import { ViewMode } from "@/core/enums";
+import { listView } from "@/ui/views/listView";
 
 export type ArticleListControllerDeps = {
   articlesForLang: (lang: Lang) => ArticleMeta[];
