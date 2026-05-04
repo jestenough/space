@@ -102,7 +102,7 @@ const loadInfoFileContent = async (file: InfoFileMeta): Promise<string> => {
   const cached = infoContentCache.get(file.publicPath);
   if (cached) return cached;
 
-  const request = fetch(file.publicPath, { cache: "force-cache" })
+  const request = fetch(file.publicPath, { cache: "no-cache" })
     .then(async (response) => {
       if (!response.ok) throw new Error(`Unable to load ${file.publicPath}: ${response.status}`);
       return response.text();

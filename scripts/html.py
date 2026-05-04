@@ -2,7 +2,7 @@
 HTML generation step.
 
 Converts article TeX sources into generated HTML fragments, writes frontend-compatible
-article metadata, copies article assets, and creates articles-index.json.
+article metadata, and creates articles-index.json.
 """
 
 from __future__ import annotations
@@ -11,7 +11,6 @@ import html
 import json
 import logging
 import re
-import shutil
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -21,7 +20,6 @@ from .config import (
     GENERATED_ARTICLES_DIR,
     GENERATED_DIR,
     GENERATED_META_DIR,
-    PUBLIC_DIR,
     SITE_META_PATH,
     SUPPORTED_LANGS,
 )
@@ -125,8 +123,6 @@ class Html:
     def generate_article(self, article: dict[str, Any]) -> None:
         slug = article["slug"]
         article_dir = ARTICLES_DIR / slug
-        self.copy_article_assets(article_dir, slug)
-
         for lang in article["languages"]:
             source_path = article_dir / f"{slug}.{lang}.tex"
             html_path = GENERATED_ARTICLES_DIR / f"{slug}.{lang}.html"
@@ -237,15 +233,6 @@ class Html:
     def write_json(path: Path, data: Any) -> None:
         path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
-    @staticmethod
-    def copy_article_assets(article_dir: Path, slug: str) -> None:
-        source = article_dir / "assets"
-        if not source.exists():
-            return
-        target = PUBLIC_DIR / "media" / "articles" / slug / "assets"
-        if target.exists():
-            shutil.rmtree(target)
-        shutil.copytree(source, target)
 
     @staticmethod
     def text_stats(source_text: str) -> dict[str, int]:

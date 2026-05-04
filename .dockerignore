@@ -6,6 +6,7 @@ generated
 .vite
 coverage
 public/*/articles/*.pdf
+public/media
 *.log
 *.aux
 *.out

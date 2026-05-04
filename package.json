@@ -11,11 +11,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit",
-    "lighthouse": "lhci autorun --config=./lighthouserc.json"
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "@lhci/cli": "0.15.1",
     "typescript": "6.0.3",
     "vite": "8.0.10",
     "vite-plugin-compression": "0.5.1"

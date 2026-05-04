@@ -2,7 +2,7 @@
 Build cleanup utilities.
 
 Removes generated output, build directories, caches, generated public PDFs,
-and generated article media assets.
+and legacy generated article media assets.
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ class Clean:
             self.remove(target)
 
         self.remove_generated_public_files()
-        logger.info("Removed generated output, caches, public PDFs and article media assets.")
+        logger.info("Removed generated output, caches, public PDFs and legacy article media assets.")
 
     @staticmethod
     def remove(path: Path) -> None:
@@ -43,7 +43,7 @@ class Clean:
             if entry.is_dir():
                 self.remove(entry / "articles")
 
-        self.remove(PUBLIC_DIR / "media" / "articles")
+        self.remove(PUBLIC_DIR / "media")
 
 
 def run() -> None:

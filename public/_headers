@@ -1,17 +1,22 @@
 /*
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: DENY
+  Cache-Control: no-cache, must-revalidate
 
-/404.html
-  X-Robots-Tag: noindex, nofollow
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
 
 /generated/*
   X-Robots-Tag: noindex, nofollow
+  Cache-Control: no-store
 
-/en/articles/hello-world.pdf
-  Link: <https://autophany.space/en/articles/hello-world>; rel="canonical"
-  X-Robots-Tag: index, follow
+/media/articles/*
+  Cache-Control: no-cache, must-revalidate
 
-/ru/articles/hello-world.pdf
-  Link: <https://autophany.space/ru/articles/hello-world>; rel="canonical"
-  X-Robots-Tag: index, follow
+/info/*
+  Cache-Control: no-cache, must-revalidate
+
+/404.html
+  X-Robots-Tag: noindex, nofollow
+  Cache-Control: no-cache, must-revalidate

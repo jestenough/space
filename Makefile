@@ -3,7 +3,7 @@ IMAGE ?= autophany-toolchain
 HOST_UID := $(shell id -u)
 HOST_GID := $(shell id -g)
 
-.PHONY: help install dev dev-host preview typecheck preflight html pdf frontend prerender seo verify build clean lighthouse docker-build docker-build-site docker-shell
+.PHONY: help install dev dev-host preview typecheck preflight html pdf frontend prerender seo verify build clean docker-build docker-build-site docker-shell
 
 help:
 	@echo "autophany.space build commands"
@@ -60,13 +60,10 @@ seo:
 verify:
 	python3 -m scripts.cli verify
 
-build: preflight html pdf typecheck frontend prerender seo verify
+build: clean preflight html pdf typecheck frontend prerender seo verify
 
 clean:
 	python3 -m scripts.cli clean
-
-lighthouse:
-	npm run lighthouse
 
 docker-build:
 	docker build -t $(IMAGE) .

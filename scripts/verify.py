@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
-from .config import DIST_DIR, GENERATED_ARTICLES_DIR, GENERATED_DIR, GENERATED_META_DIR, SITE_URL
+from .config import ARTICLES_DIR, DIST_DIR, GENERATED_ARTICLES_DIR, GENERATED_DIR, GENERATED_META_DIR, SITE_URL
 
 
 logger = logging.getLogger(__name__)
@@ -26,6 +26,7 @@ class Verify:
         DIST_DIR / "_headers",
         DIST_DIR / "404.html",
         DIST_DIR / "generated" / "site-meta.json",
+        DIST_DIR / "generated" / "articles-index.json",
     )
 
     def __init__(self) -> None:
@@ -34,6 +35,7 @@ class Verify:
     def run(self) -> None:
         index = self.read_articles_index()
         self.check_generated_structure()
+        self.check_content_index(index)
         self.check_articles(index)
         self.check_seo(index)
         for warning in self.warnings:
@@ -53,6 +55,18 @@ class Verify:
         missing = [path for path in (*self.required_dirs, *self.required_files) if not path.exists()]
         if missing:
             raise RuntimeError("Missing generated paths: " + ", ".join(map(str, missing)))
+
+    def check_content_index(self, index: list[dict[str, Any]]) -> None:
+        source_slugs = {path.name for path in ARTICLES_DIR.iterdir() if path.is_dir()}
+        indexed_slugs = {article.get("slug") for article in index if isinstance(article.get("slug"), str)}
+
+        missing = sorted(source_slugs - indexed_slugs)
+        stale = sorted(indexed_slugs - source_slugs)
+
+        if missing:
+            raise RuntimeError("Articles missing from generated/articles-index.json: " + ", ".join(missing))
+        if stale:
+            raise RuntimeError("Stale articles left in generated/articles-index.json: " + ", ".join(stale))
 
     def check_articles(self, index: list[dict[str, Any]]) -> None:
         slugs: set[str] = set()
@@ -125,6 +139,7 @@ class Verify:
             )
 
         self.check_math_markers(html, slug, lang)
+        self.check_article_media_links(html, slug, lang)
 
     @staticmethod
     def check_math_markers(html: str, slug: str, lang: str) -> None:
@@ -140,6 +155,15 @@ class Verify:
             f"Generated article contains raw math markers outside Pandoc math spans: "
             f"{slug}.{lang}"
         )
+
+    @staticmethod
+    def check_article_media_links(html: str, slug: str, lang: str) -> None:
+        paths = re.findall(r"(?:src|href)=[\"'](/media/articles/[^\"']+)", html)
+
+        for public_path in paths:
+            dist_path = DIST_DIR / public_path.lstrip("/")
+            if not dist_path.is_file():
+                raise RuntimeError(f"Missing article media asset for {slug}.{lang}: {public_path}")
 
     def check_meta(self, path: Path, slug: str, lang: str) -> None:
         meta_text = self.read_text(path, f"Missing generated article metadata: {path}")
@@ -170,6 +194,7 @@ class Verify:
         robots = self.read_text(DIST_DIR / "robots.txt", "Missing dist/robots.txt")
         headers = self.read_text(DIST_DIR / "_headers", "Missing dist/_headers")
         four_oh_four = self.read_text(DIST_DIR / "404.html", "Missing dist/404.html")
+        self.check_cache_headers(headers)
         if "Sitemap:" not in robots or SITE_URL not in robots:
             raise RuntimeError("robots.txt must reference sitemap.xml and SITE_URL")
         if "Disallow: /generated/" not in robots:
@@ -194,6 +219,16 @@ class Verify:
                     raise RuntimeError(f"Sitemap must not include PDF route: {pdf_route}")
                 if pdf_route not in headers_paths:
                     raise RuntimeError(f"PDF canonical headers missing for {pdf_route}")
+
+    @staticmethod
+    def check_cache_headers(headers: str) -> None:
+        media_block = re.search(r"^/media(?:/articles)?/\*\n(?P<body>(?:  .+\n)+)", headers, re.M)
+        if media_block and "immutable" in media_block.group("body").lower():
+            raise RuntimeError("Article media must not be cached with immutable headers")
+
+        generated_block = re.search(r"^/generated/\*\n(?P<body>(?:  .+\n)+)", headers, re.M)
+        if not generated_block or "no-store" not in generated_block.group("body").lower():
+            raise RuntimeError("Generated JSON/HTML assets must use Cache-Control: no-store")
 
     @staticmethod
     def extract_sitemap_paths(sitemap: str) -> set[str]:

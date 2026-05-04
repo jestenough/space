@@ -34,9 +34,11 @@ type ViteMiddlewareServer = {
 const rootDir = fileURLToPath(new URL(".", import.meta.url));
 const generatedDir = resolve(rootDir, "generated");
 const infoDir = resolve(rootDir, "content", "info");
+const contentArticlesDir = resolve(rootDir, "content", "articles");
 
 const distGeneratedDir = resolve(rootDir, "dist", "generated");
 const distInfoDir = resolve(rootDir, "dist", "info");
+const distArticleMediaDir = resolve(rootDir, "dist", "media", "articles");
 
 const LANGUAGE_TAG_PATTERN = /^[a-z]{2,3}(?:-[A-Z]{2})?$/;
 const INFO_FILE_SLUGS = new Set(["readme", "about", "changelog", "manifest"]);
@@ -261,6 +263,38 @@ const infoAssetsPlugin = (): Plugin => ({
   },
 });
 
+const articleMediaPlugin = (): Plugin => ({
+  name: "article-media",
+
+  configureServer: (server) => {
+    server.middlewares.use((req, res, next) => {
+      serveStaticDirectory("/media/articles/", contentArticlesDir, req, res, next);
+    });
+  },
+
+  closeBundle: async () => {
+    if (!existsSync(contentArticlesDir)) {
+      return;
+    }
+
+    await rm(distArticleMediaDir, { recursive: true, force: true });
+
+    for (const entry of await readdir(contentArticlesDir, { withFileTypes: true })) {
+      if (!entry.isDirectory()) {
+        continue;
+      }
+
+      const source = resolve(contentArticlesDir, entry.name, "assets");
+
+      if (!existsSync(source)) {
+        continue;
+      }
+
+      await copyDir(source, resolve(distArticleMediaDir, entry.name, "assets"));
+    }
+  },
+});
+
 const copyDir = async (from: string, to: string): Promise<void> => {
   await mkdir(to, { recursive: true });
 
@@ -283,6 +317,15 @@ const contentType = (ext: string): string => {
   if (ext === ".md") return "text/markdown; charset=utf-8";
   if (ext === ".txt" || ext === ".local") return "text/plain; charset=utf-8";
   if (ext === ".pdf") return "application/pdf";
+  if (ext === ".svg") return "image/svg+xml";
+  if (ext === ".png") return "image/png";
+  if (ext === ".jpg" || ext === ".jpeg") return "image/jpeg";
+  if (ext === ".gif") return "image/gif";
+  if (ext === ".webp") return "image/webp";
+  if (ext === ".avif") return "image/avif";
+  if (ext === ".ico") return "image/x-icon";
+  if (ext === ".css") return "text/css; charset=utf-8";
+  if (ext === ".js" || ext === ".mjs") return "text/javascript; charset=utf-8";
 
   return "application/octet-stream";
 };
@@ -298,6 +341,7 @@ export default defineConfig({
     localizedRouteFallback(),
     generatedAssetsPlugin(),
     infoAssetsPlugin(),
+    articleMediaPlugin(),
     viteCompression({
       algorithm: "brotliCompress",
       ext: ".br",
@@ -308,8 +352,6 @@ export default defineConfig({
   ],
 
   build: {
-    target: "es2022",
-    cssTarget: "es2022",
     sourcemap: false,
     rollupOptions: {
       input: {

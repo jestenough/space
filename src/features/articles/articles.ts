@@ -58,7 +58,7 @@ export const loadArticleContent = (slug: string, lang: Lang): Promise<string | n
     return cached;
   }
 
-  const request = fetch(articleFilePath(slug, lang), { cache: "force-cache" })
+  const request = fetch(articleFilePath(slug, lang), { cache: "no-cache" })
     .then((response) => response.ok ? response.text() : null)
     .catch(() => {
       htmlCache.delete(key);
@@ -70,7 +70,7 @@ export const loadArticleContent = (slug: string, lang: Lang): Promise<string | n
 };
 
 const fetchJson = async (path: string): Promise<unknown> => {
-  const response = await fetch(path, { cache: "force-cache" });
+  const response = await fetch(path, { cache: "no-cache" });
   if (!response.ok) throw new Error(`Failed to load ${path}: ${response.status}`);
   return response.json();
 };

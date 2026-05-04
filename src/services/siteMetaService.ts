@@ -47,7 +47,7 @@ const FALLBACK: Record<PageMetaKey, PageMetaRecord> = {
 
 const fetchSiteMeta = async (): Promise<SiteMeta> => {
   try {
-    const response = await fetch(SITE_META_PATH, { cache: "force-cache" });
+    const response = await fetch(SITE_META_PATH, { cache: "no-cache" });
     if (!response.ok) return {};
     const value = await response.json();
     return typeof value === "object" && value !== null && !Array.isArray(value) ? value as SiteMeta : {};
