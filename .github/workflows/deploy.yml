@@ -91,7 +91,7 @@ jobs:
           find dist -maxdepth 4 -type f | head -80
 
       - name: Upload production artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: autophany-production-dist
           path: dist/
