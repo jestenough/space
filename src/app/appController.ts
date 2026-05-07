@@ -4,11 +4,11 @@ import { panelInfo } from "@/components/panels";
 import { controls } from "@/components/controls";
 import { countTags } from "@/components/directory";
 import { TocController } from "@/components/toc";
-import { headerCommand, processSnapshotHtml, sidebarCommand } from "@/components/shell";
+import { headerCommand, processSnapshotHtml, shellCommandMarkup, shellCommandText, sidebarCommand } from "@/components/shell";
 import { dom } from "@/ui/dom";
 import { applyUiText, label, text } from "@/ui/i18n";
 import { parseRoute, toLang } from "@/router/router";
-import { articlePath, articlesPath, homePath, infoFilePath, tagPath, tagsPath } from "@/router/routePaths";
+import { articlePath, articlesPath, homePath, infoFilePath, sectionPath, tagPath, tagsPath } from "@/router/routePaths";
 import { pdfService } from "@/services/pdfService";
 import { zenModeController } from "@/features/zen/zenModeController";
 import { seoService } from "@/services/seoService";
@@ -18,7 +18,7 @@ import { DebounceDelay, StorageKey, SessionKey } from "@/core/enums";
 import { countTextStats } from "@/features/articles/textStats";
 import { themeService, THEMES } from "@/services/themeService";
 import { DEFAULT_LANG, languagesFromArticles } from "@/core/languages";
-import type { ArticleMeta, InfoFileMeta, Lang, Route, TagInfo, Theme } from "@/core/types";
+import type { ArticleMeta, InfoFileMeta, Lang, Route, SectionMeta, TagInfo, Theme } from "@/core/types";
 import { setView } from "@/ui/view";
 import { notFoundView } from "@/ui/views/notFoundView";
 import { ArticlePageController } from "@/features/articles/articlePageController";
@@ -29,11 +29,12 @@ import { HomeController } from "@/features/home/homeController";
 import { AppEventController } from "@/app/appEventController";
 import { AppState } from "@/app/appState";
 import { RouteController } from "@/app/routeController";
+import { loadSectionIndex, loadSections } from "@/features/info/infoFiles";
 
 type RenderContext = { article?: ArticleMeta; infoFile?: InfoFileMeta; tag?: string; matches?: number };
 const MAX_ARTICLE_STATS_CACHE = 80;
 
-const PANEL_HOME = "home" as const;
+const PANEL_HOME = "site" as const;
 const PANEL_ARTICLES = "articles" as const;
 const PANEL_TAGS = "tags" as const;
 const PAGE_ARTICLE = "article" as const;
@@ -75,11 +76,11 @@ export class AppController {
     this.infoFileController = new InfoFileController({
       currentRenderId: () => this.state.routeRenderId,
       renderNotFound: (lang, slug) => this.renderNotFound(lang, slug),
-      setRootContext: () => this.setRootContext(),
+      setSectionContext: (section) => this.setSectionContext(section),
       setActiveInfoFile: (file) => { this.state.activeInfoFile = file; },
       applyPanelState: (lang) => this.applyPanelState(lang),
       renderArticleToc: () => this.renderArticleToc(),
-      setArticleActionsVisible: (isVisible) => this.setArticleActionsVisible(isVisible),
+      setFileDownloadVisible: (file) => this.setFileDownloadVisible(file),
       applyWelcomeText: (title, lead, body) => this.applyWelcomeText(title, lead, body),
       updateSeo: (lang, title, description, indexable) => this.updateSeo(lang, title, description, indexable),
       updateRightProcess: (lang, context) => this.updateRightProcess(lang, context)
@@ -126,10 +127,10 @@ export class AppController {
       exitZenMode: () => this.exitZenMode(),
       syncRouteState: (route) => this.syncRouteState(route),
       applyStaticUi: (lang) => this.applyStaticUi(lang),
-      ensureArticlesLoaded: () => this.ensureArticlesLoaded(),
+      ensureSectionLoaded: (section) => this.ensureSectionLoaded(section),
       renderNotFound: (lang, slug) => this.renderNotFound(lang, slug),
       renderArticle: (lang, slug, renderId) => this.articlePageController.render(lang, slug, renderId),
-      renderInfoFile: (lang, slug, renderId) => this.infoFileController.render(lang, slug, renderId),
+      renderInfoFile: (lang, section, slug, renderId) => this.infoFileController.render(lang, section, slug, renderId),
       renderIndexRoute: (lang) => this.renderIndexRoute(lang),
       setErrorView: () => setView(VIEW_ERROR)
     });
@@ -164,12 +165,13 @@ export class AppController {
       syncTheme: (value) => this.syncTheme(value),
       enterZenMode: () => this.enterZenMode(),
       exitZenMode: () => this.exitZenMode(),
-      openCurrentArticlePdf: () => this.openCurrentArticlePdf(),
+      openCurrentArticlePdf: () => this.openCurrentDownload(),
       openCurrentArticleEditor: () => this.openCurrentArticleEditor(),
       openHeadingAnchor: (id, pushState) => this.openHeadingAnchor(id, pushState),
       changeLanguage: () => this.changeLanguage()
     });
-    await siteMetaService.load();
+    const [, sections] = await Promise.all([siteMetaService.load(), loadSections()]);
+    this.state.sections = sections;
     await this.renderRoute({ resetScroll: false });
   }
 
@@ -202,7 +204,7 @@ export class AppController {
   private scheduleHeaderUpdate(): void {
     cancelAnimationFrame(this.headerFrame);
     this.headerFrame = requestAnimationFrame(() => {
-      dom.renderIndicator.textContent = this.currentHeaderCommand();
+      this.setShellCommand(dom.renderIndicator, this.currentHeaderCommand());
     });
   }
 
@@ -214,14 +216,14 @@ export class AppController {
       return;
     }
     if (route.page === PAGE_INFO_FILE) {
-      this.navigateTo(infoFilePath(targetLang, route.slug));
+      this.navigateTo(infoFilePath(targetLang, route.section, route.slug, route.section === PANEL_HOME));
       return;
     }
     if (route.page === PAGE_TAGS && route.tag) {
       this.navigateTo(tagPath(targetLang, route.tag));
       return;
     }
-    this.navigateTo(route.page === PAGE_ARTICLES ? articlesPath(targetLang) : route.page === PAGE_TAGS ? tagsPath(targetLang) : homePath(targetLang));
+    this.navigateTo(route.page === PAGE_ARTICLES ? articlesPath(targetLang) : route.page === PAGE_TAGS ? tagsPath(targetLang) : route.page === "section" ? sectionPath(targetLang, route.section, route.section === PANEL_HOME) : homePath(targetLang));
   }
 
   private cycleTheme(): void {
@@ -242,8 +244,8 @@ export class AppController {
   }
 
   private renderIndexRoute(lang: Lang): void {
-    if (this.state.activePanel === PANEL_HOME) {
-      this.homeController.render(lang);
+    if (this.state.activePanel !== PANEL_ARTICLES && this.state.activePanel !== PANEL_TAGS) {
+      this.homeController.render(lang, this.filesForSection(this.state.activePanel), this.activeSection());
       return;
     }
     if (this.state.activePanel === PANEL_ARTICLES) {
@@ -269,16 +271,14 @@ export class AppController {
 
   private applyPanelState(lang: Lang): void {
     const showArticleList = this.state.activePanel === PANEL_ARTICLES || this.state.tagDetail !== null;
-    dom.homeFilesPanel.classList.toggle("hidden", this.state.activePanel !== PANEL_HOME);
+    dom.homeFilesPanel.classList.toggle("hidden", this.state.activePanel === PANEL_ARTICLES || this.state.activePanel === PANEL_TAGS);
     dom.articlesPanel.classList.toggle("hidden", !showArticleList);
     dom.tagsPanel.classList.toggle("hidden", this.state.activePanel !== PANEL_TAGS || this.state.tagDetail !== null);
     dom.articleView.classList.add("hidden");
     dom.errorView.classList.add("hidden");
-    dom.treeHome.classList.toggle("is-active", this.state.activePanel === PANEL_HOME);
-    dom.treeArticles.classList.toggle("is-active", this.state.activePanel === PANEL_ARTICLES);
-    dom.treeTags.classList.toggle("is-active", this.state.activePanel === PANEL_TAGS);
-    dom.pwdLine.textContent = sidebarCommand();
-    dom.renderIndicator.textContent = this.currentHeaderCommand();
+    this.renderSectionNav(lang);
+    this.setShellCommand(dom.pwdLine, sidebarCommand());
+    this.setShellCommand(dom.renderIndicator, this.currentHeaderCommand());
     this.setPagerState(controls.articles, 1, 1);
     dom.tagsHeadline.textContent = this.state.tagDetail ? `#${this.state.tagDetail}` : text(lang).tagsHeadline;
     this.updateLeftInfo(lang);
@@ -290,6 +290,7 @@ export class AppController {
 
   private currentHeaderCommand(): string {
     const query = this.state.activePanel === PANEL_TAGS && !this.state.tagDetail ? this.state.tagSearchQuery : this.state.articleSearchQuery;
+    if (this.state.activePanel !== PANEL_ARTICLES && this.state.activePanel !== PANEL_TAGS) return headerCommand(this.state.activePanel, undefined, { maxColumns: this.commandColumns() });
     return headerCommand(this.state.activePanel, this.state.tagDetail ?? undefined, {
       sortBy: this.state.activePanel === PANEL_TAGS && !this.state.tagDetail ? this.state.tagSortBy : this.state.sortBy,
       pageSize: this.state.activePanel === PANEL_TAGS && !this.state.tagDetail ? this.state.tagPageSize : this.state.pageSize,
@@ -318,19 +319,26 @@ export class AppController {
   private updateLeftInfo(lang: Lang): void {
     if (this.state.activeArticle) {
       this.applyWelcomeText(articleTitle(this.state.activeArticle, lang), articleDescription(this.state.activeArticle, lang));
-      dom.welcomeCommand.textContent = `$ sed -n '1,2p' ${this.metaFileName(this.state.activeArticle.slug, "tex")}`;
+      this.setShellCommand(dom.welcomeCommand, shellCommandText(`sed -n '1,2p' ${this.metaFileName(this.state.activeArticle.slug, "tex")}`));
       return;
     }
 
     if (this.state.activeInfoFile) {
       this.applyWelcomeText(label(this.state.activeInfoFile.title, lang), label(this.state.activeInfoFile.description, lang));
-      dom.welcomeCommand.textContent = `$ sed -n '1,2p' ${this.state.activeInfoFile.slug}.meta`;
+      this.setShellCommand(dom.welcomeCommand, shellCommandText(`sed -n '1,2p' ${this.state.activeInfoFile.slug}.meta`));
       return;
     }
 
-    const info = panelInfo(lang, this.state.activePanel, this.state.tagDetail ?? undefined);
-    dom.welcomeCommand.textContent = this.leftInfoCommand();
+    const section = this.activeSection();
+    const info = this.state.activePanel === PANEL_ARTICLES || this.state.activePanel === PANEL_TAGS
+      ? panelInfo(lang, this.state.activePanel, this.state.tagDetail ?? undefined)
+      : { title: label(section.title, lang), lead: label(section.description, lang), body: "" };
+    this.setShellCommand(dom.welcomeCommand, this.leftInfoCommand());
     this.applyWelcomeText(info.title, info.lead, info.body);
+  }
+
+  private setShellCommand(target: HTMLElement, command: string): void {
+    target.innerHTML = shellCommandMarkup(command);
   }
 
   private applyWelcomeText(title: string, lead: string, body = ""): void {
@@ -340,12 +348,13 @@ export class AppController {
   }
 
   private leftInfoCommand(): string {
-    if (this.state.activePanel === PANEL_TAGS && this.state.tagDetail) return `$ sed -n '1,2p' ${this.metaFileName(this.state.tagDetail, "tex")}`;
-    return "$ sed -n '1,2p' .meta";
+    if (this.state.activePanel === PANEL_TAGS && this.state.tagDetail) return shellCommandText(`sed -n '1,2p' ${this.state.tagDetail}.meta`);
+    if (this.state.activePanel === PANEL_HOME) return shellCommandText("sed -n '1,2p' ~/.meta");
+    return shellCommandText(`sed -n '1,2p' ${this.state.activePanel}.meta`);
   }
 
   private metaFileName(slug: string, extension: string): string {
-    return `${slug}.${extension}.meta`;
+    return `${slug}.meta`;
   }
 
   private renderArticleToc(): void {
@@ -414,6 +423,8 @@ export class AppController {
       query: this.state.activePanel === "tags" && !this.state.tagDetail ? this.state.tagSearchQuery || undefined : this.state.articleSearchQuery || undefined,
       article: context?.article ?? this.state.activeArticle ?? undefined,
       infoFile: context?.infoFile ?? this.state.activeInfoFile ?? undefined,
+      section: this.activeSection(),
+      files: this.filesForSection(this.state.activePanel),
       matches: context?.matches,
       ...this.currentTextStats()
     });
@@ -474,6 +485,19 @@ export class AppController {
     pdfService.openArticlePdf(route.lang, this.state.activeArticle.slug);
   }
 
+  private openCurrentDownload(): void {
+    if (this.state.activeInfoFile?.downloadPath) {
+      window.open(this.localizedDownloadPath(this.state.activeInfoFile.downloadPath), "_blank", "noopener,noreferrer");
+      return;
+    }
+    this.openCurrentArticlePdf();
+  }
+
+  private localizedDownloadPath(path: string): string {
+    const route = parseRoute();
+    return path.replace(/^\/[a-z]{2,3}(?:-[A-Z]{2})?(?=\/)/, `/${route.lang}`);
+  }
+
   private async renderRoute(options: { resetScroll: boolean }): Promise<void> {
     await this.routeController.render(options);
   }
@@ -487,6 +511,14 @@ export class AppController {
     this.state.articlesLoaded = true;
   }
 
+  private async ensureSectionLoaded(section: string): Promise<void> {
+    if (section === PANEL_ARTICLES || section === PANEL_TAGS) {
+      await this.ensureArticlesLoaded();
+      return;
+    }
+    if (!this.state.sectionFiles.has(section)) this.state.sectionFiles.set(section, await loadSectionIndex(section));
+  }
+
   private syncRouteState(route: Route): void {
     this.state.activeArticle = null;
     this.state.activeInfoFile = null;
@@ -496,10 +528,10 @@ export class AppController {
     switch (route.page) {
       case PAGE_NOT_FOUND:
       case PAGE_INFO_FILE:
-        this.setRootContext();
+        this.setSectionContext(route.page === PAGE_INFO_FILE ? route.section : PANEL_HOME);
         break;
-      case PANEL_HOME:
-        this.state.activePanel = route.panel;
+      case "section":
+        this.state.activePanel = route.section;
         this.state.tagDetail = null;
         this.state.activeTag = ALL_TAGS;
         break;
@@ -520,8 +552,8 @@ export class AppController {
     }
   }
 
-  private setRootContext(): void {
-    this.state.activePanel = PANEL_HOME;
+  private setSectionContext(section: string): void {
+    this.state.activePanel = section;
     this.state.tagDetail = null;
     this.state.activeTag = ALL_TAGS;
   }
@@ -538,6 +570,44 @@ export class AppController {
     dom.editArticleBtn.classList.toggle("hidden", !isVisible);
   }
 
+  private setFileDownloadVisible(file: InfoFileMeta | null): void {
+    dom.downloadPdfBtn.classList.toggle("hidden", !file);
+    dom.zenModeBtn.classList.add("hidden");
+    dom.editArticleBtn.classList.add("hidden");
+    dom.downloadPdfBtn.textContent = "download";
+  }
+
+  private activeSection(): SectionMeta {
+    return this.state.sections.find((section) => section.slug === this.state.activePanel) ?? this.state.sections[0] ?? {
+      slug: PANEL_HOME,
+      label: { [DEFAULT_LANG]: "site/" },
+      title: { [DEFAULT_LANG]: "autophany.space" },
+      description: { [DEFAULT_LANG]: "" },
+      system: true,
+      count: 0
+    };
+  }
+
+  private filesForSection(section: string): readonly InfoFileMeta[] {
+    return this.state.sectionFiles.get(section) ?? [];
+  }
+
+  private renderSectionNav(lang: Lang): void {
+    const nav = dom.quickNav;
+    if (!nav) return;
+    const fragment = document.createDocumentFragment();
+    for (const section of this.state.sections.filter((item) => !item.system)) {
+      const link = document.createElement("a");
+      link.className = "quick-link";
+      link.classList.toggle("is-active", this.state.activePanel === section.slug);
+      link.href = sectionPath(lang, section.slug, section.system);
+      link.dataset.internal = "true";
+      link.textContent = label(section.label, lang) || `${section.slug}/`;
+      fragment.append(link);
+    }
+    nav.replaceChildren(fragment);
+  }
+
   private applyStaticUi(lang: Lang): void {
     applyUiText(lang);
     this.syncTheme(dom.themeSwitcher.value);
@@ -550,16 +620,14 @@ export class AppController {
     controls.tags.sizeSelect.value = String(this.state.tagPageSize);
     controls.articles.searchInput.value = this.state.articleSearchQuery;
     controls.tags.searchInput.value = this.state.tagSearchQuery;
-    dom.brandLink.href = "/";
-    dom.treeHome.href = "/";
-    dom.treeArticles.href = articlesPath(lang);
-    dom.treeTags.href = tagsPath(lang);
+    dom.brandLink.href = homePath(lang);
+    this.renderSectionNav(lang);
     dom.backLink.href = this.backHref(lang);
   }
 
   private backHref(lang: Lang): string {
     const route = parseRoute();
-    if (route.page === PAGE_INFO_FILE) return homePath(lang);
+    if (route.page === PAGE_INFO_FILE) return sectionPath(lang, route.section, route.section === PANEL_HOME);
     const stored = storageService.getSession(SessionKey.ArticleBackPath);
     if (stored && new RegExp(`^/${lang}/(articles|tags)(/|$)?`).test(stored)) return stored;
     return articlesPath(lang);
@@ -593,7 +661,6 @@ export class AppController {
       return this.withPage(base, this.state.tagDetail ? this.state.articlePage : this.state.tagPage);
     }
     if (this.state.activePanel === PANEL_ARTICLES) return this.withPage(articlesPath(lang), this.state.articlePage);
-    return articlesPath(lang);
+    return sectionPath(lang, this.state.activePanel, this.state.activePanel === PANEL_HOME);
   }
 }
-

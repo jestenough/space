@@ -1,0 +1,18 @@
+{
+  "slug": "readme",
+  "label": {
+    "en": "README.md",
+    "ru": "README.md"
+  },
+  "type": "text",
+  "format": "markdown",
+  "date": "2026-05-02",
+  "title": {
+    "en": "README.md",
+    "ru": "README.md"
+  },
+  "description": {
+    "en": "A map of autophany.space: setup, build, content, and the PDF pipeline.",
+    "ru": "Карта пространства autophany.space: запуск, сборка, контент и PDF pipeline."
+  }
+}

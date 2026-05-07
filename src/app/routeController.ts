@@ -9,15 +9,20 @@ export type RouteControllerDeps = {
   exitZenMode: () => void;
   syncRouteState: (route: Route) => void;
   applyStaticUi: (lang: string) => void;
-  ensureArticlesLoaded: () => Promise<void>;
+  ensureSectionLoaded: (section: string) => Promise<void>;
   renderNotFound: (lang: string, slug?: string) => void;
   renderArticle: (lang: string, slug: string, renderId: number) => Promise<void>;
-  renderInfoFile: (lang: string, slug: string, renderId: number) => Promise<void>;
+  renderInfoFile: (lang: string, section: string, slug: string, renderId: number) => Promise<void>;
   renderIndexRoute: (lang: string) => void;
   setErrorView: () => void;
 };
 
-const routeNeedsArticleIndex = (route: Route): boolean => route.page === "articles" || route.page === "tags";
+const routeSection = (route: Route): string | null => {
+  if (route.page === "section") return route.section;
+  if (route.page === "info-file") return route.section;
+  if (route.page === "articles" || route.page === "article" || route.page === "tags") return "articles";
+  return null;
+};
 
 export class RouteController {
   constructor(private readonly deps: RouteControllerDeps) {}
@@ -32,7 +37,8 @@ export class RouteController {
       this.deps.syncRouteState(route);
       this.deps.applyStaticUi(route.lang);
 
-      if (routeNeedsArticleIndex(route)) await this.deps.ensureArticlesLoaded();
+      const section = routeSection(route);
+      if (section) await this.deps.ensureSectionLoaded(section);
       if (renderId !== this.deps.currentRenderId()) return;
 
       switch (route.page) {
@@ -43,7 +49,7 @@ export class RouteController {
           await this.deps.renderArticle(route.lang, route.slug, renderId);
           break;
         case "info-file":
-          await this.deps.renderInfoFile(route.lang, route.slug, renderId);
+          await this.deps.renderInfoFile(route.lang, route.section, route.slug, renderId);
           break;
         default:
           this.deps.renderIndexRoute(route.lang);

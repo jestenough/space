@@ -1,0 +1,15 @@
+{
+  "slug": "projects",
+  "label": {
+    "en": "projects/",
+    "ru": "projects/"
+  },
+  "title": {
+    "en": "Projects",
+    "ru": "Проекты"
+  },
+  "description": {
+    "en": "Project files and public work notes.",
+    "ru": "Файлы проектов и публичные рабочие заметки."
+  }
+}

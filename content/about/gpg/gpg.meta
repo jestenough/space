@@ -1,0 +1,19 @@
+{
+  "slug": "gpg",
+  "label": {
+    "en": "gpg.asc",
+    "ru": "gpg.asc"
+  },
+  "type": "file",
+  "download": true,
+  "format": "text",
+  "date": "2026-05-07",
+  "title": {
+    "en": "gpg.asc",
+    "ru": "gpg.asc"
+  },
+  "description": {
+    "en": "Test public key file for download routing.",
+    "ru": "Тестовый файл публичного ключа для проверки скачивания."
+  }
+}

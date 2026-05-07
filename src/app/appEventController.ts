@@ -12,7 +12,7 @@ import { safeDecodeURIComponent } from "@/core/url";
 import type { SortBy, TagSortBy } from "@/core/types";
 
 export type AppEventControllerOptions = {
-  getActivePanel: () => "home" | "articles" | "tags";
+  getActivePanel: () => string;
   getTagDetail: () => string | null;
   getArticlePage: () => number;
   setArticlePage: (page: number) => void;

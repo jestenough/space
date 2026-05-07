@@ -1,0 +1,15 @@
+{
+  "slug": "notes",
+  "label": {
+    "en": "notes/",
+    "ru": "notes/"
+  },
+  "title": {
+    "en": "Notes",
+    "ru": "Заметки"
+  },
+  "description": {
+    "en": "Short notes and small text fragments.",
+    "ru": "Короткие заметки и небольшие текстовые фрагменты."
+  }
+}

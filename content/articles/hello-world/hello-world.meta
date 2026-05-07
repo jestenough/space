@@ -1,5 +1,10 @@
 {
   "slug": "hello-world",
+  "label": {
+    "ru": "Привет, Мир!",
+    "en": "Hello World!"
+  },
+  "type": "article",
   "date": "2026-05-03",
   "tags": [
     "notes",

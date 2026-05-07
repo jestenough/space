@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-import json
 import logging
 from datetime import datetime
-from typing import Any, Callable
-from urllib.parse import quote
+from typing import Any
 from xml.sax.saxutils import escape as xml_escape
 
-from .config import DEFAULT_LANG, DIST_DIR, GENERATED_DIR, SITE_META_PATH, SITE_URL
+from . import generated, routes
+from .config import ARTICLE_TYPE, ARTICLES_SECTION, DEFAULT_LANG, DIST_DIR, GENERATED_SITE_META_PATH, NOT_FOUND_PAGE, SITE_URL
+from .jsonio import read_object
 
 XML_HEADER = '<?xml version="1.0" encoding="UTF-8"?>'
 SITEMAP_ROOT = '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">'
@@ -23,11 +23,13 @@ class Seo:
             raise RuntimeError("dist/ does not exist; run vite build before seo")
 
         site_meta = self.read_site_meta()
-        articles = self.read_articles_index()
-        languages = self.collect_languages(articles)
+        sections = generated.sections()
+        files = generated.items(sections)
+        articles = generated.articles(sections)
+        languages = generated.item_languages(files)
         tags_by_lang = self.collect_tags_by_lang(articles)
 
-        self.write_text(DIST_DIR / "sitemap.xml", self.render_sitemap(self.build_sitemap_entries(articles, tags_by_lang)))
+        self.write_text(DIST_DIR / "sitemap.xml", self.render_sitemap(self.build_sitemap_entries(articles, tags_by_lang, sections, files)))
         self.write_text(DIST_DIR / "robots.txt", self.render_robots())
         self.write_text(DIST_DIR / "_headers", self.render_headers(articles))
         self.write_text(DIST_DIR / "404.html", self.render_404(site_meta))
@@ -38,40 +40,24 @@ class Seo:
         logger.info("Generated SEO files and %s feed(s).", len(languages))
 
     @staticmethod
-    def read_articles_index() -> list[dict[str, Any]]:
-        data = json.loads((GENERATED_DIR / "articles-index.json").read_text(encoding="utf-8"))
-
-        if not isinstance(data, list):
-            raise RuntimeError("generated/articles-index.json must be a list")
-
-        return data
-
-    @staticmethod
     def read_site_meta() -> dict[str, Any]:
-        data = json.loads(SITE_META_PATH.read_text(encoding="utf-8"))
-        if not isinstance(data, dict):
-            raise RuntimeError(f"{SITE_META_PATH} must be an object")
-        return data
+        return read_object(GENERATED_SITE_META_PATH, "generated site meta")
 
-    def build_sitemap_entries(self, articles: list[dict[str, Any]], tags_by_lang: dict[str, set[str]]) -> list[dict[str, Any]]:
-        languages = self.collect_languages(articles)
+    def build_sitemap_entries(self, articles: list[dict[str, Any]], tags_by_lang: dict[str, set[str]], sections: list[dict[str, Any]], files: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        languages = generated.item_languages(files)
         latest = self.latest_date(articles)
         entries: list[dict[str, Any]] = []
 
-        for lang in languages:
-            entries.extend(
-                [
-                    {"path": f"/{lang}", "lastmod": latest, "alternates": self.section_alternates(languages, lambda item_lang: f"/{item_lang}")},
-                    {"path": f"/{lang}/articles", "lastmod": latest, "alternates": self.section_alternates(languages, lambda item_lang: f"/{item_lang}/articles")},
-                    {"path": f"/{lang}/tags", "lastmod": latest, "alternates": self.section_alternates(languages, lambda item_lang: f"/{item_lang}/tags")},
-                ]
-            )
+        for section in sections:
+            section_languages = generated.section_languages(section)
+            for lang in section_languages:
+                entries.append({"path": routes.generated_section_route(section, lang), "lastmod": latest, "alternates": routes.alternates(section_languages, lambda item_lang, section=section: routes.generated_section_route(section, item_lang))})
 
         for lang in languages:
             for tag in sorted(tags_by_lang.get(lang, set())):
                 entries.append(
                     {
-                        "path": self.tag_path(lang, tag),
+                        "path": routes.tag_route(lang, tag),
                         "lastmod": self.latest_date(self.articles_with_tag(articles, lang, tag)),
                         "alternates": self.tag_alternates(tag, tags_by_lang),
                     }
@@ -81,11 +67,17 @@ class Seo:
             for lang in article["languages"]:
                 entries.append(
                     {
-                        "path": self.article_path(lang, article["slug"]),
+                        "path": routes.generated_item_route(article, lang),
                         "lastmod": article["date"],
                         "alternates": self.article_alternates(article),
                     }
                 )
+
+        for item in files:
+            if item.get("type") == ARTICLE_TYPE:
+                continue
+            for lang in item.get("languages", []):
+                entries.append({"path": routes.generated_item_route(item, lang), "lastmod": item.get("date") or latest, "alternates": self.item_alternates(item)})
 
         return entries
 
@@ -119,10 +111,7 @@ class Seo:
             "  X-Robots-Tag: noindex, nofollow",
             "  Cache-Control: no-store",
             "",
-            "/media/articles/*",
-            "  Cache-Control: no-cache, must-revalidate",
-            "",
-            "/info/*",
+            "/media/*",
             "  Cache-Control: no-cache, must-revalidate",
             "",
             "/404.html",
@@ -133,9 +122,9 @@ class Seo:
 
         for article in articles:
             for lang in article["languages"]:
-                article_path = self.article_path(lang, article["slug"])
+                article_path = routes.generated_item_route(article, lang)
                 lines.extend([
-                    self.article_pdf_path(lang, article["slug"]),
+                    self.article_pdf_path(article, lang),
                     f"  Link: <{self.absolute_url(article_path)}>; rel=\"canonical\"",
                     "  X-Robots-Tag: index, follow",
                     "  Cache-Control: no-cache, must-revalidate",
@@ -145,8 +134,8 @@ class Seo:
         return "\n".join(lines)
 
     def render_404(self, site_meta: dict[str, Any]) -> str:
-        title = self.page_value(site_meta, "notFound", "title", DEFAULT_LANG)
-        description = self.page_value(site_meta, "notFound", "description", DEFAULT_LANG)
+        title = self.page_value(site_meta, NOT_FOUND_PAGE, "title", DEFAULT_LANG)
+        description = self.page_value(site_meta, NOT_FOUND_PAGE, "description", DEFAULT_LANG)
         return f"""<!doctype html>
 <html lang="{DEFAULT_LANG}" data-theme="dark">
   <head>
@@ -167,7 +156,7 @@ class Seo:
         items = []
 
         for article in lang_articles[:20]:
-            url = self.absolute_url(self.article_path(lang, article["slug"]))
+            url = self.absolute_url(routes.generated_item_route(article, lang))
             items.append("\n".join([
                 "    <item>",
                 f"      <title>{self.xml(self.localized(article['title'], lang))}</title>",
@@ -178,14 +167,14 @@ class Seo:
                 "    </item>",
             ]))
 
-        title = self.page_value(site_meta, "articles", "title", lang)
-        description = self.page_value(site_meta, "articles", "description", lang)
+        title = self.page_value(site_meta, ARTICLES_SECTION, "title", lang)
+        description = self.page_value(site_meta, ARTICLES_SECTION, "description", lang)
         return "\n".join([
             XML_HEADER,
             '<rss version="2.0">',
             "  <channel>",
             f"    <title>{self.xml(title)}</title>",
-            f"    <link>{self.xml(self.absolute_url(f'/{lang}/articles'))}</link>",
+            f"    <link>{self.xml(self.absolute_url(routes.section_route(ARTICLES_SECTION, lang)))}</link>",
             f"    <description>{self.xml(description)}</description>",
             f"    <language>{self.xml(lang)}</language>",
             *items,
@@ -198,33 +187,23 @@ class Seo:
     def page_value(site_meta: dict[str, Any], page: str, field: str, lang: str) -> str:
         value = site_meta.get("pages", {}).get(page, {}).get(field, {})
         if isinstance(value, dict):
-            return str(value.get(lang) or value.get(DEFAULT_LANG) or next(iter(value.values()), "")).strip()
+            text = value.get(lang)
+            if isinstance(text, str) and text.strip():
+                return text.strip()
         return ""
 
-    @staticmethod
-    def collect_languages(articles: list[dict[str, Any]]) -> list[str]:
-        return sorted({lang for article in articles for lang in article["languages"]})
-
     def collect_tags_by_lang(self, articles: list[dict[str, Any]]) -> dict[str, set[str]]:
-        result = {lang: set() for lang in self.collect_languages(articles)}
+        result = {lang: set() for lang in generated.item_languages(articles)}
         for article in articles:
             for lang in article["languages"]:
                 result.setdefault(lang, set()).update(article["tags"])
         return result
 
     def article_alternates(self, article: dict[str, Any]) -> dict[str, str]:
-        alternates = {lang: self.article_path(lang, article["slug"]) for lang in article["languages"]}
-        alternates["x-default"] = alternates.get(DEFAULT_LANG) or alternates[article["languages"][0]]
-        return alternates
-
-    @staticmethod
-    def section_alternates(languages: list[str], build_path: Callable[[str], str]) -> dict[str, str]:
-        alternates = {lang: build_path(lang) for lang in languages}
-        alternates["x-default"] = alternates.get(DEFAULT_LANG) or alternates[languages[0]]
-        return alternates
+        return routes.alternates(article["languages"], lambda lang: routes.generated_item_route(article, lang))
 
     def tag_alternates(self, tag: str, tags_by_lang: dict[str, set[str]]) -> dict[str, str]:
-        alternates = {lang: self.tag_path(lang, tag) for lang, tags in tags_by_lang.items() if tag in tags}
+        alternates = {lang: routes.tag_route(lang, tag) for lang, tags in tags_by_lang.items() if tag in tags}
         alternates["x-default"] = alternates.get(DEFAULT_LANG) or next(iter(alternates.values()), "/")
         return alternates
 
@@ -240,22 +219,17 @@ class Seo:
 
     @staticmethod
     def localized(values: dict[str, str], lang: str) -> str:
-        return values.get(lang) or values.get(DEFAULT_LANG) or next(iter(values.values()), "")
+        return values.get(lang, "")
 
     @staticmethod
     def rfc2822_date(value: str) -> str:
         return datetime.fromisoformat(f"{value}T00:00:00+00:00").strftime("%a, %d %b %Y %H:%M:%S GMT")
 
-    @staticmethod
-    def article_path(lang: str, slug: str) -> str:
-        return f"/{lang}/articles/{quote(slug, safe='')}"
+    def item_alternates(self, item: dict[str, Any]) -> dict[str, str]:
+        return routes.alternates(item.get("languages", []), lambda lang: routes.generated_item_route(item, lang))
 
-    def article_pdf_path(self, lang: str, slug: str) -> str:
-        return f"{self.article_path(lang, slug)}.pdf"
-
-    @staticmethod
-    def tag_path(lang: str, tag: str) -> str:
-        return f"/{lang}/tags/{quote(tag, safe='')}"
+    def article_pdf_path(self, article: dict[str, Any], lang: str) -> str:
+        return routes.generated_pdf_route(article, lang)
 
     @staticmethod
     def absolute_url(path: str) -> str:

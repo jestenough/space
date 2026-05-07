@@ -1,6 +1,6 @@
-import { articleOpenCommand } from "@/components/shell";
+import { articleOpenCommand, shellCommandMarkup, shellCommandText } from "@/components/shell";
 import { text } from "@/ui/i18n";
-import { articleDescription, articleFallbackMeta, articleTitle, hasTranslation, loadArticle } from "@/services/articleService";
+import { articleDescription, articleTitle, hasTranslation, loadArticle, loadArticleIndex } from "@/services/articleService";
 import type { ArticleMeta, Lang } from "@/core/types";
 import { setView } from "@/ui/view";
 import { ViewMode } from "@/core/enums";
@@ -31,13 +31,23 @@ export class ArticlePageController {
     const payload = await loadArticle(slug, lang);
     if (renderId !== this.deps.currentRenderId()) return;
     if (!payload && !prerenderedHtml) {
+      const article = (await loadArticleIndex()).find((item) => item.slug === slug);
+      if (renderId !== this.deps.currentRenderId()) return;
+      if (article) {
+        this.renderMissingTranslation(lang, article);
+        return;
+      }
       this.deps.renderNotFound(lang, slug);
       return;
     }
 
-    const article = payload?.meta ?? articleFallbackMeta(slug, lang);
-    if (payload && !hasTranslation(article, lang)) {
+    const article = payload?.meta;
+    if (!article) {
       this.deps.renderNotFound(lang, slug);
+      return;
+    }
+    if (payload && !hasTranslation(article, lang)) {
+      this.renderMissingTranslation(lang, article);
       return;
     }
 
@@ -54,10 +64,30 @@ export class ArticlePageController {
     dom.editArticleBtn.textContent = "edit";
     dom.zenModeBtn.textContent = "zen";
     this.deps.applyWelcomeText(articleTitle(article, lang), articleDescription(article, lang));
-    dom.renderIndicator.textContent = articleOpenCommand(article.slug);
+    dom.renderIndicator.innerHTML = shellCommandMarkup(articleOpenCommand(article.slug));
     document.title = `${articleTitle(article, lang)} :: ${text(lang).brand}`;
     this.deps.updateSeo(lang, articleTitle(article, lang), articleDescription(article, lang));
     this.deps.updateRightProcess(lang, { article });
+    setView(ViewMode.Article);
+  }
+
+  private renderMissingTranslation(lang: Lang, article: ArticleMeta): void {
+    const title = lang === "ru" ? "Пока не написано" : "Not written yet";
+    const description = lang === "ru"
+      ? "Этой версии пока нет, но она обязательно будет."
+      : "This version does not exist yet, but it will be written.";
+    const available = article.languages.join(", ");
+    this.deps.setArticlesContext();
+    this.deps.setActiveArticle(null);
+    this.deps.applyPanelState(lang);
+    this.deps.setArticleActionsVisible(false);
+    articleView.renderHtml(`<section class="file-document"><h1>${title}</h1><p>${description}</p><p class="meta">available: ${available}</p></section>`);
+    this.deps.renderArticleToc();
+    this.deps.applyWelcomeText(title, description);
+    dom.renderIndicator.innerHTML = shellCommandMarkup(shellCommandText(`test -f ~/articles/${article.slug}.${lang}.tex || echo not-translated`));
+    document.title = `${title} :: ${text(lang).brand}`;
+    this.deps.updateSeo(lang, title, description, false);
+    this.deps.updateRightProcess(lang);
     setView(ViewMode.Article);
   }
 }

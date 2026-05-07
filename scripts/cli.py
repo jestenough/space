@@ -13,10 +13,6 @@ from types import ModuleType
 
 logger = logging.getLogger(__name__)
 
-EXIT_SUCCESS = 0
-EXIT_ERROR = 1
-EXIT_INTERRUPTED = 130
-
 Handler = Callable[[argparse.Namespace], None]
 
 
@@ -42,13 +38,16 @@ class AutophanyCLI:
             parsed_args.handler(parsed_args)
         except KeyboardInterrupt:
             logger.warning("Interrupted.")
-            return EXIT_INTERRUPTED
-        except Exception:
-            logger.exception("Command failed.")
-            return EXIT_ERROR
+            return 130
+        except Exception as exc:
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.exception("Command failed.")
+            else:
+                logger.error("Command failed: %s", exc)
+            return 1
 
         logger.info("Done.")
-        return EXIT_SUCCESS
+        return 0
 
     def build_parser(self) -> argparse.ArgumentParser:
         parser = argparse.ArgumentParser(
@@ -86,10 +85,13 @@ class AutophanyCLI:
         for step in ("preflight", "html", "pdf"):
             logger.info("Running step: %s", step)
             self.load_module(step).run()
+        
         logger.info("Running step: typecheck")
         subprocess.run(["npm", "run", "typecheck"], check=True)
+        
         logger.info("Running step: frontend")
         subprocess.run(["npm", "run", "build"], check=True)
+
         for step in ("prerender", "seo", "verify"):
             logger.info("Running step: %s", step)
             self.load_module(step).run()
@@ -99,14 +101,12 @@ class AutophanyCLI:
         return importlib.import_module(cls.modules[name])
 
 
-def configure_logging(verbose: bool = False) -> None:
-    logging.basicConfig(level=logging.DEBUG if verbose else logging.INFO, format="%(levelname)s: %(message)s")
-
-
 def main(args: Sequence[str] | None = None) -> int:
     argv = list(args) if args is not None else sys.argv[1:]
+    
     verbose = "-v" in argv or "--verbose" in argv
-    configure_logging(verbose)
+    logging.basicConfig(level=logging.DEBUG if verbose else logging.INFO, format="%(levelname)s: %(message)s")
+
     return AutophanyCLI().run(argv)
 
 

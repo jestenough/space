@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 import re
@@ -10,7 +9,20 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
-from .config import ARTICLES_DIR, DIST_DIR, GENERATED_ARTICLES_DIR, GENERATED_DIR, GENERATED_META_DIR, SITE_URL
+from . import content, generated, routes
+from .config import (
+    ARTICLE_TYPE, 
+    ARTICLES_SECTION, 
+    DIST_DIR, 
+    GENERATED_DIR, 
+    GENERATED_FILE_META_DIR, 
+    GENERATED_FILES_DIR, 
+    GENERATED_SECTIONS_DIR, 
+    GENERATED_SECTIONS_INDEX_FILE, 
+    GENERATED_SITE_META_FILE, 
+    SITE_URL
+)
+from .jsonio import read_json
 
 
 logger = logging.getLogger(__name__)
@@ -18,23 +30,26 @@ logger = logging.getLogger(__name__)
 
 class Verify:
     strict_pdf = os.environ.get("STRICT_PDF") == "1"
-    required_dirs = (GENERATED_DIR, GENERATED_ARTICLES_DIR, GENERATED_META_DIR, DIST_DIR)
+    required_dirs = (GENERATED_DIR, GENERATED_FILES_DIR, GENERATED_FILE_META_DIR, GENERATED_SECTIONS_DIR, DIST_DIR)
     required_files = (
-        GENERATED_DIR / "site-meta.json",
+        GENERATED_DIR / GENERATED_SITE_META_FILE,
+        GENERATED_DIR / GENERATED_SECTIONS_INDEX_FILE,
         DIST_DIR / "sitemap.xml",
         DIST_DIR / "robots.txt",
         DIST_DIR / "_headers",
         DIST_DIR / "404.html",
-        DIST_DIR / "generated" / "site-meta.json",
-        DIST_DIR / "generated" / "articles-index.json",
+        DIST_DIR / GENERATED_DIR.name / GENERATED_SITE_META_FILE,
+        DIST_DIR / GENERATED_DIR.name / GENERATED_SECTIONS_INDEX_FILE,
     )
 
     def __init__(self) -> None:
         self.warnings: list[str] = []
 
     def run(self) -> None:
-        index = self.read_articles_index()
+        index = self.read_articles()
         self.check_generated_structure()
+        self.check_no_generated_artifacts()
+        self.check_generated_items()
         self.check_content_index(index)
         self.check_articles(index)
         self.check_seo(index)
@@ -42,31 +57,91 @@ class Verify:
             logger.warning(warning)
         logger.info("Verified production build for %s article(s)%s.", len(index), f" with {len(self.warnings)} warning(s)" if self.warnings else "")
 
-    def read_articles_index(self) -> list[dict[str, Any]]:
-        path = GENERATED_DIR / "articles-index.json"
-        if not path.is_file():
-            raise RuntimeError(f"Missing generated articles index: {path}")
-        data = json.loads(path.read_text(encoding="utf-8"))
-        if not isinstance(data, list):
-            raise RuntimeError(f"Generated articles index must be a list: {path}")
-        return data
+    def read_articles(self) -> list[dict[str, Any]]:
+        return generated.articles()
 
     def check_generated_structure(self) -> None:
         missing = [path for path in (*self.required_dirs, *self.required_files) if not path.exists()]
         if missing:
             raise RuntimeError("Missing generated paths: " + ", ".join(map(str, missing)))
 
+    def check_no_generated_artifacts(self) -> None:
+        forbidden = [
+            GENERATED_DIR / f"{ARTICLES_SECTION}-index.json",
+            GENERATED_DIR / ARTICLES_SECTION,
+            GENERATED_DIR / f"{ARTICLES_SECTION}-meta",
+        ]
+        stale = [path for path in forbidden if path.exists()]
+        stale.extend(path for path in GENERATED_DIR.glob("*-index.json") if path.name != GENERATED_SECTIONS_INDEX_FILE)
+        stale.extend(GENERATED_DIR.rglob("*.br"))
+        if stale:
+            raise RuntimeError("Forbidden generated artifacts: " + ", ".join(str(path) for path in sorted(set(stale))))
+
+    def check_generated_items(self) -> None:
+        for item in generated.items():
+            section = self.required_string(item, "section")
+            slug = self.required_string(item, "slug")
+            languages = self.get_languages(item, f"{section}/{slug}")
+            for lang in languages:
+                html_path = GENERATED_FILES_DIR / section / f"{slug}.{lang}.html"
+                meta_path = GENERATED_FILE_META_DIR / section / f"{slug}.{lang}.json"
+                self.read_text(html_path, f"Missing generated item HTML: {html_path}")
+                self.check_item_meta(meta_path, item, lang)
+            self.check_download_paths(item)
+
+    def check_item_meta(self, path: Path, item: dict[str, Any], lang: str) -> None:
+        meta = read_json(path)
+        for field in ("section", "slug", "lang", "canonicalPath"):
+            if not isinstance(meta.get(field), str) or not meta[field]:
+                raise RuntimeError(f"Invalid `{field}` in {path}")
+        if meta["section"] != item.get("section") or meta["slug"] != item.get("slug") or meta["lang"] != lang:
+            raise RuntimeError(f"Generated metadata mismatch: {path}")
+        if meta["canonicalPath"] != routes.generated_item_route(item, lang):
+            raise RuntimeError(f"Invalid canonicalPath in {path}")
+        for field in ("label", "title", "description"):
+            value = meta.get(field)
+            if not isinstance(value, dict) or lang not in value:
+                raise RuntimeError(f"Invalid `{field}.{lang}` in {path}")
+
+    def check_download_paths(self, item: dict[str, Any]) -> None:
+        languages = self.get_languages(item, str(item.get("slug") or "item"))
+        source_item = self.content_item(str(item.get("section") or ""), str(item.get("slug") or ""))
+        downloadable = source_item is not None and source_item.meta.get("download") is True
+        for lang in languages:
+            path = read_json(GENERATED_FILE_META_DIR / str(item["section"]) / f"{item['slug']}.{lang}.json").get("downloadPath")
+            if path is None:
+                continue
+            if not downloadable:
+                raise RuntimeError(f"Unexpected downloadPath for {item.get('section')}/{item.get('slug')}.{lang}: add `\"download\": true` to item meta or regenerate output.")
+            if not isinstance(path, str) or not path.startswith(f"/{lang}/"):
+                raise RuntimeError(f"Invalid downloadPath for {item.get('section')}/{item.get('slug')}.{lang}: {path!r}")
+
+    @staticmethod
+    def content_item(section_slug: str, item_slug: str) -> content.Item | None:
+        for section in content.sections():
+            if section.slug != section_slug:
+                continue
+            return next((item for item in section.items if item.slug == item_slug), None)
+        return None
+
+    @staticmethod
+    def required_string(item: dict[str, Any], field: str) -> str:
+        value = item.get(field)
+        if not isinstance(value, str) or not value.strip():
+            raise RuntimeError(f"Generated item is missing `{field}`: {item}")
+        return value.strip()
+
     def check_content_index(self, index: list[dict[str, Any]]) -> None:
-        source_slugs = {path.name for path in ARTICLES_DIR.iterdir() if path.is_dir()}
+        source_slugs = {item.slug for section in content.sections() for item in section.items if content.item_type(section, item) == ARTICLE_TYPE}
         indexed_slugs = {article.get("slug") for article in index if isinstance(article.get("slug"), str)}
 
         missing = sorted(source_slugs - indexed_slugs)
         stale = sorted(indexed_slugs - source_slugs)
 
         if missing:
-            raise RuntimeError("Articles missing from generated/articles-index.json: " + ", ".join(missing))
+            raise RuntimeError("Articles missing from generated sections: " + ", ".join(missing))
         if stale:
-            raise RuntimeError("Stale articles left in generated/articles-index.json: " + ", ".join(stale))
+            raise RuntimeError("Stale articles left in generated sections: " + ", ".join(stale))
 
     def check_articles(self, index: list[dict[str, Any]]) -> None:
         slugs: set[str] = set()
@@ -88,9 +163,10 @@ class Verify:
         description = self.get_localized_value(article, "description", lang)
         self.push_unique(titles, title, f"{slug}.{lang}", "Duplicate title")
         self.push_unique(descriptions, description, f"{slug}.{lang}", "Duplicate description")
-        self.check_html(GENERATED_ARTICLES_DIR / f"{slug}.{lang}.html", slug, lang)
-        self.check_meta(GENERATED_META_DIR / f"{slug}.{lang}.json", slug, lang)
-        self.check_pdf(self.dist_pdf_path(slug, lang))
+        section = str(article.get("section") or ARTICLES_SECTION)
+        self.check_html(GENERATED_FILES_DIR / section / f"{slug}.{lang}.html", slug, lang)
+        self.check_meta(GENERATED_FILE_META_DIR / section / f"{slug}.{lang}.json", slug, lang)
+        self.check_pdf(self.dist_pdf_path(article, lang))
 
     @staticmethod
     def get_languages(article: dict[str, Any], slug: str) -> tuple[str, ...]:
@@ -158,7 +234,7 @@ class Verify:
 
     @staticmethod
     def check_article_media_links(html: str, slug: str, lang: str) -> None:
-        paths = re.findall(r"(?:src|href)=[\"'](/media/articles/[^\"']+)", html)
+        paths = re.findall(r"(?:src|href)=[\"'](/media/[^\"']+)", html)
 
         for public_path in paths:
             dist_path = DIST_DIR / public_path.lstrip("/")
@@ -167,18 +243,15 @@ class Verify:
 
     def check_meta(self, path: Path, slug: str, lang: str) -> None:
         meta_text = self.read_text(path, f"Missing generated article metadata: {path}")
-        meta = json.loads(meta_text)
+        meta = read_json(path)
         if meta.get("slug") != slug:
             raise RuntimeError(f"Metadata slug mismatch: {path}")
         if meta.get("lang") and meta.get("lang") != lang:
             raise RuntimeError(f"Metadata lang mismatch: {path}")
-        if not isinstance(meta.get("canonicalPath"), str) or not meta["canonicalPath"].endswith(f"/articles/{slug}"):
+        if not isinstance(meta.get("canonicalPath"), str) or not meta["canonicalPath"].endswith(f"/{slug}"):
             raise RuntimeError(f"Invalid canonicalPath in {path}")
         if not isinstance(meta.get("pdfPath"), str) or not meta["pdfPath"].endswith(f"/{slug}.pdf"):
             raise RuntimeError(f"Invalid pdfPath in {path}")
-        for field in ("title", "description"):
-            if not isinstance(meta.get(field), dict) or lang not in meta[field]:
-                raise RuntimeError(f"Invalid `{field}` object in {path}")
         for field in ("title", "description"):
             if not isinstance(meta.get(field), dict) or lang not in meta[field]:
                 raise RuntimeError(f"Invalid `{field}` object in {path}")
@@ -186,8 +259,8 @@ class Verify:
             raise RuntimeError(f"Article metadata must not contain HTML content: {path}")
 
     @staticmethod
-    def dist_pdf_path(slug: str, lang: str) -> Path:
-        return DIST_DIR / lang / "articles" / f"{slug}.pdf"
+    def dist_pdf_path(article: dict[str, Any], lang: str) -> Path:
+        return DIST_DIR / routes.generated_pdf_route(article, lang).lstrip("/")
 
     def check_seo(self, index: list[dict[str, Any]]) -> None:
         sitemap = self.read_text(DIST_DIR / "sitemap.xml", "Missing dist/sitemap.xml")
@@ -208,11 +281,12 @@ class Verify:
             raise RuntimeError("404.html must include noindex")
         sitemap_paths = self.extract_sitemap_paths(sitemap)
         headers_paths = self.extract_headers_paths(headers)
+        self.check_section_routes(sitemap_paths)
         for article in index:
             slug = article["slug"]
             for lang in self.get_languages(article, slug):
-                canonical = f"/{lang}/articles/{slug}"
-                pdf_route = f"/{lang}/articles/{slug}.pdf"
+                canonical = routes.generated_item_route(article, lang)
+                pdf_route = routes.generated_pdf_route(article, lang)
                 if canonical not in sitemap_paths:
                     raise RuntimeError(f"Sitemap is missing canonical route: {canonical}")
                 if pdf_route in sitemap_paths:
@@ -220,9 +294,22 @@ class Verify:
                 if pdf_route not in headers_paths:
                     raise RuntimeError(f"PDF canonical headers missing for {pdf_route}")
 
+    def check_section_routes(self, sitemap_paths: set[str]) -> None:
+        for section in generated.sections():
+            slug = section.get("slug")
+            if not isinstance(slug, str):
+                raise RuntimeError("Section entry is missing slug")
+            section_index_path = GENERATED_SECTIONS_DIR / f"{slug}.json"
+            if not section_index_path.is_file():
+                raise RuntimeError(f"Missing section index: {section_index_path}")
+            for lang in generated.section_languages(section):
+                route = routes.generated_section_route(section, lang)
+                if route.rstrip("/") not in sitemap_paths:
+                    raise RuntimeError(f"Sitemap is missing section route: {route}")
+
     @staticmethod
     def check_cache_headers(headers: str) -> None:
-        media_block = re.search(r"^/media(?:/articles)?/\*\n(?P<body>(?:  .+\n)+)", headers, re.M)
+        media_block = re.search(r"^/media/\*\n(?P<body>(?:  .+\n)+)", headers, re.M)
         if media_block and "immutable" in media_block.group("body").lower():
             raise RuntimeError("Article media must not be cached with immutable headers")
 

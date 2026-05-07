@@ -49,9 +49,8 @@ jobs:
         uses: actions/cache@v5
         with:
           path: |
-            public/*/articles/*.pdf
-            .cache/pdf-manifest.json
-          key: autophany-pdf-cache-${{ runner.os }}-${{ hashFiles('content/articles/**/*.tex', 'content/articles/**/*.meta.json') }}
+            public/**/*.pdf
+          key: autophany-pdf-cache-${{ runner.os }}-${{ hashFiles('content/**/*.tex', 'content/**/*.meta', 'content/**/assets/**') }}
           restore-keys: |
             autophany-pdf-cache-${{ runner.os }}-
 
@@ -70,11 +69,15 @@ jobs:
             -v "$PWD/generated:/app/generated" \
             -v "$PWD/.cache:/app/.cache" \
             autophany-toolchain \
-            make build
+            sh -lc 'make preflight html pdf typecheck frontend prerender seo verify'
 
       - name: Show production artifact summary
         run: |
-          find dist -maxdepth 4 -type f | head -80
+          python3 - <<'PY'
+          from pathlib import Path
+          for path in sorted(item for item in Path("dist").rglob("*") if item.is_file())[:80]:
+              print(path)
+          PY
 
       - name: Upload production artifact
         uses: actions/upload-artifact@v7

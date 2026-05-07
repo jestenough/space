@@ -1,0 +1,15 @@
+{
+  "slug": "readme",
+  "label": {
+    "en": "ABOUT.md"
+  },
+  "type": "text",
+  "format": "markdown",
+  "date": "2026-05-02",
+  "title": {
+    "en": "ABOUT.md"
+  },
+  "description": {
+    "en": "A description of autophany.space, its tone, and its internal logic."
+  }
+}

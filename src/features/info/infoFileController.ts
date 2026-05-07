@@ -1,4 +1,4 @@
-import { infoFileOpenCommand } from "@/components/shell";
+import { infoFileOpenCommand, shellCommandMarkup } from "@/components/shell";
 import { dom } from "@/ui/dom";
 import { label, text } from "@/ui/i18n";
 import { findInfoFile, renderInfoFileHtml } from "@/features/info/infoFiles";
@@ -12,11 +12,11 @@ type InfoFileRenderContext = { infoFile?: InfoFileMeta };
 export type InfoFileControllerDeps = {
   currentRenderId: () => number;
   renderNotFound: (lang: Lang, slug?: string) => void;
-  setRootContext: () => void;
+  setSectionContext: (section: string) => void;
   setActiveInfoFile: (file: InfoFileMeta | null) => void;
   applyPanelState: (lang: Lang) => void;
   renderArticleToc: () => void;
-  setArticleActionsVisible: (isVisible: boolean) => void;
+  setFileDownloadVisible: (file: InfoFileMeta | null) => void;
   applyWelcomeText: (title: string, lead: string, body?: string) => void;
   updateSeo: (lang: Lang, title: string, description: string, indexable?: boolean) => void;
   updateRightProcess: (lang: Lang, context?: InfoFileRenderContext) => void;
@@ -25,8 +25,8 @@ export type InfoFileControllerDeps = {
 export class InfoFileController {
   constructor(private readonly deps: InfoFileControllerDeps) {}
 
-  async render(lang: Lang, slug: string, renderId: number): Promise<void> {
-    const file = findInfoFile(slug);
+  async render(lang: Lang, section: string, slug: string, renderId: number): Promise<void> {
+    const file = await findInfoFile(section, slug);
     if (!file) {
       this.deps.renderNotFound(lang, slug);
       return;
@@ -35,16 +35,19 @@ export class InfoFileController {
     const html = await renderInfoFileHtml(file, lang);
     if (renderId !== this.deps.currentRenderId()) return;
 
-    this.deps.setRootContext();
+    this.deps.setSectionContext(file.section);
     this.deps.setActiveInfoFile(file);
     this.deps.applyPanelState(lang);
     infoFileView.renderHtml(html);
     this.deps.renderArticleToc();
-    this.deps.setArticleActionsVisible(false);
-    this.deps.applyWelcomeText(label(file.title, lang), label(file.description, lang));
-    dom.renderIndicator.textContent = infoFileOpenCommand(file.slug);
-    document.title = label(file.title, lang) + " :: " + text(lang).brand;
-    this.deps.updateSeo(lang, label(file.title, lang), label(file.description, lang));
+    const translated = file.languages.includes(lang);
+    this.deps.setFileDownloadVisible(translated && file.downloadPath ? file : null);
+    const title = translated ? label(file.title, lang) : (lang === "ru" ? "Пока не написано" : "Not written yet");
+    const description = translated ? label(file.description, lang) : (lang === "ru" ? "Этой версии пока нет, но она обязательно будет." : "This version does not exist yet, but it will be written.");
+    this.deps.applyWelcomeText(title, description);
+    dom.renderIndicator.innerHTML = shellCommandMarkup(infoFileOpenCommand(file.section, file.slug));
+    document.title = title + " :: " + text(lang).brand;
+    this.deps.updateSeo(lang, title, description, translated);
     this.deps.updateRightProcess(lang, { infoFile: file });
     setView(ViewMode.Article);
   }

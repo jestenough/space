@@ -1,10 +1,12 @@
 import { ALL_TAGS, DEFAULT_PAGE_SIZE } from "@/core/config";
-import type { ArticleMeta, InfoFileMeta, Lang, SortBy, TagInfo, TagSortBy } from "@/core/types";
+import type { ArticleMeta, InfoFileMeta, Lang, SectionMeta, SortBy, TagInfo, TagSortBy } from "@/core/types";
 
 export class AppState {
   articles: ArticleMeta[] = [];
   articlesLoaded = false;
-  activePanel: "home" | "articles" | "tags" = "home";
+  sections: SectionMeta[] = [];
+  sectionFiles = new Map<string, InfoFileMeta[]>();
+  activePanel = "site";
   activeTag = ALL_TAGS;
   tagDetail: string | null = null;
   activeArticle: ArticleMeta | null = null;

@@ -1,0 +1,15 @@
+{
+  "slug": "articles",
+  "label": {
+    "en": "articles/",
+    "ru": "articles/"
+  },
+  "title": {
+    "en": "Articles",
+    "ru": "Статьи"
+  },
+  "description": {
+    "en": "All articles on autophany.space.",
+    "ru": "Все статьи autophany.space."
+  }
+}

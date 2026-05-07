@@ -28,7 +28,7 @@ export const createInfoFileList = (lang: string, files: readonly InfoFileMeta[])
 const createInfoFileRow = (lang: string, file: InfoFileMeta): HTMLLIElement => {
   const item = make("li", "info-file-row");
   const link = make("a", "info-file-link");
-  link.href = infoFilePath(lang, file.routeSlug);
+  link.href = infoFilePath(lang, file.section, file.slug, file.section === "site");
   link.dataset.infoFileSlug = file.slug;
   link.dataset.internal = "true";
   link.setAttribute("aria-label", `${file.slug}: ${pickLangText(file.description, lang)}`);
@@ -36,12 +36,12 @@ const createInfoFileRow = (lang: string, file: InfoFileMeta): HTMLLIElement => {
   link.append(
     make("span", "info-file-perms", formatFileListMeta(file)),
     document.createTextNode("  "),
-    make("span", "info-file-name", file.slug)
+    make("span", "info-file-name", pickLangText(file.label, lang) || file.slug)
   );
   item.append(link);
   return item;
 };
 
 const formatFileListMeta = (file: InfoFileMeta): string => {
-  return `${file.permissions}  ${file.owner.padEnd(4, " ")}  ${file.modified}`;
+  return `-rw-rw-r--  root  ${file.date || "----------"}`;
 };

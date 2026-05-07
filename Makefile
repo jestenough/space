@@ -13,7 +13,7 @@ help:
 	@echo "  make preview           preview production build"
 	@echo "  make typecheck         run TypeScript checks"
 	@echo "  make preflight         validate source content and required tools"
-	@echo "  make html              generate HTML fragments and article metadata"
+	@echo "  make html              generate content HTML fragments and metadata"
 	@echo "  make pdf               generate PDF files"
 	@echo "  make frontend          build Vite frontend"
 	@echo "  make prerender         prerender static HTML routes"

@@ -15,7 +15,7 @@
         document.documentElement.dataset.themeChoice = choice;
       })();
     </script>
-    <title>autophany.space — LaTeX articles and notes</title>
+    <title>autophany.space</title>
     <meta name="description" content="autophany.space: terminal-style LaTeX articles, notes, tags, metadata, and printable PDF versions." />
     <meta name="robots" content="index,follow" />
     <meta property="og:title" content="autophany.space" />
@@ -62,18 +62,18 @@
 
     <main class="control-room">
       <section class="left-stack" aria-live="polite">
-        <p id="pwd-line" class="prompt-line">ls -d */</p>
+        <p id="pwd-line" class="prompt-line"><span class="stat-command"><span class="shell-prompt">guest@cray-1:~$</span><span class="shell-gap"> </span><span class="shell-cmd">ls -d */</span></span></p>
 
         <nav class="quick-nav">
-          <a id="tree-home" class="quick-link is-active" href="/">root/</a>
+          <a id="tree-home" class="quick-link is-active" href="/">site/</a>
           <a id="tree-articles" class="quick-link" href="/en/articles">articles/</a>
           <a id="tree-tags" class="quick-link" href="/en/tags">tags/</a>
         </nav>
 
         <section id="welcome-panel" class="welcome-screen" aria-label="Welcome message">
-          <p id="welcome-command" class="prompt-line welcome-command">$ cat ./root.meta</p>
-          <h1 id="welcome-title" class="welcome-title">root</h1>
-          <p id="welcome-lead">Root directory of the space.</p>
+          <p id="welcome-command" class="prompt-line welcome-command"><span class="stat-command"><span class="shell-prompt">guest@cray-1:~$</span><span class="shell-gap"> </span><span class="shell-cmd">sed -n '1,2p' ~/.meta</span></span></p>
+          <h1 id="welcome-title" class="welcome-title">site</h1>
+          <p id="welcome-lead">System section of the space.</p>
           <p id="welcome-body">Service files of the space live here.</p>
         </section>
 
@@ -84,7 +84,7 @@
       </section>
 
       <section class="center-stream">
-        <p id="render-indicator" class="render-indicator">&gt; ls -p | grep -v /</p>
+        <p id="render-indicator" class="render-indicator"><span class="stat-command"><span class="shell-prompt">guest@cray-1:~$</span><span class="shell-gap"> </span><span class="shell-cmd">ls -p | grep -v /</span></span></p>
 
         <section id="article-list-view" class="list-stage" aria-live="polite">
           <section id="home-files-panel" class="panel info-panel" aria-label="Home files panel"></section>
@@ -172,7 +172,7 @@
 
         <section id="error-view" class="article-stage hidden" aria-live="assertive">
           <h2 id="error-title">Could not load article</h2>
-          <p id="error-text">Check that the file exists and slug is present in generated/articles-index.json.</p>
+          <p id="error-text">Check that the file exists in generated/sections.</p>
         </section>
       </section>
 

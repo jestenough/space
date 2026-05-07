@@ -8,22 +8,26 @@ while preserving Vite-generated JS and CSS assets in the document head.
 from __future__ import annotations
 
 import html
-import json
 import logging
 import re
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote
 
+from . import generated, routes
 from .config import (
+    ARTICLE_TYPE,
+    ARTICLES_SECTION,
     DEFAULT_LANG,
     DIST_DIR,
-    GENERATED_ARTICLES_DIR,
-    GENERATED_DIR,
-    SITE_META_PATH,
+    GENERATED_FILES_DIR,
+    GENERATED_SITE_META_PATH,
+    HOME_PAGE,
     SITE_URL,
-    SUPPORTED_LANGS,
+    TAG_PAGE,
+    TAGS_SECTION,
 )
+from .jsonio import read_json
+from .localization import strict_text
 
 
 logger = logging.getLogger(__name__)
@@ -45,24 +49,71 @@ class Prerender:
 
     def run(self) -> None:
         base_html = self.read_text(DIST_DIR / "index.html")
-        site_meta = self.read_json(SITE_META_PATH)
-        articles = self.read_articles_index()
+        site_meta = read_json(GENERATED_SITE_META_PATH)
+        sections = generated.sections()
+        files = generated.items(sections)
+        articles = [item for item in files if item.get("type") == ARTICLE_TYPE]
+        languages = generated.item_languages(files)
         tags_by_lang = self.collect_tags_by_lang(articles)
 
-        self.render_root(base_html, site_meta)
-        self.render_language_pages(base_html, site_meta)
-        self.render_article_index_pages(base_html, site_meta)
-        self.render_tag_index_pages(base_html, site_meta)
+        self.render_root(base_html, site_meta, languages)
+        self.render_language_pages(base_html, site_meta, languages)
+        self.render_section_pages(base_html, sections)
+        self.render_file_pages(base_html, sections)
+        self.render_article_index_pages(base_html, site_meta, languages)
+        self.render_tag_index_pages(base_html, site_meta, languages)
         self.render_article_pages(base_html, articles)
         self.render_tag_pages(base_html, site_meta, tags_by_lang)
 
         total_tags = sum(len(tags) for tags in tags_by_lang.values())
 
-        logger.info("Prerendered %s article(s) and %s localized tag page(s).", len(articles), total_tags)
+        logger.info("Prerendered %s section(s), %s article(s) and %s localized tag page(s).", len(sections), len(articles), total_tags)
 
-    def render_root(self, base_html: str, site_meta: dict[str, Any]) -> None:
+    def render_section_pages(self, base_html: str, sections: list[dict[str, Any]]) -> None:
+        for section in sections:
+            if section.get("system"):
+                continue
+            for lang in generated.section_languages(section):
+                route = routes.generated_section_route(section, lang)
+                self.write_route(
+                    route,
+                    self.render_page(
+                        base_html=base_html,
+                        lang=lang,
+                        title=self.localized(section.get("title"), lang, f"sections.{section.get('slug')}.title"),
+                        description=self.localized(section.get("description"), lang, f"sections.{section.get('slug')}.description"),
+                        canonical_path=route,
+                        alternates=self.section_alternates(section),
+                        og_type="website",
+                    ),
+                )
+
+    def render_file_pages(self, base_html: str, sections: list[dict[str, Any]]) -> None:
+        for section in sections:
+            section_slug = str(section["slug"])
+            for item in generated.section_items(section_slug):
+                if item.get("type") == ARTICLE_TYPE:
+                    continue
+                for lang in item.get("languages", []):
+                    route = routes.generated_item_route(item, lang)
+                    content = self.read_text(GENERATED_FILES_DIR / section_slug / f"{item['slug']}.{lang}.html")
+                    self.write_route(
+                        route,
+                        self.render_page(
+                            base_html=base_html,
+                            lang=lang,
+                            title=self.localized(item.get("title"), lang, f"{section_slug}.{item.get('slug')}.title"),
+                            description=self.localized(item.get("description"), lang, f"{section_slug}.{item.get('slug')}.description"),
+                            canonical_path=route,
+                            alternates=self.item_alternates(item),
+                            article_html=content,
+                            og_type="website",
+                        ),
+                    )
+
+    def render_root(self, base_html: str, site_meta: dict[str, Any], languages: list[str]) -> None:
         lang = DEFAULT_LANG
-        page_meta = self.page_meta(site_meta, "home", lang)
+        page_meta = self.page_meta(site_meta, HOME_PAGE, lang)
 
         self.write_route(
             "/",
@@ -72,14 +123,14 @@ class Prerender:
                 title=page_meta["title"],
                 description=page_meta["description"],
                 canonical_path="/",
-                alternates=self.localized_alternates(lambda item_lang: f"/{item_lang}"),
+                alternates=self.localized_alternates(languages, lambda item_lang: f"/{item_lang}"),
                 og_type="website",
             ),
         )
 
-    def render_language_pages(self, base_html: str, site_meta: dict[str, Any]) -> None:
-        for lang in SUPPORTED_LANGS:
-            page_meta = self.page_meta(site_meta, "home", lang)
+    def render_language_pages(self, base_html: str, site_meta: dict[str, Any], languages: list[str]) -> None:
+        for lang in languages:
+            page_meta = self.page_meta(site_meta, HOME_PAGE, lang)
 
             self.write_route(
                 f"/{lang}",
@@ -89,7 +140,7 @@ class Prerender:
                     title=page_meta["title"],
                     description=page_meta["description"],
                     canonical_path=f"/{lang}",
-                    alternates=self.localized_alternates(lambda item_lang: f"/{item_lang}"),
+                    alternates=self.localized_alternates(languages, lambda item_lang: f"/{item_lang}"),
                     og_type="website",
                 ),
             )
@@ -98,39 +149,42 @@ class Prerender:
         self,
         base_html: str,
         site_meta: dict[str, Any],
+        languages: list[str],
     ) -> None:
-        for lang in SUPPORTED_LANGS:
-            page_meta = self.page_meta(site_meta, "articles", lang)
+        for lang in languages:
+            page_meta = self.page_meta(site_meta, ARTICLES_SECTION, lang)
 
             self.write_route(
-                f"/{lang}/articles",
+                routes.section_route(ARTICLES_SECTION, lang),
                 self.render_page(
                     base_html=base_html,
                     lang=lang,
                     title=page_meta["title"],
                     description=page_meta["description"],
-                    canonical_path=f"/{lang}/articles",
+                    canonical_path=routes.section_route(ARTICLES_SECTION, lang),
                     alternates=self.localized_alternates(
-                        lambda item_lang: f"/{item_lang}/articles"
+                        languages,
+                        lambda item_lang: routes.section_route(ARTICLES_SECTION, item_lang)
                     ),
                     og_type="website",
                 ),
             )
 
-    def render_tag_index_pages(self, base_html: str, site_meta: dict[str, Any]) -> None:
-        for lang in SUPPORTED_LANGS:
-            page_meta = self.page_meta(site_meta, "tags", lang)
+    def render_tag_index_pages(self, base_html: str, site_meta: dict[str, Any], languages: list[str]) -> None:
+        for lang in languages:
+            page_meta = self.page_meta(site_meta, TAGS_SECTION, lang)
 
             self.write_route(
-                f"/{lang}/tags",
+                routes.section_route(TAGS_SECTION, lang),
                 self.render_page(
                     base_html=base_html,
                     lang=lang,
                     title=page_meta["title"],
                     description=page_meta["description"],
-                    canonical_path=f"/{lang}/tags",
+                    canonical_path=routes.section_route(TAGS_SECTION, lang),
                     alternates=self.localized_alternates(
-                        lambda item_lang: f"/{item_lang}/tags"
+                        languages,
+                        lambda item_lang: routes.section_route(TAGS_SECTION, item_lang)
                     ),
                     og_type="website",
                 ),
@@ -145,16 +199,16 @@ class Prerender:
             slug = article["slug"]
 
             for lang in article["languages"]:
-                article_html = self.read_text(GENERATED_ARTICLES_DIR / f"{slug}.{lang}.html")
+                article_html = self.read_text(GENERATED_FILES_DIR / str(article["section"]) / f"{slug}.{lang}.html")
 
                 self.write_route(
-                    self.article_route(lang, slug),
+                    routes.generated_item_route(article, lang),
                     self.render_page(
                         base_html=base_html,
                         lang=lang,
                         title=article["title"][lang],
                         description=article["description"][lang],
-                        canonical_path=self.article_route(lang, slug),
+                        canonical_path=routes.generated_item_route(article, lang),
                         alternates=self.article_alternates(article),
                         article_html=article_html,
                         og_type="article",
@@ -172,13 +226,13 @@ class Prerender:
                 page_meta = self.tag_page_meta(site_meta, lang, tag)
 
                 self.write_route(
-                    self.tag_route(lang, tag),
+                    routes.tag_route(lang, tag),
                     self.render_page(
                         base_html=base_html,
                         lang=lang,
                         title=page_meta["title"],
                         description=page_meta["description"],
-                        canonical_path=self.tag_route(lang, tag),
+                        canonical_path=routes.tag_route(lang, tag),
                         alternates=self.tag_alternates(tag, tags_by_lang),
                         og_type="website",
                     ),
@@ -301,56 +355,36 @@ class Prerender:
         lang: str,
         tag: str,
     ) -> dict[str, str]:
-        data = site_meta.get("pages", {}).get("tag")
+        data = site_meta.get("pages", {}).get(TAG_PAGE)
 
         if not isinstance(data, dict):
-            raise RuntimeError("Missing site metadata page: tag")
+            raise RuntimeError(f"Missing site metadata page: {TAG_PAGE}")
 
         return {
-            "title": self.localized(data.get("title"), lang, "pages.tag.title").format(tag=tag),
+            "title": self.localized(data.get("title"), lang, f"pages.{TAG_PAGE}.title").format(tag=tag),
             "description": self.localized(
                 data.get("description"),
                 lang,
-                "pages.tag.description",
+                f"pages.{TAG_PAGE}.description",
             ).format(tag=tag),
         }
 
     @staticmethod
     def localized(value: Any, lang: str, path: str) -> str:
-        if not isinstance(value, dict):
-            raise RuntimeError(f"Missing localized object: {path}")
-
-        text = value.get(lang) or value.get(DEFAULT_LANG)
-
-        if not isinstance(text, str) or not text.strip():
-            raise RuntimeError(f"Missing localized value: {path}.{lang}")
-
-        return text.strip()
+        return strict_text(value, lang, path)
 
     @staticmethod
-    def localized_alternates(route_factory) -> dict[str, str]:
-        alternates = {
-            lang: route_factory(lang)
-            for lang in SUPPORTED_LANGS
-        }
-
-        alternates["x-default"] = alternates[DEFAULT_LANG]
-        return alternates
+    def localized_alternates(languages: list[str], route_factory) -> dict[str, str]:
+        return routes.alternates(languages, route_factory)
 
     @staticmethod
     def article_alternates(article: dict[str, Any]) -> dict[str, str]:
-        alternates = {
-            lang: Prerender.article_route(lang, article["slug"])
-            for lang in article["languages"]
-        }
-
-        alternates["x-default"] = alternates.get(DEFAULT_LANG) or next(iter(alternates.values()))
-        return alternates
+        return routes.alternates(article["languages"], lambda lang: routes.generated_item_route(article, lang))
 
     @staticmethod
     def tag_alternates(tag: str, tags_by_lang: dict[str, set[str]]) -> dict[str, str]:
         alternates = {
-            lang: Prerender.tag_route(lang, tag)
+            lang: routes.tag_route(lang, tag)
             for lang, tags in tags_by_lang.items()
             if tag in tags
         }
@@ -358,18 +392,9 @@ class Prerender:
         alternates["x-default"] = alternates.get(DEFAULT_LANG) or next(iter(alternates.values()))
         return alternates
 
-    def read_articles_index(self) -> list[dict[str, Any]]:
-        path = GENERATED_DIR / "articles-index.json"
-        data = self.read_json(path)
-
-        if not isinstance(data, list):
-            raise RuntimeError(f"Articles index must be a list: {path}")
-
-        return data
-
     @staticmethod
     def collect_tags_by_lang(articles: list[dict[str, Any]]) -> dict[str, set[str]]:
-        tags_by_lang = {lang: set() for lang in SUPPORTED_LANGS}
+        tags_by_lang = {lang: set() for lang in generated.item_languages(articles)}
 
         for article in articles:
             for lang in article["languages"]:
@@ -379,12 +404,12 @@ class Prerender:
         return tags_by_lang
 
     @staticmethod
-    def article_route(lang: str, slug: str) -> str:
-        return f"/{lang}/articles/{quote(slug, safe='')}"
+    def item_alternates(item: dict[str, Any]) -> dict[str, str]:
+        return routes.alternates(item.get("languages", []), lambda lang: routes.generated_item_route(item, lang))
 
     @staticmethod
-    def tag_route(lang: str, tag: str) -> str:
-        return f"/{lang}/tags/{quote(tag, safe='')}"
+    def section_alternates(section: dict[str, Any]) -> dict[str, str]:
+        return routes.alternates(generated.section_languages(section), lambda lang: routes.generated_section_route(section, lang))
 
     @staticmethod
     def absolute_url(path: str) -> str:
@@ -396,15 +421,6 @@ class Prerender:
             raise RuntimeError(f"Missing file: {path}")
 
         return path.read_text(encoding="utf-8")
-
-    @staticmethod
-    def read_json(path: Path) -> Any:
-        try:
-            return json.loads(path.read_text(encoding="utf-8"))
-        except FileNotFoundError as exc:
-            raise RuntimeError(f"Missing JSON file: {path}") from exc
-        except json.JSONDecodeError as exc:
-            raise RuntimeError(f"Invalid JSON file: {path}") from exc
 
     @staticmethod
     def write_route(route: str, content: str) -> None:

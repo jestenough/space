@@ -1,0 +1,16 @@
+{
+  "slug": "site",
+  "system": true,
+  "label": {
+    "en": "site/",
+    "ru": "site/"
+  },
+  "title": {
+    "en": "Test Site name",
+    "ru": "autophany.space"
+  },
+  "description": {
+    "en": "Personal space of autophany with service files, articles, notes, and tags.",
+    "ru": "Персональное пространство autophany со служебными файлами, статьями, заметками и тегами."
+  }
+}

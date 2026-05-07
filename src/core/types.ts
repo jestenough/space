@@ -1,14 +1,24 @@
 export type Lang = string;
 export type Theme = "reading" | "light" | "system" | "dark";
 
-export type Panel = "home" | "articles" | "tags";
+export type Panel = string;
+export type SectionRoute = { lang: Lang; page: "section"; section: string };
 export type HomeRoute = { lang: Lang; page: "home"; panel: Panel };
 export type ArticlesRoute = { lang: Lang; page: "articles" };
 export type TagsRoute = { lang: Lang; page: "tags"; tag?: string };
 export type ArticleRoute = { lang: Lang; page: "article"; slug: string };
-export type InfoFileRoute = { lang: Lang; page: "info-file"; slug: string };
+export type InfoFileRoute = { lang: Lang; page: "info-file"; section: string; slug: string };
 export type NotFoundRoute = { lang: Lang; page: "not-found"; slug?: string };
-export type Route = HomeRoute | ArticlesRoute | TagsRoute | ArticleRoute | InfoFileRoute | NotFoundRoute;
+export type Route = HomeRoute | SectionRoute | ArticlesRoute | TagsRoute | ArticleRoute | InfoFileRoute | NotFoundRoute;
+
+export type SectionMeta = {
+  slug: string;
+  label: Record<string, string>;
+  title: Record<string, string>;
+  description: Record<string, string>;
+  system: boolean;
+  count: number;
+};
 
 export type ArticleNeighbor = {
   title: string;
@@ -37,18 +47,18 @@ export type ArticlePayload = {
 };
 
 export type InfoFileMeta = {
+  section: string;
   slug: string;
-  sourcePath: string;
-  publicPath: string;
-  routeSlug: string;
-  kind: "markdown" | "text";
-  size: number;
-  modified: string;
-  permissions: string;
-  owner: string;
-  group: string;
+  label: Record<string, string>;
+  type: string;
+  format: "markdown" | "text" | "tex" | string;
+  date: string;
   title: Record<string, string>;
   description: Record<string, string>;
+  languages: Lang[];
+  translations?: Partial<Record<Lang, string>>;
+  canonicalPath?: string;
+  downloadPath?: string | null;
 };
 
 export type TagInfo = {

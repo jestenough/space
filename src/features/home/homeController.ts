@@ -1,7 +1,6 @@
-import { INFO_FILES } from "@/features/info/infoFiles";
 import { text } from "@/ui/i18n";
-import { siteMetaService } from "@/services/siteMetaService";
-import type { Lang } from "@/core/types";
+import { label } from "@/ui/i18n";
+import type { InfoFileMeta, Lang, SectionMeta } from "@/core/types";
 import { setView } from "@/ui/view";
 import { ViewMode } from "@/core/enums";
 import { listView } from "@/ui/views/listView";
@@ -15,13 +14,14 @@ export type HomeControllerDeps = {
 export class HomeController {
   constructor(private readonly deps: HomeControllerDeps) {}
 
-  render(lang: Lang): void {
+  render(lang: Lang, files: readonly InfoFileMeta[], section: SectionMeta): void {
     const ui = text(lang);
     this.deps.applyPanelState(lang);
-    listView.renderInfoFiles(lang, INFO_FILES);
-    const meta = siteMetaService.pageMeta("home", lang);
-    document.title = `${meta.title} :: ${ui.brand}`;
-    this.deps.updateSeo(lang, meta.title, meta.description);
+    listView.renderInfoFiles(lang, files);
+    const title = label(section.title, lang);
+    const description = label(section.description, lang);
+    document.title = `${title} :: ${ui.brand}`;
+    this.deps.updateSeo(lang, title, description);
     this.deps.updateRightProcess(lang);
     setView(ViewMode.List);
   }

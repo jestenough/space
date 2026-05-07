@@ -1,5 +1,7 @@
-import { DEFAULT_LANG, pickLangText } from "@/core/languages";
+import { pickLangText } from "@/core/languages";
 import type { Lang } from "@/core/types";
+import { fetchGeneratedJson } from "@/services/generatedAssets";
+import { generatedSiteMetaPath } from "@/services/generatedPaths";
 
 export type PageMetaKey = "home" | "articles" | "tags" | "tag" | "notFound";
 
@@ -17,43 +19,15 @@ type PageMeta = {
   description: string;
 };
 
-const SITE_META_PATH = "/generated/site-meta.json";
+const SITE_META_PATH = generatedSiteMetaPath();
 
 let siteMeta: SiteMeta | null = null;
 let siteMetaPromise: Promise<SiteMeta> | null = null;
 
-const FALLBACK: Record<PageMetaKey, PageMetaRecord> = {
-  home: {
-    title: { [DEFAULT_LANG]: "autophany.space" },
-    description: { [DEFAULT_LANG]: "Essays, notes and LaTeX articles." }
-  },
-  articles: {
-    title: { [DEFAULT_LANG]: "Articles" },
-    description: { [DEFAULT_LANG]: "All articles on autophany.space." }
-  },
-  tags: {
-    title: { [DEFAULT_LANG]: "Tags" },
-    description: { [DEFAULT_LANG]: "Article tags on autophany.space." }
-  },
-  tag: {
-    title: { [DEFAULT_LANG]: "#{tag}" },
-    description: { [DEFAULT_LANG]: "Articles tagged with {tag}." }
-  },
-  notFound: {
-    title: { [DEFAULT_LANG]: "404 — signal lost" },
-    description: { [DEFAULT_LANG]: "Page not found." }
-  }
-};
-
 const fetchSiteMeta = async (): Promise<SiteMeta> => {
-  try {
-    const response = await fetch(SITE_META_PATH, { cache: "no-cache" });
-    if (!response.ok) return {};
-    const value = await response.json();
-    return typeof value === "object" && value !== null && !Array.isArray(value) ? value as SiteMeta : {};
-  } catch {
-    return {};
-  }
+  const value = await fetchGeneratedJson(SITE_META_PATH);
+  if (typeof value !== "object" || value === null || Array.isArray(value)) throw new Error(`Invalid site meta: ${SITE_META_PATH}`);
+  return value as SiteMeta;
 };
 
 const load = async (): Promise<void> => {
@@ -62,22 +36,24 @@ const load = async (): Promise<void> => {
 };
 
 const getRecord = (key: PageMetaKey): PageMetaRecord => {
-  return siteMeta?.pages?.[key] ?? FALLBACK[key];
+  const record = siteMeta?.pages?.[key];
+  if (!record) throw new Error(`Missing site meta page: ${key}`);
+  return record;
 };
 
-const localized = (value: LocalizedText | undefined, lang: Lang, fallback: string): string => {
-  if (!value) return fallback;
+const localized = (value: LocalizedText | undefined, lang: Lang, path: string): string => {
+  if (!value) throw new Error(`Missing localized site meta: ${path}`);
   const text = pickLangText(value, lang);
-  return text.trim() || fallback;
+  if (!text.trim()) throw new Error(`Missing localized site meta: ${path}.${lang}`);
+  return text.trim();
 };
 
 const pageMeta = (key: PageMetaKey, lang: Lang): PageMeta => {
   const record = getRecord(key);
-  const fallback = FALLBACK[key];
 
   return {
-    title: localized(record.title, lang, localized(fallback.title, DEFAULT_LANG, key)),
-    description: localized(record.description, lang, localized(fallback.description, DEFAULT_LANG, ""))
+    title: localized(record.title, lang, `${key}.title`),
+    description: localized(record.description, lang, `${key}.description`)
   };
 };
 

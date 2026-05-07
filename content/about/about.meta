@@ -1,0 +1,15 @@
+{
+  "slug": "about",
+  "label": {
+    "en": "about/",
+    "ru": "about/"
+  },
+  "title": {
+    "en": "About",
+    "ru": "О проекте"
+  },
+  "description": {
+    "en": "About autophany.space and related project notes.",
+    "ru": "Описание autophany.space и связанных заметок проекта."
+  }
+}

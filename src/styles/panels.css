@@ -63,15 +63,29 @@
 
   #process-log .shell-cmd { color: var(--color-ok); }
 
+  .prompt-line .shell-prompt,
+  .render-indicator .shell-prompt {
+    color: var(--color-accent);
+    font-weight: 800;
+  }
+
+  .prompt-line .shell-cmd,
+  .render-indicator .shell-cmd {
+    color: var(--color-ok);
+  }
+
   #process-log .stat-row {
     display: grid;
-    grid-template-columns: 4.3rem 0.7rem minmax(0, 1fr);
-    column-gap: 0.22rem;
+    grid-template-columns: 5.8rem 0.45rem minmax(0, 1fr);
+    column-gap: 0.16rem;
     align-items: baseline;
   }
 
   #process-log .stat-key,
-  #process-log .meta-key { color: var(--color-muted); }
+  #process-log .meta-key {
+    color: var(--color-muted);
+    white-space: nowrap;
+  }
   #process-log .stat-sep { color: var(--color-muted); }
   #process-log .meta-rule {
     display: block;

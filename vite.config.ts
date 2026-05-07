@@ -5,15 +5,28 @@ import { fileURLToPath, URL } from "node:url";
 import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
 import { mkdir, readdir, rm, copyFile } from "node:fs/promises";
 
-type ArticleRecord = {
+type SectionRecord = {
   slug: string;
+  system?: boolean;
+};
+
+type FileRecord = {
+  slug: string;
+  type?: string;
   tags?: string[];
+  languages?: string[];
+  downloadPath?: string | null;
 };
 
 type RouteData = {
   articleSlugs: Set<string>;
+  articleLangs: Map<string, Set<string>>;
   tagNames: Set<string>;
-  infoFileSlugs: Set<string>;
+  sections: Set<string>;
+  systemSection: string;
+  filesBySection: Map<string, Set<string>>;
+  fileBySectionSlug: Map<string, FileRecord>;
+  downloads: Map<string, string>;
 };
 
 type ViteMiddlewareServer = {
@@ -33,15 +46,13 @@ type ViteMiddlewareServer = {
 
 const rootDir = fileURLToPath(new URL(".", import.meta.url));
 const generatedDir = resolve(rootDir, "generated");
-const infoDir = resolve(rootDir, "content", "info");
-const contentArticlesDir = resolve(rootDir, "content", "articles");
+const contentDir = resolve(rootDir, "content");
 
 const distGeneratedDir = resolve(rootDir, "dist", "generated");
-const distInfoDir = resolve(rootDir, "dist", "info");
-const distArticleMediaDir = resolve(rootDir, "dist", "media", "articles");
+const distMediaDir = resolve(rootDir, "dist", "media");
 
 const LANGUAGE_TAG_PATTERN = /^[a-z]{2,3}(?:-[A-Z]{2})?$/;
-const INFO_FILE_SLUGS = new Set(["readme", "about", "changelog", "manifest"]);
+const SYSTEM_SECTION = "site";
 
 const safeDecodeURIComponent = (value: string): string | null => {
   try {
@@ -61,115 +72,160 @@ const isValidLang = (value: string | undefined): boolean => {
 };
 
 const loadRouteData = (): RouteData => {
-  const metadataPath = [
-    resolve(generatedDir, "articles-index.json"),
-    resolve(distGeneratedDir, "articles-index.json"),
-  ].find((path) => existsSync(path));
   const articleSlugs = new Set<string>();
+  const articleLangs = new Map<string, Set<string>>();
   const tagNames = new Set<string>();
+  const sections = new Set<string>([SYSTEM_SECTION, "about", "projects", "notes", "articles", "tags"]);
+  const filesBySection = new Map<string, Set<string>>();
+  const fileBySectionSlug = new Map<string, FileRecord>();
+  const downloads = new Map<string, string>();
+  let systemSection = SYSTEM_SECTION;
 
-  if (!metadataPath) {
-    return {
-      articleSlugs,
-      tagNames,
-      infoFileSlugs: INFO_FILE_SLUGS,
-    };
-  }
+  const sectionsPath = [
+    resolve(generatedDir, "sections-index.json"),
+    resolve(distGeneratedDir, "sections-index.json"),
+  ].find((path) => existsSync(path));
 
-  const articles = JSON.parse(readFileSync(metadataPath, "utf8")) as ArticleRecord[];
+  if (sectionsPath) {
+    const items = JSON.parse(readFileSync(sectionsPath, "utf8")) as SectionRecord[];
+    for (const section of items) {
+      sections.add(section.slug);
+      if (section.system) systemSection = section.slug;
+    }
 
-  for (const article of articles) {
-    articleSlugs.add(article.slug);
-
-    for (const tag of article.tags ?? []) {
-      tagNames.add(tag);
+    for (const section of sections) {
+      const indexPath = [
+        resolve(generatedDir, "sections", `${section}.json`),
+        resolve(distGeneratedDir, "sections", `${section}.json`),
+      ].find((path) => existsSync(path));
+      if (!indexPath) continue;
+      const files = JSON.parse(readFileSync(indexPath, "utf8")) as FileRecord[];
+      const slugs = new Set<string>();
+      for (const file of files) {
+        slugs.add(file.slug);
+        fileBySectionSlug.set(`${section}/${file.slug}`, file);
+        if (file.downloadPath) downloads.set(file.downloadPath, resolve(contentDir, section, file.slug, sourceName(file.slug, file.downloadPath)));
+        if (file.type === "article") {
+          articleSlugs.add(file.slug);
+          articleLangs.set(file.slug, new Set((file.languages ?? []).map(normalizeLang)));
+          for (const tag of file.tags ?? []) tagNames.add(tag);
+        }
+      }
+      filesBySection.set(section, slugs);
     }
   }
 
   return {
     articleSlugs,
+    articleLangs,
     tagNames,
-    infoFileSlugs: INFO_FILE_SLUGS,
+    sections,
+    systemSection,
+    filesBySection,
+    fileBySectionSlug,
+    downloads,
   };
+};
+
+const sourceName = (slug: string, downloadPath: string): string => {
+  const [, lang = "en"] = downloadPath.split("/");
+  const name = downloadPath.split("/").pop() ?? slug;
+  const suffix = name.startsWith(`${slug}.`) ? name.slice(slug.length + 1) : name.replace(/^[^.]+\./, "");
+  return `${slug}.${normalizeLang(lang)}.${suffix}`;
 };
 
 const hasFileExtension = (path: string): boolean => {
   return /\.[a-zA-Z0-9]+$/.test(path);
 };
 
-const localizedRouteFallback = (): Plugin => {
-  const rewrite = (url: string, preferPrerender: boolean): string => {
-    const { articleSlugs, tagNames, infoFileSlugs } = loadRouteData();
+const localizedRouteRewrite = (): Plugin => {
+  const rewrite = (url: string, preferPrerender: boolean): { url: string; status?: number } => {
+    const { articleSlugs, articleLangs, tagNames, sections, systemSection, filesBySection, fileBySectionSlug, downloads } = loadRouteData();
     const [rawPath = "/"] = url.split("?");
     const path = rawPath.length > 1 ? rawPath.replace(/\/+$/g, "") : rawPath;
 
     if (path === "/") {
-      return "/index.html";
+      return { url: "/index.html" };
     }
 
     if (
       path.startsWith("/@") ||
       path.startsWith("/src/") ||
       path.startsWith("/node_modules/") ||
-      path.startsWith("/info/") ||
       path.startsWith("/generated/") ||
       path.startsWith("/media/")
     ) {
-      return rawPath;
+      return { url: rawPath };
     }
 
+    if (downloads.has(path)) return { url: rawPath };
+
     if (hasFileExtension(path)) {
-      return rawPath;
+      return { url: rawPath };
     }
 
     const [langCandidate, section, encodedSlug, ...extra] = path.split("/").filter(Boolean);
 
     if (!isValidLang(langCandidate) || extra.length > 0) {
-      return "/404.html";
+      return { url: "/404.html", status: 404 };
     }
 
     if (!section) {
-      return preferPrerender ? `/${langCandidate}/index.html` : "/index.html";
+      return { url: preferPrerender ? `/${langCandidate}/index.html` : "/index.html" };
     }
 
     if (section === "articles" && !encodedSlug) {
-      return preferPrerender ? `/${langCandidate}/articles/index.html` : "/index.html";
+      return { url: preferPrerender ? `/${langCandidate}/articles/index.html` : "/index.html" };
     }
 
     if (section === "tags" && !encodedSlug) {
-      return preferPrerender ? `/${langCandidate}/tags/index.html` : "/index.html";
+      return { url: preferPrerender ? `/${langCandidate}/tags/index.html` : "/index.html" };
     }
 
     if (section === "articles" && encodedSlug) {
       const slug = safeDecodeURIComponent(encodedSlug);
-      if (!slug) return "/404.html";
-      if (preferPrerender) return `/${langCandidate}/articles/${encodedSlug}/index.html`;
-      return articleSlugs.has(slug) ? "/index.html" : "/404.html";
+      if (!slug) return { url: "/404.html", status: 404 };
+      if (!articleSlugs.has(slug)) return { url: "/404.html", status: 404 };
+      if (!articleLangs.get(slug)?.has(normalizeLang(langCandidate))) return { url: "/index.html", status: 404 };
+      return { url: preferPrerender ? `/${langCandidate}/articles/${encodedSlug}/index.html` : "/index.html" };
     }
 
     if (section === "tags" && encodedSlug) {
       const tag = safeDecodeURIComponent(encodedSlug);
-      if (!tag) return "/404.html";
-      if (preferPrerender) return `/${langCandidate}/tags/${encodedSlug}/index.html`;
-      return tagNames.has(tag) ? "/index.html" : "/404.html";
+      if (!tag) return { url: "/404.html", status: 404 };
+      if (preferPrerender) return { url: `/${langCandidate}/tags/${encodedSlug}/index.html` };
+      return tagNames.has(tag) ? { url: "/index.html" } : { url: "/404.html", status: 404 };
     }
 
-    const infoSlug = safeDecodeURIComponent(section)?.trim().toLowerCase();
-    return infoSlug && infoFileSlugs.has(infoSlug) ? "/index.html" : "/404.html";
+    if (sections.has(section) && !encodedSlug) return { url: preferPrerender ? `/${langCandidate}/${section}/index.html` : "/index.html" };
+
+    if (sections.has(section) && encodedSlug) {
+      const slug = safeDecodeURIComponent(encodedSlug)?.trim().toLowerCase();
+      const sectionFiles = filesBySection.get(section);
+      if (!slug || !sectionFiles?.has(slug)) return { url: "/404.html", status: 404 };
+      const file = fileBySectionSlug.get(`${section}/${slug}`);
+      if (file?.languages && !file.languages.map(normalizeLang).includes(normalizeLang(langCandidate))) return { url: "/index.html", status: 404 };
+      return { url: "/index.html" };
+    }
+
+    const systemSlug = safeDecodeURIComponent(section)?.trim().toLowerCase();
+    const systemFiles = filesBySection.get(systemSection);
+    if (!systemSlug || !systemFiles?.has(systemSlug)) return { url: "/404.html", status: 404 };
+    const file = fileBySectionSlug.get(`${systemSection}/${systemSlug}`);
+    if (file?.languages && !file.languages.map(normalizeLang).includes(normalizeLang(langCandidate))) return { url: "/index.html", status: 404 };
+    return { url: "/index.html" };
   };
 
-  const applyFallback = (
+  const applyRewrite = (
     server: ViteMiddlewareServer,
     preferPrerender: boolean,
   ): void => {
     server.middlewares.use((req, res, next) => {
       if (req.url) {
         const target = rewrite(req.url, preferPrerender);
-        req.url = target;
+        req.url = target.url;
 
-        if (target === "/404.html") {
-          res.statusCode = 404;
-        }
+        if (target.status) res.statusCode = target.status;
       }
 
       next();
@@ -177,12 +233,12 @@ const localizedRouteFallback = (): Plugin => {
   };
 
   return {
-    name: "localized-route-fallback",
+    name: "localized-route-rewrite",
     configureServer: (server) => {
-      applyFallback(server as ViteMiddlewareServer, false);
+      applyRewrite(server as ViteMiddlewareServer, false);
     },
     configurePreviewServer: (server) => {
-      applyFallback(server as ViteMiddlewareServer, true);
+      applyRewrite(server as ViteMiddlewareServer, true);
     },
   };
 };
@@ -244,53 +300,64 @@ const generatedAssetsPlugin = (): Plugin => ({
   },
 });
 
-const infoAssetsPlugin = (): Plugin => ({
-  name: "info-assets",
+const contentFilesPlugin = (): Plugin => ({
+  name: "content-files",
 
   configureServer: (server) => {
     server.middlewares.use((req, res, next) => {
-      serveStaticDirectory("/info/", infoDir, req, res, next);
+      const rawPath = req.url?.split("?")[0] ?? "";
+      const filePath = loadRouteData().downloads.get(rawPath);
+      if (!filePath || !existsSync(filePath) || !statSync(filePath).isFile()) {
+        next();
+        return;
+      }
+      res.setHeader?.("Content-Type", contentType(extname(filePath)));
+      createReadStream(filePath).pipe(res as never);
     });
   },
 
   closeBundle: async () => {
-    if (!existsSync(infoDir)) {
-      return;
+    for (const [publicPath, filePath] of loadRouteData().downloads) {
+      if (!existsSync(filePath)) continue;
+      const target = resolve(rootDir, "dist", publicPath.replace(/^\/+/, ""));
+      await mkdir(resolve(target, ".."), { recursive: true });
+      await copyFile(filePath, target);
     }
-
-    await rm(distInfoDir, { recursive: true, force: true });
-    await copyDir(infoDir, distInfoDir);
   },
 });
 
-const articleMediaPlugin = (): Plugin => ({
-  name: "article-media",
+const contentMediaPlugin = (): Plugin => ({
+  name: "content-media",
 
   configureServer: (server) => {
     server.middlewares.use((req, res, next) => {
-      serveStaticDirectory("/media/articles/", contentArticlesDir, req, res, next);
+      serveStaticDirectory("/media/", contentDir, req, res, next);
     });
   },
 
   closeBundle: async () => {
-    if (!existsSync(contentArticlesDir)) {
+    if (!existsSync(contentDir)) {
       return;
     }
 
-    await rm(distArticleMediaDir, { recursive: true, force: true });
+    await rm(distMediaDir, { recursive: true, force: true });
 
-    for (const entry of await readdir(contentArticlesDir, { withFileTypes: true })) {
+    for (const section of await readdir(contentDir, { withFileTypes: true })) {
+      if (!section.isDirectory()) continue;
+      const sectionDir = resolve(contentDir, section.name);
+      for (const entry of await readdir(sectionDir, { withFileTypes: true })) {
       if (!entry.isDirectory()) {
         continue;
       }
 
-      const source = resolve(contentArticlesDir, entry.name, "assets");
+      const source = resolve(sectionDir, entry.name, "assets");
 
       if (!existsSync(source)) {
         continue;
       }
 
-      await copyDir(source, resolve(distArticleMediaDir, entry.name, "assets"));
+      await copyDir(source, resolve(distMediaDir, section.name, entry.name, "assets"));
+      }
     }
   },
 });
@@ -338,10 +405,10 @@ export default defineConfig({
   },
 
   plugins: [
-    localizedRouteFallback(),
+    localizedRouteRewrite(),
     generatedAssetsPlugin(),
-    infoAssetsPlugin(),
-    articleMediaPlugin(),
+    contentFilesPlugin(),
+    contentMediaPlugin(),
     viteCompression({
       algorithm: "brotliCompress",
       ext: ".br",

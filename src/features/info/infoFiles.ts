@@ -1,192 +1,108 @@
-import type { InfoFileMeta } from "@/core/types";
+import type { InfoFileMeta, Lang, SectionMeta } from "@/core/types";
+import { pickLangText } from "@/core/languages";
 import { safeDecodeURIComponent } from "@/core/url";
+import { escapeHtml } from "@/core/escape";
+import { fetchGeneratedJson, fetchGeneratedText, PromiseLruCache } from "@/services/generatedAssets";
+import { generatedInfoFileHtmlPath, generatedInfoFileMetaPath, generatedSectionIndexPath, generatedSectionsIndexPath } from "@/services/generatedPaths";
 
-const OWNER = "root";
-const GROUP = "operators";
-const READABLE_PUBLIC_FILE = "-rw-rw-r--";
-const INFO_PUBLIC_BASE = "/info";
+const SYSTEM_SECTION = "site";
+const MAX_HTML_CACHE_ITEMS = 40;
+const MAX_SECTION_CACHE_ITEMS = 64;
+const sectionCache = new PromiseLruCache<InfoFileMeta[]>(MAX_SECTION_CACHE_ITEMS);
+let sectionsPromise: Promise<SectionMeta[]> | null = null;
+const htmlCache = new PromiseLruCache<string | null>(MAX_HTML_CACHE_ITEMS);
 
-type InfoFileInput = Omit<InfoFileMeta, "routeSlug">;
+export const toRouteSlug = (fileSlug: string): string => fileSlug.replace(/\.[^.]+$/, "").trim().toLowerCase();
 
-export const toRouteSlug = (fileSlug: string): string => {
-  return fileSlug.replace(/\.[^.]+$/, "").trim().toLowerCase();
+export const loadSections = (): Promise<SectionMeta[]> => {
+  sectionsPromise ??= fetchGeneratedJson(generatedSectionsIndexPath()).then((value) => {
+    if (!Array.isArray(value)) throw new Error("Invalid sections index");
+    return value.map(normalizeSection);
+  });
+  return sectionsPromise;
 };
 
-const makeInfoFile = (file: InfoFileInput): InfoFileMeta => ({
-  ...file,
-  routeSlug: toRouteSlug(file.slug)
-});
-
-export const INFO_FILES: readonly InfoFileMeta[] = [
-  makeInfoFile({
-    slug: "README.md",
-    publicPath: `${INFO_PUBLIC_BASE}/README.md`,
-    sourcePath: "content/info/README.md",
-    kind: "markdown",
-    size: 509,
-    modified: "2026-05-02",
-    permissions: READABLE_PUBLIC_FILE,
-    owner: OWNER,
-    group: GROUP,
-    title: { ru: "README.md", en: "README.md" },
-    description: {
-      ru: "Карта пространства autophany.space: запуск, сборка, контент и PDF pipeline.",
-      en: "A map of autophany.space: setup, build, content, and the PDF pipeline."
-    }
-  }),
-  makeInfoFile({
-    slug: "ABOUT.md",
-    publicPath: `${INFO_PUBLIC_BASE}/ABOUT.md`,
-    sourcePath: "content/info/ABOUT.md",
-    kind: "markdown",
-    size: 423,
-    modified: "2026-05-02",
-    permissions: READABLE_PUBLIC_FILE,
-    owner: OWNER,
-    group: GROUP,
-    title: { ru: "ABOUT.md", en: "ABOUT.md" },
-    description: {
-      ru: "Описание проекта autophany.space, его тона и внутренней логики.",
-      en: "A description of autophany.space, its tone, and its internal logic."
-    }
-  }),
-  makeInfoFile({
-    slug: "CHANGELOG.txt",
-    publicPath: `${INFO_PUBLIC_BASE}/CHANGELOG.txt`,
-    sourcePath: "content/info/CHANGELOG.txt",
-    kind: "text",
-    size: 387,
-    modified: "2026-05-02",
-    permissions: READABLE_PUBLIC_FILE,
-    owner: OWNER,
-    group: GROUP,
-    title: { ru: "CHANGELOG.txt", en: "CHANGELOG.txt" },
-    description: {
-      ru: "Журнал изменений интерфейса, структуры и сборочного pipeline.",
-      en: "Change log for the interface, structure, and build pipeline."
-    }
-  }),
-  makeInfoFile({
-    slug: "MANIFEST.local",
-    publicPath: `${INFO_PUBLIC_BASE}/MANIFEST.local`,
-    sourcePath: "content/info/MANIFEST.local",
-    kind: "text",
-    size: 338,
-    modified: "2026-05-02",
-    permissions: READABLE_PUBLIC_FILE,
-    owner: OWNER,
-    group: GROUP,
-    title: { ru: "MANIFEST.local", en: "MANIFEST.local" },
-    description: {
-      ru: "Локальные правила пространства: простота, единый источник истины, read-only доступ.",
-      en: "Local rules: simplicity, one source of truth, and read-only public access."
-    }
-  })
-];
-
-const infoContentCache = new Map<string, Promise<string>>();
-
-export const findInfoFile = (slug: string): InfoFileMeta | undefined => {
-  const decoded = safeDecodeURIComponent(slug) ?? slug;
-  const normalized = decoded.trim().toLowerCase();
-  return INFO_FILES.find((file) => file.slug.toLowerCase() === normalized || file.routeSlug === normalized);
-};
-
-export const renderInfoFileHtml = async (file: InfoFileMeta, _lang: string): Promise<string> => {
-  const content = await loadInfoFileContent(file);
-  const body = file.kind === "markdown" ? renderMarkdown(content) : renderPlainText(content);
-  return `<section class="file-document" data-source="${escapeHtml(file.sourcePath)}">${body}</section>`;
-};
-
-const loadInfoFileContent = async (file: InfoFileMeta): Promise<string> => {
-  const cached = infoContentCache.get(file.publicPath);
+export const loadSectionIndex = (section: string): Promise<InfoFileMeta[]> => {
+  const key = section.trim().toLowerCase() || SYSTEM_SECTION;
+  const cached = sectionCache.get(key);
   if (cached) return cached;
-
-  const request = fetch(file.publicPath, { cache: "no-cache" })
-    .then(async (response) => {
-      if (!response.ok) throw new Error(`Unable to load ${file.publicPath}: ${response.status}`);
-      return response.text();
-    })
-    .catch((error: unknown) => {
-      infoContentCache.delete(file.publicPath);
-      throw error;
-    });
-
-  infoContentCache.set(file.publicPath, request);
+  const request = fetchGeneratedJson(generatedSectionIndexPath(key)).then((value) => {
+    if (!Array.isArray(value)) throw new Error("Invalid section index");
+    return value.map(normalizeFile);
+  });
+  sectionCache.set(key, request);
   return request;
 };
 
-const renderMarkdown = (markdown: string): string => {
-  const lines = stripLeadingMarkdownHeading(markdown).replace(/\r\n/g, "\n").split("\n");
-  const html: string[] = [];
-  let paragraph: string[] = [];
-  let listItems: string[] = [];
-
-  const flushParagraph = (): void => {
-    if (paragraph.length === 0) return;
-    html.push(`<p>${inlineMarkdown(escapeHtml(paragraph.join(" ")))}</p>`);
-    paragraph = [];
-  };
-
-  const flushList = (): void => {
-    if (listItems.length === 0) return;
-    html.push(`<ul>${listItems.map((item) => `<li>${inlineMarkdown(escapeHtml(item))}</li>`).join("")}</ul>`);
-    listItems = [];
-  };
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed) {
-      flushParagraph();
-      flushList();
-      continue;
-    }
-
-    const heading = trimmed.match(/^(#{1,3})\s+(.+)$/);
-    if (heading) {
-      flushParagraph();
-      flushList();
-      const level = heading[1].length;
-      html.push(`<h${level}>${inlineMarkdown(escapeHtml(heading[2]))}</h${level}>`);
-      continue;
-    }
-
-    const bullet = trimmed.match(/^[-*]\s+(.+)$/);
-    if (bullet) {
-      flushParagraph();
-      listItems.push(bullet[1]);
-      continue;
-    }
-
-    flushList();
-    paragraph.push(trimmed);
-  }
-
-  flushParagraph();
-  flushList();
-  return html.join("");
+export const findInfoFile = async (section: string, slug: string): Promise<InfoFileMeta | undefined> => {
+  const decoded = safeDecodeURIComponent(slug) ?? slug;
+  const normalized = decoded.trim().toLowerCase();
+  const files = await loadSectionIndex(section);
+  return files.find((file) => file.slug.toLowerCase() === normalized || toRouteSlug(file.slug) === normalized);
 };
 
-const stripLeadingMarkdownHeading = (markdown: string): string => {
-  const lines = markdown.replace(/\r\n/g, "\n").split("\n");
-  const firstContentIndex = lines.findIndex((line) => line.trim().length > 0);
-  if (firstContentIndex === -1) return markdown;
-  if (/^#{1,3}\s+/.test(lines[firstContentIndex].trim())) {
-    lines.splice(firstContentIndex, 1);
-    return lines.join("\n").replace(/^\n+/, "");
-  }
-  return markdown;
+export const renderInfoFileHtml = async (file: InfoFileMeta, lang: Lang): Promise<string> => {
+  if (!file.languages.includes(lang)) return missingTranslationHtml(lang, file.languages);
+  const content = await loadFileHtml(file, lang);
+  return content ?? `<section class="file-document"><pre class="info-file-pre">${escapeHtml(pickLangText(file.description, lang))}</pre></section>`;
 };
 
-const renderPlainText = (value: string): string => `<pre class="info-file-pre">${escapeHtml(value.trimEnd())}</pre>`;
+export const fileHtmlPath = generatedInfoFileHtmlPath;
+export const fileMetaPath = generatedInfoFileMetaPath;
 
-const inlineMarkdown = (value: string): string => value.replace(/`([^`]+)`/g, "<code>$1</code>");
-
-const escapeHtml = (value: string): string => {
-  return value.replace(/[&<>\"]/g, (char) => {
-    if (char === "&") return "&amp;";
-    if (char === "<") return "&lt;";
-    if (char === ">") return "&gt;";
-    return "&quot;";
+const loadFileHtml = (file: InfoFileMeta, lang: Lang): Promise<string | null> => {
+  const path = fileHtmlPath(file, lang);
+  const cached = htmlCache.get(path);
+  if (cached) return cached;
+  const request = fetchGeneratedText(path).then((html) => {
+    if (html === null) htmlCache.delete(path);
+    return html;
   });
+  htmlCache.set(path, request);
+  return request;
+};
+
+const normalizeSection = (value: unknown): SectionMeta => {
+  if (!isRecord(value)) throw new Error("Invalid section metadata");
+  return {
+    slug: string(value.slug),
+    label: langRecord(value.label),
+    title: langRecord(value.title),
+    description: langRecord(value.description),
+    system: Boolean(value.system),
+    count: typeof value.count === "number" ? value.count : 0
+  };
+};
+
+const normalizeFile = (value: unknown): InfoFileMeta => {
+  if (!isRecord(value)) throw new Error("Invalid file metadata");
+  const section = string(value.section);
+  const slug = string(value.slug);
+  return {
+    section,
+    slug,
+    label: langRecord(value.label),
+    type: string(value.type || "text"),
+    format: string(value.format || "text"),
+    date: string(value.date || ""),
+    title: langRecord(value.title),
+    description: langRecord(value.description),
+    languages: stringArray(value.languages),
+    translations: isRecord(value.translations) ? Object.fromEntries(Object.entries(value.translations).filter(([, path]) => typeof path === "string")) as Partial<Record<Lang, string>> : undefined,
+    canonicalPath: typeof value.canonicalPath === "string" ? value.canonicalPath : undefined,
+    downloadPath: typeof value.downloadPath === "string" ? value.downloadPath : null
+  };
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
+const string = (value: unknown): string => typeof value === "string" ? value : "";
+const stringArray = (value: unknown): string[] => Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.length > 0) : [];
+const langRecord = (value: unknown): Record<string, string> => isRecord(value) ? Object.fromEntries(Object.entries(value).filter(([, text]) => typeof text === "string" && text.length > 0)) as Record<string, string> : {};
+
+const missingTranslationHtml = (lang: Lang, languages: readonly Lang[]): string => {
+  const title = lang === "ru" ? "Пока не написано" : "Not written yet";
+  const description = lang === "ru"
+    ? "Этой версии пока нет, но она обязательно будет."
+    : "This version does not exist yet, but it will be written.";
+  return `<section class="file-document"><h1>${escapeHtml(title)}</h1><p>${escapeHtml(description)}</p><p class="meta">available: ${escapeHtml(languages.join(", "))}</p></section>`;
 };

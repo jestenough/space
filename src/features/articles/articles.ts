@@ -1,16 +1,17 @@
-import { articlePath, articlePdfPath } from "@/router/routePaths";
 import type { ArticleMeta, ArticlePayload, Lang } from "@/core/types";
-import { DEFAULT_LANG, isLangCode, pickLangText } from "@/core/languages";
+import { isLangCode, pickLangText } from "@/core/languages";
+import { fetchGeneratedJson, fetchGeneratedText, PromiseLruCache } from "@/services/generatedAssets";
+import { generatedFileHtmlPath, generatedFileMetaPath, generatedSectionIndexPath } from "@/services/generatedPaths";
 
 const MAX_HTML_CACHE_ITEMS = 20;
 const MAX_META_CACHE_ITEMS = 80;
 
 let indexPromise: Promise<ArticleMeta[]> | null = null;
-const htmlCache = new Map<string, Promise<string | null>>();
-const metaCache = new Map<string, Promise<ArticleMeta | null>>();
+const htmlCache = new PromiseLruCache<string | null>(MAX_HTML_CACHE_ITEMS);
+const metaCache = new PromiseLruCache<ArticleMeta | null>(MAX_META_CACHE_ITEMS);
 
 export const loadArticleIndex = (): Promise<ArticleMeta[]> => {
-  indexPromise ??= fetchJson("/generated/articles-index.json").then(normalizeArticleIndex);
+  indexPromise ??= fetchGeneratedJson(generatedSectionIndexPath("articles")).then(normalizeArticleIndex);
   return indexPromise;
 };
 
@@ -21,68 +22,45 @@ export const hasTranslation = (article: ArticleMeta, lang: Lang): boolean => {
 export const articleTitle = (article: ArticleMeta, lang: Lang): string => pickLangText(article.title, lang);
 export const articleDescription = (article: ArticleMeta, lang: Lang): string => pickLangText(article.description, lang);
 
-export const articleFilePath = (slug: string, lang: Lang): string => `/generated/articles/${encodeURIComponent(slug)}.${lang}.html`;
-export const articleMetaPath = (slug: string, lang: Lang): string => `/generated/articles-meta/${encodeURIComponent(slug)}.${lang}.json`;
+export const articleFilePath = (slug: string, lang: Lang): string => generatedFileHtmlPath("articles", slug, lang);
+export const articleMetaPath = (slug: string, lang: Lang): string => generatedFileMetaPath("articles", slug, lang);
 
 export const loadArticle = async (slug: string, lang: Lang): Promise<ArticlePayload | null> => {
-  const [meta, html] = await Promise.all([loadArticleMeta(slug, lang), loadArticleContent(slug, lang)]);
+  const articles = await loadArticleIndex();
+  const meta = articles.find((article) => article.slug === slug) ?? null;
+  if (!meta || !hasTranslation(meta, lang)) return null;
+  const html = await loadArticleContent(slug, lang);
   return meta && html !== null ? { meta, html } : null;
 };
 
 export const loadArticleMeta = (slug: string, lang: Lang): Promise<ArticleMeta | null> => {
   const key = `${slug}.${lang}.json`;
   const cached = metaCache.get(key);
-  if (cached) {
-    metaCache.delete(key);
-    metaCache.set(key, cached);
-    return cached;
-  }
+  if (cached) return cached;
 
-  const request = fetchJson(articleMetaPath(slug, lang))
+  const request = fetchGeneratedJson(articleMetaPath(slug, lang))
     .then((value) => normalizeArticleMeta(value, key))
     .catch(() => {
       metaCache.delete(key);
       return null;
     });
 
-  setCached(metaCache, key, request, MAX_META_CACHE_ITEMS);
+  metaCache.set(key, request);
   return request;
 };
 
 export const loadArticleContent = (slug: string, lang: Lang): Promise<string | null> => {
   const key = `${slug}.${lang}.html`;
   const cached = htmlCache.get(key);
-  if (cached) {
-    htmlCache.delete(key);
-    htmlCache.set(key, cached);
-    return cached;
-  }
+  if (cached) return cached;
 
-  const request = fetch(articleFilePath(slug, lang), { cache: "no-cache" })
-    .then((response) => response.ok ? response.text() : null)
-    .catch(() => {
-      htmlCache.delete(key);
-      return null;
-    });
+  const request = fetchGeneratedText(articleFilePath(slug, lang)).then((html) => {
+    if (html === null) htmlCache.delete(key);
+    return html;
+  });
 
-  setCached(htmlCache, key, request, MAX_HTML_CACHE_ITEMS);
+  htmlCache.set(key, request);
   return request;
-};
-
-const fetchJson = async (path: string): Promise<unknown> => {
-  const response = await fetch(path, { cache: "no-cache" });
-  if (!response.ok) throw new Error(`Failed to load ${path}: ${response.status}`);
-  return response.json();
-};
-
-const setCached = <T>(cache: Map<string, Promise<T>>, key: string, request: Promise<T>, maxItems: number): void => {
-  if (cache.has(key)) cache.delete(key);
-  cache.set(key, request);
-  while (cache.size > maxItems) {
-    const oldestKey = cache.keys().next().value as string | undefined;
-    if (!oldestKey) return;
-    cache.delete(oldestKey);
-  }
 };
 
 const normalizeArticleIndex = (value: unknown): ArticleMeta[] => {
@@ -177,17 +155,3 @@ const optionalNeighbor = (value: unknown): { title: string; path: string } | nul
   const path = optionalString(value.path);
   return title && path ? { title, path } : undefined;
 };
-
-export const articleFallbackMeta = (slug: string, lang: Lang): ArticleMeta => ({
-  slug,
-  date: "",
-  tags: [],
-  title: { [lang]: slug, [DEFAULT_LANG]: slug },
-  description: { [lang]: "", [DEFAULT_LANG]: "" },
-  languages: [lang],
-  pdfPath: articlePdfPath(lang, slug),
-  canonicalPath: articlePath(lang, slug),
-  translations: { [lang]: articlePath(lang, slug) },
-  prev: null,
-  next: null
-});

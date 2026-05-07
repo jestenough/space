@@ -13,8 +13,8 @@ export const isLangCode = (value: string | undefined | null): value is Lang => {
   return typeof value === "string" && LANG_PATTERN.test(value);
 };
 
-export const normalizeLang = (value: string | undefined | null, fallback: Lang = DEFAULT_LANG): Lang => {
-  if (!isLangCode(value)) return fallback;
+export const normalizeLang = (value: string | undefined | null, defaultLang: Lang = DEFAULT_LANG): Lang => {
+  if (!isLangCode(value)) return defaultLang;
   const [base, region] = value.split("-");
   return region ? `${base.toLowerCase()}-${region.toUpperCase()}` : base.toLowerCase();
 };
@@ -29,9 +29,7 @@ export const formatLangLabel = (lang: Lang): string => {
 
 export const formatOgLocale = (lang: Lang): string => formatLangLabel(lang).replace(".UTF-8", "");
 
-export const pickLangText = (texts: Record<string, string>, lang: Lang, fallback: Lang = DEFAULT_LANG): string => {
-  return texts[lang] ?? texts[fallback] ?? Object.values(texts)[0] ?? "";
-};
+export const pickLangText = (texts: Record<string, string>, lang: Lang): string => texts[lang] ?? "";
 
 export const languagesFromArticles = (articles: readonly ArticleMeta[]): Lang[] => {
   const langs = new Set<Lang>();

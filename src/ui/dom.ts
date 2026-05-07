@@ -15,6 +15,7 @@ export const dom = {
   treeHome: byId<HTMLAnchorElement>("tree-home"),
   treeArticles: byId<HTMLAnchorElement>("tree-articles"),
   treeTags: byId<HTMLAnchorElement>("tree-tags"),
+  quickNav: document.querySelector<HTMLElement>(".quick-nav") ?? byId<HTMLElement>("tree-home").parentElement as HTMLElement,
   pwdLine: byId<HTMLElement>("pwd-line"),
   listView: byId<HTMLElement>("article-list-view"),
   homeFilesPanel: byId<HTMLElement>("home-files-panel"),

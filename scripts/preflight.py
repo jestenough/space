@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import logging
 import re
 import shutil
@@ -10,209 +9,147 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+from . import content, routes
 from .config import (
-    ARTICLES_DIR,
-    CONTENT_DIR,
-    DATE_FORMAT_LABEL,
-    PACKAGE_JSON,
-    ROOT_DIR,
-    SITE_META_PATH,
-    SRC_DIR,
-    SUPPORTED_LANGS,
-    TSCONFIG,
-    VITE_CONFIG,
+    ARTICLE_TYPE, 
+    ARTICLES_SECTION, 
+    CONTENT_DIR, 
+    DATE_FORMAT_LABEL, 
+    ITEM_META_SUFFIX, 
+    PACKAGE_JSON, 
+    ROOT_DIR, 
+    SRC_DIR, 
+    SYSTEM_SECTION, 
+    TEX_FORMAT, 
+    TEXT_TYPE, 
+    TSCONFIG, 
+    VITE_CONFIG
 )
-
+from .localization import norm_lang
 
 logger = logging.getLogger(__name__)
 
 
 class Preflight:
     required_binaries = ("node", "npm", "pandoc", "latexmk", "xelatex")
-    required_paths = (
-        ROOT_DIR,
-        CONTENT_DIR,
-        SITE_META_PATH,
-        SRC_DIR,
-        ARTICLES_DIR,
-        PACKAGE_JSON,
-        TSCONFIG,
-        VITE_CONFIG,
-    )
+    required_paths = (ROOT_DIR, CONTENT_DIR, SRC_DIR, PACKAGE_JSON, TSCONFIG, VITE_CONFIG)
     slug_re = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
-    source_re = re.compile(r"^(.+)\.([a-z]{2,3}(?:-[A-Za-z]{2})?)\.tex$")
     iso_date_re = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
     def run(self) -> None:
-        self.check_binaries()
+        self.check_invariants()
         self.check_project_structure()
-        self.check_site_meta()
-        self.check_articles()
+        self.check_sections()
+        self.check_binaries()
         logger.info("Preflight checks passed.")
 
+    @staticmethod
+    def check_invariants() -> None:
+        if norm_lang("pt-br") != "pt-BR":
+            raise RuntimeError("Language normalization invariant failed")
+        checks = {
+            routes.item_route(SYSTEM_SECTION, "en", "readme", system=True): "/en/readme",
+            routes.item_route("about", "ru", "gpg.asc"): "/ru/about/gpg.asc",
+            routes.section_route(SYSTEM_SECTION, "en", system=True): "/en",
+            routes.generated_pdf_route({"section": ARTICLES_SECTION, "slug": "hello-world"}, "en"): f"/en/{ARTICLES_SECTION}/hello-world.pdf",
+        }
+        for actual, expected in checks.items():
+            if actual != expected:
+                raise RuntimeError(f"Route invariant failed: expected {expected}, got {actual}")
+        if content.item_type(ARTICLES_SECTION, {}) != TEXT_TYPE or content.item_type(ARTICLES_SECTION, {"type": ARTICLE_TYPE}) != ARTICLE_TYPE:
+            raise RuntimeError("Item type invariant failed")
+
     def check_binaries(self) -> None:
-        if missing := [
-            binary
-            for binary in self.required_binaries
-            if shutil.which(binary) is None
-        ]:
-            raise RuntimeError(f"Missing required binaries: {', '.join(missing)}")
+        if missing := [binary for binary in self.required_binaries if shutil.which(binary) is None]:
+            raise RuntimeError(
+                "Missing required build tools:\n"
+                + "\n".join(f"- {binary}" for binary in missing)
+                + "\nInstall them before running the full content pipeline."
+            )
 
     def check_project_structure(self) -> None:
         if missing := [path for path in self.required_paths if not path.exists()]:
-            raise RuntimeError("Missing required paths: " + ", ".join(map(str, missing)))
+            raise RuntimeError("Missing required project paths:\n" + "\n".join(f"- {path}" for path in missing))
 
-        if (CONTENT_DIR / "articles-index.json").exists():
-            raise RuntimeError("content/articles-index.json must not be used")
+    def check_sections(self) -> None:
+        sections = content.sections()
+        if not sections:
+            raise RuntimeError("No content sections found")
+        systems = [section.slug for section in sections if section.system]
+        if systems != [SYSTEM_SECTION]:
+            raise RuntimeError(f"Exactly one system section is required and it must be `{SYSTEM_SECTION}`. Found: {systems or 'none'}")
+        for section in sections:
+            self.check_slug(section.slug)
+            self.check_meta(section.meta, section.slug, section.path / f"{section.slug}.{ITEM_META_SUFFIX}", section_meta=True)
+            for item in section.items:
+                self.check_item(section, item)
 
-        if root_tex := sorted(path.name for path in ARTICLES_DIR.glob("*.tex")):
-            raise RuntimeError(
-                "Article sources must live in content/articles/<slug>/ folders. "
-                "Found root .tex: " + ", ".join(root_tex)
-            )
+    def check_item(self, section: content.Section, item: content.Item) -> None:
+        self.check_slug(item.slug)
+        if not item.sources:
+            raise RuntimeError(f"Missing sources for item `{item.section}/{item.slug}`.\nExpected files like: {item.path / f'{item.slug}.en.txt'} or {item.path / f'{item.slug}.en.tex'}")
+        if len({source.lang for source in item.sources}) != len(item.sources):
+            langs = [source.lang for source in item.sources]
+            raise RuntimeError(f"Duplicate language source in `{item.section}/{item.slug}`: {langs}\nKeep only one source file per language.")
+        for source in item.sources:
+            if not source.path.read_text(encoding="utf-8").strip():
+                raise RuntimeError(f"Empty source file: {source.path}\nAdd content or remove this source file and its meta language.")
+        meta_path = item.path / f"{item.slug}.{ITEM_META_SUFFIX}"
+        self.check_meta(item.meta, item.slug, meta_path, section_meta=False)
+        self.check_download(item.meta.get("download"), meta_path)
+        self.check_item_languages(item)
+        kind = content.item_type(section, item)
+        if section.slug == ARTICLES_SECTION and kind != ARTICLE_TYPE:
+            raise RuntimeError(f"Article section item `{item.section}/{item.slug}` must set `type: \"{ARTICLE_TYPE}\"` in {meta_path}")
+        if kind == ARTICLE_TYPE:
+            for source in item.sources:
+                if source.ext != TEX_FORMAT:
+                    raise RuntimeError(f"Article item `{item.section}/{item.slug}` has non-TeX source: {source.path}\nItems with type `{ARTICLE_TYPE}` must use .tex sources only.")
+            self.check_tags(item.meta.get("tags"), meta_path)
 
+    def check_meta(self, meta: dict[str, Any], slug: str, path: Path, section_meta: bool) -> None:
+        for key in ("slug", "label", "title", "description"):
+            if key not in meta:
+                raise RuntimeError(f"Missing required meta field `{key}` in {path}")
+        if meta["slug"] != slug:
+            raise RuntimeError(f"Slug mismatch in {path}\nFolder slug: `{slug}`\nMeta slug: `{meta['slug']}`\nMake them identical.")
+        for field in ("label", "title", "description"):
+            self.check_localized_field(meta[field], field, path)
+        if not section_meta and "date" in meta:
+            self.check_date(meta["date"], path)
 
-    def check_site_meta(self) -> None:
-        meta = self.read_meta(SITE_META_PATH)
-        pages = meta.get("pages")
-
-        if not isinstance(pages, dict):
-            raise RuntimeError(f"Missing `pages` object in {SITE_META_PATH}")
-
-        for page in ("home", "articles", "tags", "tag", "notFound"):
-            if page not in pages:
-                raise RuntimeError(f"Missing `pages.{page}` in {SITE_META_PATH}")
-            page_data = pages[page]
-            if not isinstance(page_data, dict):
-                raise RuntimeError(f"`pages.{page}` must be an object in {SITE_META_PATH}")
-            for field in ("title", "description"):
-                self.check_site_localized_field(page_data.get(field), f"pages.{page}.{field}", SITE_META_PATH)
-
-    @staticmethod
-    def check_site_localized_field(value: Any, field: str, path: Path) -> None:
-        if not isinstance(value, dict):
-            raise RuntimeError(f"`{field}` must be an object in {path}")
-
-        for lang in SUPPORTED_LANGS:
-            if lang not in value:
-                raise RuntimeError(f"Missing `{field}.{lang}` in {path}")
-            if not isinstance(value[lang], str) or not value[lang].strip():
-                raise RuntimeError(f"`{field}.{lang}` must be a non-empty string in {path}")
-
-    def check_articles(self) -> None:
-        found = False
-
-        for article_dir in sorted(ARTICLES_DIR.iterdir()):
-            if not article_dir.is_dir():
+    def check_item_languages(self, item: content.Item) -> None:
+        source_langs = {source.lang for source in item.sources}
+        meta_path = item.path / f"{item.slug}.{ITEM_META_SUFFIX}"
+        for field in ("label", "title", "description"):
+            value = item.meta.get(field)
+            if not isinstance(value, dict):
                 continue
-
-            found = True
-            self.check_article(article_dir)
-
-        if not found:
-            raise RuntimeError("No articles found")
-
-    def check_article(self, article_dir: Path) -> None:
-        slug = article_dir.name
-        self.check_slug(slug)
-
-        languages = self.read_source_languages(article_dir, slug)
-        meta_path = self.source_meta_path(slug)
-
-        if not meta_path.is_file():
-            raise RuntimeError(f"Missing article metadata: {meta_path}")
-
-        self.check_meta(self.read_meta(meta_path), slug, languages, meta_path)
-
-        for lang in languages:
-            self.check_tex_file(self.source_path(slug, lang))
-
-    def read_source_languages(self, article_dir: Path, slug: str) -> tuple[str, ...]:
-        languages: list[str] = []
-
-        for path in sorted(article_dir.iterdir()):
-            if not path.is_file() or path.suffix != ".tex":
-                continue
-
-            match = self.source_re.fullmatch(path.name)
-
-            if not match:
-                raise RuntimeError(f"Article source filename must be <slug>.<lang>.tex: {path}")
-
-            file_slug, raw_lang = match.groups()
-            lang = self.normalize_lang(raw_lang)
-
-            if file_slug != slug:
-                raise RuntimeError(f"Article source filename must start with folder slug: {path}")
-
-            if lang in languages:
-                raise RuntimeError(f"Duplicate language source: {slug}.{lang}")
-
-            languages.append(lang)
-
-        if not languages:
-            raise RuntimeError(f"Missing article sources: {article_dir}/*.tex")
-
-        return tuple(sorted(languages))
-
-    @staticmethod
-    def normalize_lang(value: str) -> str:
-        parts = value.split("-", 1)
-        lang = parts[0].lower() if len(parts) == 1 else f"{parts[0].lower()}-{parts[1].upper()}"
-
-        if lang not in SUPPORTED_LANGS:
-            raise RuntimeError(f"Unsupported article language: {lang}")
-
-        return lang
+            meta_langs = {norm_lang(lang) for lang in value.keys()}
+            missing_sources = sorted(meta_langs - source_langs)
+            missing_meta = sorted(source_langs - meta_langs)
+            if missing_sources:
+                expected = [item.path / f"{item.slug}.{lang}.<ext>" for lang in missing_sources]
+                raise RuntimeError(
+                    f"Meta/source language mismatch in {meta_path}\n"
+                    f"Field `{field}` declares languages without source files: {', '.join(missing_sources)}\n"
+                    f"Add source files like:\n" + "\n".join(f"- {path}" for path in expected)
+                )
+            if missing_meta:
+                sources = [source.path for source in item.sources if source.lang in missing_meta]
+                raise RuntimeError(
+                    f"Meta/source language mismatch in {meta_path}\n"
+                    f"Source files exist, but field `{field}` is missing languages: {', '.join(missing_meta)}\n"
+                    f"Either add these languages to `{field}` or remove source files:\n" + "\n".join(f"- {path}" for path in sources)
+                )
 
     def check_slug(self, slug: str) -> None:
         if not self.slug_re.fullmatch(slug):
-            raise RuntimeError(f"Invalid slug: {slug}")
-
-    @staticmethod
-    def read_meta(path: Path) -> dict[str, Any]:
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError as exc:
-            raise RuntimeError(f"Invalid JSON: {path}") from exc
-
-        if not isinstance(data, dict):
-            raise RuntimeError(f"meta.json must be an object: {path}")
-
-        return data
-
-    def check_meta(
-        self,
-        meta: dict[str, Any],
-        slug: str,
-        languages: tuple[str, ...],
-        path: Path,
-    ) -> None:
-        for key in ("slug", "date", "title", "description", "tags"):
-            if key not in meta:
-                raise RuntimeError(f"Missing `{key}` in {path}")
-
-        if "languages" in meta:
-            raise RuntimeError(f"Do not set languages manually in {path}")
-
-        if meta["slug"] != slug:
-            raise RuntimeError(
-                f"Article slug mismatch: folder is `{slug}`, meta is `{meta['slug']}`"
-            )
-
-        self.check_date(meta["date"], path)
-        self.check_tags(meta["tags"], path)
-
-        for field in ("title", "description"):
-            self.check_localized_field(meta[field], field, languages, path)
+            raise RuntimeError(f"Invalid slug `{slug}`. Use lowercase letters, numbers and hyphens only, for example `hello-world`.")
 
     def check_date(self, value: Any, path: Path) -> None:
-        if not isinstance(value, str):
-            raise RuntimeError(f"`date` must be a string in {path}")
-
-        if not self.iso_date_re.fullmatch(value):
-            raise RuntimeError(f"`date` must use {DATE_FORMAT_LABEL} format in {path}")
-
+        if not isinstance(value, str) or not self.iso_date_re.fullmatch(value):
+            raise RuntimeError(f"Invalid `date` in {path}: {value!r}\nUse {DATE_FORMAT_LABEL}, for example 2026-05-07.")
         try:
             date.fromisoformat(value)
         except ValueError as exc:
@@ -221,53 +158,29 @@ class Preflight:
     @staticmethod
     def check_tags(tags: Any, path: Path) -> None:
         if not isinstance(tags, list) or not tags:
-            raise RuntimeError(f"`tags` must be a non-empty list in {path}")
-
+            raise RuntimeError(f"`tags` must be a non-empty string list in {path}\nExample: \"tags\": [\"notes\", \"performance\"]")
         seen: set[str] = set()
-
         for tag in tags:
             if not isinstance(tag, str) or not tag.strip():
                 raise RuntimeError(f"Tags must be non-empty strings in {path}")
-
             normalized = tag.strip()
-
             if normalized in seen:
                 raise RuntimeError(f"Duplicate tag `{normalized}` in {path}")
-
             seen.add(normalized)
 
     @staticmethod
-    def check_localized_field(
-        value: Any,
-        field: str,
-        languages: tuple[str, ...],
-        path: Path,
-    ) -> None:
-        if not isinstance(value, dict):
-            raise RuntimeError(f"`{field}` must be an object in {path}")
-
-        for lang in languages:
-            if lang not in value:
-                raise RuntimeError(f"Missing `{field}.{lang}` in {path}")
-
-            if not isinstance(value[lang], str) or not value[lang].strip():
+    def check_localized_field(value: Any, field: str, path: Path) -> None:
+        if not isinstance(value, dict) or not value:
+            raise RuntimeError(f"`{field}` must be a non-empty localized object in {path}\nExample: \"{field}\": {{\"en\": \"Title\"}}")
+        for lang, text in value.items():
+            norm_lang(lang)
+            if not isinstance(text, str) or not text.strip():
                 raise RuntimeError(f"`{field}.{lang}` must be a non-empty string in {path}")
 
     @staticmethod
-    def check_tex_file(path: Path) -> None:
-        if not path.is_file():
-            raise RuntimeError(f"Missing TeX file: {path}")
-
-        if not path.read_text(encoding="utf-8").strip():
-            raise RuntimeError(f"Empty TeX file: {path}")
-
-    @staticmethod
-    def source_meta_path(slug: str) -> Path:
-        return ARTICLES_DIR / slug / f"{slug}.meta.json"
-
-    @staticmethod
-    def source_path(slug: str, lang: str) -> Path:
-        return ARTICLES_DIR / slug / f"{slug}.{lang}.tex"
+    def check_download(value: Any, path: Path) -> None:
+        if value is not None and not isinstance(value, bool):
+            raise RuntimeError(f"`download` must be boolean in {path}\nUse `\"download\": true` only for files that should expose a raw download route.")
 
 
 def run() -> None:

@@ -31,11 +31,11 @@ const withDefaultAlternate = (paths: Partial<Record<Lang, string>>): Partial<Rec
 
 const canonicalPathForRoute = (args: RouteSeoArgs): string => {
   if (args.activeArticle) return articlePath(args.lang, args.activeArticle.slug);
-  if (args.activeInfoFile) return infoFilePath(args.lang, args.activeInfoFile.slug);
+  if (args.activeInfoFile) return infoFilePath(args.lang, args.activeInfoFile.section, args.activeInfoFile.slug, args.activeInfoFile.section === "site");
   if (args.route.page === "articles") return articlesPath(args.lang);
   if (args.route.page === "tags" && args.route.tag) return tagPath(args.lang, args.route.tag);
   if (args.route.page === "tags") return tagsPath(args.lang);
-  if (args.route.page === "info-file") return infoFilePath(args.lang, args.route.slug);
+  if (args.route.page === "info-file") return infoFilePath(args.lang, args.route.section, args.route.slug, args.route.section === "site");
   return homePath(args.lang);
 };
 
@@ -51,7 +51,7 @@ const alternatePathsForRoute = (args: RouteSeoArgs): Partial<Record<Lang | typeo
     if (args.route.page === "articles") paths[lang] = articlesPath(lang);
     else if (args.route.page === "tags" && args.route.tag) paths[lang] = tagPath(lang, args.route.tag);
     else if (args.route.page === "tags") paths[lang] = tagsPath(lang);
-    else if (args.route.page === "info-file") paths[lang] = infoFilePath(lang, args.route.slug);
+    else if (args.route.page === "info-file") paths[lang] = infoFilePath(lang, args.route.section, args.route.slug, args.route.section === "site");
     else paths[lang] = homePath(lang);
   }
   return withDefaultAlternate(paths);
