@@ -1,4 +1,4 @@
-export enum StorageKey { Theme = "theme" }
+export enum StorageKey { Theme = "theme", Lang = "lang" }
 export enum SessionKey { ArticleBackPath = "article-back-path" }
 export enum PageKind { Home = "home", Articles = "articles", Article = "article", Tags = "tags", InfoFile = "info-file", NotFound = "not-found" }
 export enum ViewMode { List = "list", Article = "article", Error = "error" }

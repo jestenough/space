@@ -190,7 +190,7 @@ const renderIndexShell = (html: string): string => {
     .replace(/<pre id="process-log">[\s\S]*?<\/pre>/, `<pre id="process-log">${renderInitialProcessLog(systemSection, systemMeta, systemFiles)}</pre>`);
 };
 
-const rootLanguageScript = (): string => `    <script>(()=>{if(location.pathname==="/")history.replaceState(null,"","/${DEFAULT_LANG}"+location.search+location.hash)})();</script>`;
+const rootLanguageScript = (): string => `    <script>(()=>{if(location.pathname!=="/")return;try{const lang=localStorage.getItem("lang")||"${DEFAULT_LANG}";location.replace("/"+lang+location.search+location.hash)}catch{location.replace("/${DEFAULT_LANG}"+location.search+location.hash)}})();</script>`;
 
 const renderInitialNav = (sections: SectionRecord[]): string => sections
   .filter((section) => !section.system)
@@ -313,7 +313,7 @@ const localizedRouteRewrite = (): Plugin => {
       if (!slug || !sectionFiles?.has(slug)) return { url: "/404.html", status: 404 };
       const file = fileBySectionSlug.get(`${section}/${slug}`);
       if (file?.languages && !file.languages.map(normalizeLang).includes(normalizeLang(langCandidate))) return { url: "/index.html", status: 404 };
-      return { url: "/index.html" };
+      return { url: preferPrerender ? `/${langCandidate}/${section}/${encodedSlug}/index.html` : "/index.html" };
     }
 
     const systemSlug = safeDecodeURIComponent(section)?.trim().toLowerCase();
@@ -321,7 +321,7 @@ const localizedRouteRewrite = (): Plugin => {
     if (!systemSlug || !systemFiles?.has(systemSlug)) return { url: "/404.html", status: 404 };
     const file = fileBySectionSlug.get(`${systemSection}/${systemSlug}`);
     if (file?.languages && !file.languages.map(normalizeLang).includes(normalizeLang(langCandidate))) return { url: "/index.html", status: 404 };
-    return { url: "/index.html" };
+    return { url: preferPrerender ? `/${langCandidate}/${systemSlug}/index.html` : "/index.html" };
   };
 
   const applyRewrite = (

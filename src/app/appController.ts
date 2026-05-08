@@ -139,6 +139,8 @@ export class AppController {
 
   async init(): Promise<void> {
     themeService.initBeforeRender();
+    const storedLang = storageService.get(StorageKey.Lang);
+    if (storedLang) dom.langSwitcher.value = storedLang;
     this.syncTheme(storageService.get(StorageKey.Theme));
     this.eventController.bind({
       getActivePanel: () => this.state.activePanel,
@@ -211,6 +213,7 @@ export class AppController {
 
   private changeLanguage(): void {
     const targetLang = toLang(dom.langSwitcher.value);
+    storageService.set(StorageKey.Lang, targetLang);
     const route = parseRoute(this.state.sections);
     if (route.page === PAGE_ARTICLE && this.state.activeArticle && hasTranslation(this.state.activeArticle, targetLang)) {
       this.navigateTo(articlePath(targetLang, this.state.activeArticle.slug));
@@ -613,6 +616,7 @@ export class AppController {
     applyUiText(lang);
     this.syncTheme(dom.themeSwitcher.value);
     dom.langSwitcher.value = lang;
+    storageService.set(StorageKey.Lang, lang);
     controls.articles.sortSelect.value = this.state.sortBy;
     this.state.pageSize = this.normalizePageSize(this.state.pageSize);
     this.state.tagPageSize = this.normalizePageSize(this.state.tagPageSize);
