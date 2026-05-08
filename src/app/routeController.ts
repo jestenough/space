@@ -1,5 +1,5 @@
 import { parseRoute } from "@/router/router";
-import type { Route } from "@/core/types";
+import type { Route, SectionMeta } from "@/core/types";
 
 export type RouteRenderOptions = { resetScroll: boolean };
 
@@ -15,6 +15,7 @@ export type RouteControllerDeps = {
   renderInfoFile: (lang: string, section: string, slug: string, renderId: number) => Promise<void>;
   renderIndexRoute: (lang: string) => void;
   setErrorView: () => void;
+  sections: () => readonly SectionMeta[];
 };
 
 const routeSection = (route: Route): string | null => {
@@ -29,7 +30,7 @@ export class RouteController {
 
   async render(options: RouteRenderOptions): Promise<void> {
     const renderId = this.deps.nextRenderId();
-    const route = parseRoute();
+    const route = parseRoute(this.deps.sections());
 
     try {
       document.body.classList.remove("not-found-mode");

@@ -1,4 +1,0 @@
-User-agent: *
-Allow: /
-Disallow: /generated/
-Sitemap: https://autophany.space/sitemap.xml

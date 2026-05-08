@@ -47,17 +47,6 @@
     --color-gradient-3: #66e3c4;
     --shadow-panel: 0 16px 48px rgba(0, 0, 0, 0.34);
     --shadow-panel-soft: 0 8px 22px rgba(0, 0, 0, 0.22);
-
-    /* Compatibility aliases for older components. */
-    --bg: var(--color-bg);
-    --bg2: var(--color-bg-2);
-    --panel: var(--color-surface);
-    --panel-alt: var(--color-surface-2);
-    --line: var(--color-border);
-    --text: var(--color-text);
-    --muted: var(--color-muted);
-    --accent: var(--color-accent);
-    --ok: var(--color-ok);
   }
 
   html[data-theme="dark"],

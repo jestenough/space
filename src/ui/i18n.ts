@@ -15,12 +15,6 @@ export const applyUiText = (lang: Lang): void => {
   dom.asciiLogo.textContent = ASCII_LOGO;
   dom.langLabel.textContent = t.language;
   dom.themeLabel.textContent = t.theme;
-  dom.treeHome.textContent = t.navHome;
-  dom.treeArticles.textContent = t.navArticles;
-  dom.treeTags.textContent = t.navTags;
-  dom.welcomeTitle.textContent = t.welcomeTitle;
-  dom.welcomeLead.textContent = t.welcomeLead;
-  dom.welcomeBody.textContent = t.welcomeBody;
   dom.listTitle.textContent = t.listTitle;
 
   const placeholders: Array<[HTMLInputElement, string]> = [

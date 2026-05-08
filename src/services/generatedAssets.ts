@@ -32,11 +32,8 @@ export const fetchGeneratedJson = async (path: string): Promise<unknown> => {
   return response.json();
 };
 
-export const fetchGeneratedText = async (path: string): Promise<string | null> => {
-  try {
-    const response = await fetch(path, { cache: "no-cache" });
-    return response.ok ? response.text() : null;
-  } catch {
-    return null;
-  }
+export const fetchGeneratedText = async (path: string): Promise<string> => {
+  const response = await fetch(path, { cache: "no-cache" });
+  if (!response.ok) throw new Error(`Failed to load ${path}: ${response.status}`);
+  return response.text();
 };

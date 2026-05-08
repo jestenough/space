@@ -7,15 +7,31 @@ import { mkdir, readdir, rm, copyFile } from "node:fs/promises";
 
 type SectionRecord = {
   slug: string;
+  label?: Record<string, string>;
+  title?: Record<string, string>;
+  description?: Record<string, string>;
   system?: boolean;
 };
 
 type FileRecord = {
+  section?: string;
   slug: string;
+  label?: Record<string, string>;
   type?: string;
+  format?: string;
+  date?: string;
+  description?: Record<string, string>;
   tags?: string[];
   languages?: string[];
+  translations?: Record<string, string>;
   downloadPath?: string | null;
+};
+
+type SiteMetaRecord = {
+  pages?: Record<string, {
+    title?: Record<string, string>;
+    description?: Record<string, string>;
+  }>;
 };
 
 type RouteData = {
@@ -37,6 +53,7 @@ type ViteMiddlewareServer = {
         res: {
           statusCode: number;
           setHeader?: (key: string, value: string) => void;
+          end?: () => void;
         },
         next: () => void,
       ) => void,
@@ -53,6 +70,7 @@ const distMediaDir = resolve(rootDir, "dist", "media");
 
 const LANGUAGE_TAG_PATTERN = /^[a-z]{2,3}(?:-[A-Z]{2})?$/;
 const SYSTEM_SECTION = "site";
+const DEFAULT_LANG = "en";
 
 const safeDecodeURIComponent = (value: string): string | null => {
   try {
@@ -75,7 +93,7 @@ const loadRouteData = (): RouteData => {
   const articleSlugs = new Set<string>();
   const articleLangs = new Map<string, Set<string>>();
   const tagNames = new Set<string>();
-  const sections = new Set<string>([SYSTEM_SECTION, "about", "projects", "notes", "articles", "tags"]);
+  const sections = new Set<string>();
   const filesBySection = new Map<string, Set<string>>();
   const fileBySectionSlug = new Map<string, FileRecord>();
   const downloads = new Map<string, string>();
@@ -138,14 +156,104 @@ const hasFileExtension = (path: string): boolean => {
   return /\.[a-zA-Z0-9]+$/.test(path);
 };
 
+const readJson = <T>(path: string): T | null => {
+  if (!existsSync(path)) return null;
+  return JSON.parse(readFileSync(path, "utf8")) as T;
+};
+
+const generatedIndexShell = (): Plugin => ({
+  name: "generated-index-shell",
+  transformIndexHtml: (html) => renderIndexShell(html),
+});
+
+const renderIndexShell = (html: string): string => {
+  const sections = readJson<SectionRecord[]>(resolve(generatedDir, "sections-index.json"));
+  const siteMeta = readJson<SiteMetaRecord>(resolve(generatedDir, "site-meta.json"));
+  if (!sections || !siteMeta) return html;
+
+  const systemSection = sections.find((section) => section.system)?.slug ?? SYSTEM_SECTION;
+  const systemMeta = sections.find((section) => section.slug === systemSection);
+  const systemFiles = readJson<FileRecord[]>(resolve(generatedDir, "sections", `${systemSection}.json`)) ?? [];
+  const home = siteMeta.pages?.home;
+  const title = localized(home?.title, DEFAULT_LANG, "pages.home.title");
+  const description = localized(home?.description, DEFAULT_LANG, "pages.home.description");
+
+  return html
+    .replace("</head>", `${rootLanguageScript()}\n  </head>`)
+    .replace(/<title>[\s\S]*?<\/title>/, `<title>${escapeHtml(title)}</title>`)
+    .replace(/<meta name="description" content="[\s\S]*?" \/>/, `<meta name="description" content="${escapeAttr(description)}" />`)
+    .replace(/<nav class="quick-nav" aria-label="Sections">[\s\S]*?<\/nav>/, `<nav class="quick-nav" aria-label="Sections">${renderInitialNav(sections)}</nav>`)
+    .replace(/<h1 id="welcome-title" class="welcome-title">[\s\S]*?<\/h1>/, `<h1 id="welcome-title" class="welcome-title">${escapeHtml(title)}</h1>`)
+    .replace(/<p id="welcome-lead">[\s\S]*?<\/p>/, `<p id="welcome-lead">${escapeHtml(description)}</p>`)
+    .replace(/<p id="welcome-body">[\s\S]*?<\/p>/, `<p id="welcome-body"></p>`)
+    .replace(/<section id="home-files-panel" class="panel info-panel" aria-label="Home files panel">[\s\S]*?<\/section>/, `<section id="home-files-panel" class="panel info-panel" aria-label="Home files panel">${renderInitialFileList(systemFiles)}</section>`)
+    .replace(/<pre id="process-log">[\s\S]*?<\/pre>/, `<pre id="process-log">${renderInitialProcessLog(systemSection, systemMeta, systemFiles)}</pre>`);
+};
+
+const rootLanguageScript = (): string => `    <script>(()=>{if(location.pathname==="/")history.replaceState(null,"","/${DEFAULT_LANG}"+location.search+location.hash)})();</script>`;
+
+const renderInitialNav = (sections: SectionRecord[]): string => sections
+  .filter((section) => !section.system)
+  .map((section) => `<a class="quick-link" href="/${DEFAULT_LANG}/${encodeURIComponent(section.slug)}">${escapeHtml(localized(section.label, DEFAULT_LANG, `sections.${section.slug}.label`))}</a>`)
+  .join("");
+
+const renderInitialFileList = (files: FileRecord[]): string => {
+  const rows = files.map((file) => {
+    const href = file.translations?.[DEFAULT_LANG] ?? `/${DEFAULT_LANG}/${encodeURIComponent(file.slug)}`;
+    const label = localized(file.label, DEFAULT_LANG, `${file.slug}.label`);
+    const description = localized(file.description, DEFAULT_LANG, `${file.slug}.description`);
+    const date = file.date || "----------";
+    return `<li class="info-file-row"><a class="info-file-link" href="${escapeAttr(href)}" data-info-file-slug="${escapeAttr(file.slug)}" data-internal="true" aria-label="${escapeAttr(`${file.slug}: ${description}`)}"><span class="info-file-perms">-rw-rw-r--  root  ${escapeHtml(date)}</span>  <span class="info-file-name">${escapeHtml(label || file.slug)}</span></a></li>`;
+  }).join("");
+  return `<ul class="info-file-tree">${rows}</ul>`;
+};
+
+const renderInitialProcessLog = (section: string, sectionMeta: SectionRecord | undefined, files: FileRecord[]): string => {
+  const languages = [...new Set(files.flatMap((file) => file.languages ?? []))].sort();
+  const translated = files.filter((file) => file.languages?.includes(DEFAULT_LANG)).length;
+  const rawFiles = files.filter((file) => file.format !== "tex").length;
+  const texFiles = files.filter((file) => file.format === "tex").length;
+  const articles = files.filter((file) => file.type === "article").length;
+  const downloads = files.filter((file) => file.downloadPath).length;
+  return [
+    shellCommandMarkup(`statfs ${sectionMeta?.system ? "~" : `~/${section}`}`),
+    statRow("File system", "autophanyfs"),
+    statRow("Mounted on", sectionMeta?.system ? `/${DEFAULT_LANG}` : `/${DEFAULT_LANG}/${section}`),
+    statRow("Type", sectionMeta?.system ? "system-section" : "section"),
+    statRow("Flags", "ro, localized, indexed"),
+    '<span class="meta-rule" aria-hidden="true"></span>',
+    statRow("files", String(files.length)),
+    statRow("sources", String(files.reduce((total, file) => total + (file.languages?.length ?? 0), 0))),
+    statRow("languages", languages.join(", ") || DEFAULT_LANG),
+    statRow("translated", `${translated}/${files.length}`),
+    statRow("raw files", String(rawFiles)),
+    statRow("tex files", String(texFiles)),
+    statRow("articles", String(articles)),
+    statRow("downloads", String(downloads)),
+    statRow("index", `generated/sections/${section}.json`),
+  ].join("");
+};
+
+const shellCommandMarkup = (command: string): string => `<span class="stat-command"><span class="shell-prompt">guest@cray-1:~$</span><span class="shell-gap"> </span><span class="shell-cmd">${escapeHtml(command)}</span></span>`;
+const statRow = (key: string, value: string): string => `<span class="stat-row"><span class="stat-key">${escapeHtml(key)}</span><span class="stat-sep">:</span><span class="stat-value">${escapeHtml(value)}</span></span>`;
+
+const localized = (values: Record<string, string> | undefined, lang: string, path: string): string => {
+  const value = values?.[lang];
+  if (typeof value !== "string" || !value.trim()) throw new Error(`Missing localized generated value: ${path}.${lang}`);
+  return value.trim();
+};
+
+const escapeHtml = (value: string): string => value.replace(/[&<>]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[char] ?? char);
+const escapeAttr = (value: string): string => escapeHtml(value).replace(/"/g, "&quot;");
+
 const localizedRouteRewrite = (): Plugin => {
-  const rewrite = (url: string, preferPrerender: boolean): { url: string; status?: number } => {
+  const rewrite = (url: string, preferPrerender: boolean): { url: string; status?: number; redirect?: string } => {
     const { articleSlugs, articleLangs, tagNames, sections, systemSection, filesBySection, fileBySectionSlug, downloads } = loadRouteData();
-    const [rawPath = "/"] = url.split("?");
+    const [rawPath = "/", query = ""] = url.split("?");
     const path = rawPath.length > 1 ? rawPath.replace(/\/+$/g, "") : rawPath;
 
     if (path === "/") {
-      return { url: "/index.html" };
+      return { url: rawPath, status: 302, redirect: `/${DEFAULT_LANG}${query ? `?${query}` : ""}` };
     }
 
     if (
@@ -223,6 +331,12 @@ const localizedRouteRewrite = (): Plugin => {
     server.middlewares.use((req, res, next) => {
       if (req.url) {
         const target = rewrite(req.url, preferPrerender);
+        if (target.redirect) {
+          res.statusCode = target.status ?? 302;
+          res.setHeader?.("Location", target.redirect);
+          res.end?.();
+          return;
+        }
         req.url = target.url;
 
         if (target.status) res.statusCode = target.status;
@@ -296,7 +410,7 @@ const generatedAssetsPlugin = (): Plugin => ({
     }
 
     await rm(distGeneratedDir, { recursive: true, force: true });
-    await copyDir(generatedDir, distGeneratedDir);
+    await copyGeneratedDir(generatedDir, distGeneratedDir);
   },
 });
 
@@ -377,6 +491,23 @@ const copyDir = async (from: string, to: string): Promise<void> => {
   }
 };
 
+const copyGeneratedDir = async (from: string, to: string): Promise<void> => {
+  await mkdir(to, { recursive: true });
+
+  for (const entry of await readdir(from, { withFileTypes: true })) {
+    if (entry.name === "files-meta") continue;
+
+    const source = resolve(from, entry.name);
+    const target = resolve(to, entry.name);
+
+    if (entry.isDirectory()) {
+      await copyGeneratedDir(source, target);
+    } else if (entry.isFile()) {
+      await copyFile(source, target);
+    }
+  }
+};
+
 const contentType = (ext: string): string => {
   if (ext === ".html") return "text/html; charset=utf-8";
   if (ext === ".json") return "application/json; charset=utf-8";
@@ -405,6 +536,7 @@ export default defineConfig({
   },
 
   plugins: [
+    generatedIndexShell(),
     localizedRouteRewrite(),
     generatedAssetsPlugin(),
     contentFilesPlugin(),

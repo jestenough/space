@@ -132,7 +132,8 @@ export class AppController {
       renderArticle: (lang, slug, renderId) => this.articlePageController.render(lang, slug, renderId),
       renderInfoFile: (lang, section, slug, renderId) => this.infoFileController.render(lang, section, slug, renderId),
       renderIndexRoute: (lang) => this.renderIndexRoute(lang),
-      setErrorView: () => setView(VIEW_ERROR)
+      setErrorView: () => setView(VIEW_ERROR),
+      sections: () => this.state.sections
     });
   }
 
@@ -210,7 +211,7 @@ export class AppController {
 
   private changeLanguage(): void {
     const targetLang = toLang(dom.langSwitcher.value);
-    const route = parseRoute();
+    const route = parseRoute(this.state.sections);
     if (route.page === PAGE_ARTICLE && this.state.activeArticle && hasTranslation(this.state.activeArticle, targetLang)) {
       this.navigateTo(articlePath(targetLang, this.state.activeArticle.slug));
       return;
@@ -432,7 +433,7 @@ export class AppController {
 
   private currentTextStats(): { words: number; chars: number } {
     if (!this.state.activeArticle) return { words: 0, chars: 0 };
-    return this.state.articleStats.get(this.articleStatsKey(parseRoute().lang, this.state.activeArticle.slug)) ?? { words: 0, chars: 0 };
+    return this.state.articleStats.get(this.articleStatsKey(parseRoute(this.state.sections).lang, this.state.activeArticle.slug)) ?? { words: 0, chars: 0 };
   }
 
   private cacheCurrentArticleStats(lang: Lang, slug: string): void {
@@ -463,7 +464,7 @@ export class AppController {
       title,
       description,
       indexable,
-      route: parseRoute(),
+      route: parseRoute(this.state.sections),
       activeArticle: this.state.activeArticle,
       activeInfoFile: this.state.activeInfoFile,
       availableLanguages: this.availableLanguages()
@@ -472,7 +473,7 @@ export class AppController {
 
   private openCurrentArticleEditor(): void {
     if (!this.state.activeArticle) return;
-    const route = parseRoute();
+    const route = parseRoute(this.state.sections);
     const slug = encodeURIComponent(this.state.activeArticle.slug);
     const url = `${GITHUB_EDIT_BASE}/${slug}/${slug}.${route.lang}.tex`;
     window.open(url, "_blank", "noopener,noreferrer");
@@ -480,7 +481,7 @@ export class AppController {
 
   private openCurrentArticlePdf(): void {
     if (!this.state.activeArticle) return;
-    const route = parseRoute();
+    const route = parseRoute(this.state.sections);
     if (route.page !== PAGE_ARTICLE) return;
     pdfService.openArticlePdf(route.lang, this.state.activeArticle.slug);
   }
@@ -494,7 +495,7 @@ export class AppController {
   }
 
   private localizedDownloadPath(path: string): string {
-    const route = parseRoute();
+    const route = parseRoute(this.state.sections);
     return path.replace(/^\/[a-z]{2,3}(?:-[A-Z]{2})?(?=\/)/, `/${route.lang}`);
   }
 
@@ -626,7 +627,7 @@ export class AppController {
   }
 
   private backHref(lang: Lang): string {
-    const route = parseRoute();
+    const route = parseRoute(this.state.sections);
     if (route.page === PAGE_INFO_FILE) return sectionPath(lang, route.section, route.section === PANEL_HOME);
     const stored = storageService.getSession(SessionKey.ArticleBackPath);
     if (stored && new RegExp(`^/${lang}/(articles|tags)(/|$)?`).test(stored)) return stored;
@@ -640,7 +641,7 @@ export class AppController {
   }
 
   private setPageParam(page: number, replace = false): void {
-    const route = parseRoute();
+    const route = parseRoute(this.state.sections);
     if (route.page !== PAGE_ARTICLES && route.page !== PAGE_TAGS) return;
     const url = new URL(window.location.href);
     if (page <= 1) url.searchParams.delete("page");

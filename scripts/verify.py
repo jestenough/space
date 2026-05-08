@@ -49,6 +49,7 @@ class Verify:
         index = self.read_articles()
         self.check_generated_structure()
         self.check_no_generated_artifacts()
+        self.check_no_dist_artifacts()
         self.check_generated_items()
         self.check_content_index(index)
         self.check_articles(index)
@@ -76,6 +77,16 @@ class Verify:
         stale.extend(GENERATED_DIR.rglob("*.br"))
         if stale:
             raise RuntimeError("Forbidden generated artifacts: " + ", ".join(str(path) for path in sorted(set(stale))))
+
+    @staticmethod
+    def check_no_dist_artifacts() -> None:
+        forbidden = [
+            DIST_DIR / GENERATED_DIR.name / "files-meta",
+            DIST_DIR / "info",
+        ]
+        stale = [path for path in forbidden if path.exists()]
+        if stale:
+            raise RuntimeError("Forbidden dist artifacts: " + ", ".join(str(path) for path in sorted(stale)))
 
     def check_generated_items(self) -> None:
         for item in generated.items():

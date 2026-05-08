@@ -73,14 +73,8 @@ export type UiText = {
   brand: string;
   language: string;
   theme: string;
-  navHome: string;
-  navArticles: string;
-  navTags: string;
   listTitle: string;
   tagsHeadline: string;
-  welcomeTitle: string;
-  welcomeLead: string;
-  welcomeBody: string;
   tagsTitle: string;
   allTags: string;
   back: string;

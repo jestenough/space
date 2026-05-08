@@ -1,16 +1,15 @@
 import type { InfoFileMeta, Lang, SectionMeta } from "@/core/types";
-import { pickLangText } from "@/core/languages";
 import { safeDecodeURIComponent } from "@/core/url";
 import { escapeHtml } from "@/core/escape";
 import { fetchGeneratedJson, fetchGeneratedText, PromiseLruCache } from "@/services/generatedAssets";
-import { generatedInfoFileHtmlPath, generatedInfoFileMetaPath, generatedSectionIndexPath, generatedSectionsIndexPath } from "@/services/generatedPaths";
+import { generatedInfoFileHtmlPath, generatedSectionIndexPath, generatedSectionsIndexPath } from "@/services/generatedPaths";
 
 const SYSTEM_SECTION = "site";
 const MAX_HTML_CACHE_ITEMS = 40;
 const MAX_SECTION_CACHE_ITEMS = 64;
 const sectionCache = new PromiseLruCache<InfoFileMeta[]>(MAX_SECTION_CACHE_ITEMS);
 let sectionsPromise: Promise<SectionMeta[]> | null = null;
-const htmlCache = new PromiseLruCache<string | null>(MAX_HTML_CACHE_ITEMS);
+const htmlCache = new PromiseLruCache<string>(MAX_HTML_CACHE_ITEMS);
 
 export const toRouteSlug = (fileSlug: string): string => fileSlug.replace(/\.[^.]+$/, "").trim().toLowerCase();
 
@@ -43,21 +42,16 @@ export const findInfoFile = async (section: string, slug: string): Promise<InfoF
 
 export const renderInfoFileHtml = async (file: InfoFileMeta, lang: Lang): Promise<string> => {
   if (!file.languages.includes(lang)) return missingTranslationHtml(lang, file.languages);
-  const content = await loadFileHtml(file, lang);
-  return content ?? `<section class="file-document"><pre class="info-file-pre">${escapeHtml(pickLangText(file.description, lang))}</pre></section>`;
+  return loadFileHtml(file, lang);
 };
 
 export const fileHtmlPath = generatedInfoFileHtmlPath;
-export const fileMetaPath = generatedInfoFileMetaPath;
 
-const loadFileHtml = (file: InfoFileMeta, lang: Lang): Promise<string | null> => {
+const loadFileHtml = (file: InfoFileMeta, lang: Lang): Promise<string> => {
   const path = fileHtmlPath(file, lang);
   const cached = htmlCache.get(path);
   if (cached) return cached;
-  const request = fetchGeneratedText(path).then((html) => {
-    if (html === null) htmlCache.delete(path);
-    return html;
-  });
+  const request = fetchGeneratedText(path);
   htmlCache.set(path, request);
   return request;
 };

@@ -38,7 +38,3 @@ export const renderInfoFileList = (lang: Lang, files: readonly InfoFileMeta[]): 
   clear(dom.homeFilesPanel);
   dom.homeFilesPanel.append(createInfoFileList(lang, files));
 };
-
-export const renderArticleContent = (html: string): void => {
-  dom.articleContent.innerHTML = html;
-};

@@ -1,5 +1,5 @@
 import "./styles/index.css";
-import { App } from "@/app/App";
+import { AppController } from "@/app/appController";
 
-const app = new App();
+const app = new AppController();
 void app.init();
