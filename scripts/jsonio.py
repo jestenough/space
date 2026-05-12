@@ -33,3 +33,10 @@ def read_list(path: Path, label: str = "JSON") -> list[Any]:
 def write_json(path: Path, data: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def read_text(path: Path, message: str | None = None) -> str:
+    try:
+        return path.read_text(encoding="utf-8")
+    except FileNotFoundError as exc:
+        raise RuntimeError(message or f"Missing file: {path}") from exc

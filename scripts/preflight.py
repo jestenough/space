@@ -17,6 +17,7 @@ from .config import (
     DATE_FORMAT_LABEL, 
     ITEM_META_SUFFIX, 
     PACKAGE_JSON, 
+    REQUIRED_BINARIES,
     ROOT_DIR, 
     SRC_DIR, 
     SYSTEM_SECTION, 
@@ -31,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 
 class Preflight:
-    required_binaries = ("node", "npm", "pandoc", "latexmk", "xelatex")
+    required_binaries = REQUIRED_BINARIES
     required_paths = (ROOT_DIR, CONTENT_DIR, SRC_DIR, PACKAGE_JSON, TSCONFIG, VITE_CONFIG)
     slug_re = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
     iso_date_re = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -56,7 +57,7 @@ class Preflight:
         for actual, expected in checks.items():
             if actual != expected:
                 raise RuntimeError(f"Route invariant failed: expected {expected}, got {actual}")
-        if content.item_type(ARTICLES_SECTION, {}) != TEXT_TYPE or content.item_type(ARTICLES_SECTION, {"type": ARTICLE_TYPE}) != ARTICLE_TYPE:
+        if content.item_type({}) != TEXT_TYPE or content.item_type({"type": ARTICLE_TYPE}) != ARTICLE_TYPE:
             raise RuntimeError("Item type invariant failed")
 
     def check_binaries(self) -> None:
@@ -98,7 +99,7 @@ class Preflight:
         self.check_meta(item.meta, item.slug, meta_path, section_meta=False)
         self.check_download(item.meta.get("download"), meta_path)
         self.check_item_languages(item)
-        kind = content.item_type(section, item)
+        kind = content.item_type(item)
         if section.slug == ARTICLES_SECTION and kind != ARTICLE_TYPE:
             raise RuntimeError(f"Article section item `{item.section}/{item.slug}` must set `type: \"{ARTICLE_TYPE}\"` in {meta_path}")
         if kind == ARTICLE_TYPE:

@@ -4,11 +4,16 @@ export { DEFAULT_HREFLANG, DEFAULT_LANG } from "@/core/languages";
 
 export const SITE_NAME = "autophany.space";
 export const SITE_URL = "https://autophany.space";
+export const SYSTEM_SECTION = "site";
 export const ALL_TAGS = "__all__";
 export const PAGE_SIZE_OPTIONS = [4, 8, 16, 32] as const;
 export const DEFAULT_PAGE_SIZE: number = PAGE_SIZE_OPTIONS[0];
 export const GITHUB_EDIT_BASE = "https://github.com/jestenough/personal/edit/main/content/articles";
 export const ROUTE_PREFIX = /^(\/|\/[a-z]{2,3}(?:-[A-Z]{2})?(\/|$))/;
+
+export const normalizePageSize = (value: number): number => (
+  PAGE_SIZE_OPTIONS.includes(value as (typeof PAGE_SIZE_OPTIONS)[number]) ? value : DEFAULT_PAGE_SIZE
+);
 
 export const ASCII_LOGO = `#                                                                                                             
 #       mm            m                  #                                   mmmm                             
@@ -38,6 +43,12 @@ const EN_UI: UiText = {
   footerMotto: "Follow your curiosity. Lead humanity forward",
   errorTitle: "Could not load article",
   errorText: "If translation is missing, the app redirects to the home page.",
+  missingTranslationTitle: "Not written yet",
+  missingTranslationDescription: "This version does not exist yet, but it will be written.",
+  actionPdf: "pdf",
+  actionEdit: "edit",
+  actionZen: "zen",
+  actionDownload: "download",
   themeReading: "paper",
   themeSystem: "system",
   themeLight: "day",
@@ -66,10 +77,16 @@ export const UI: Record<string, UiText> = {
     allTags: "Все",
     noArticles: "Нет статей для выбранного языка",
     tagSearchPlaceholder: "tag",
-    footerMotto: "Следуй любопытству. Веди человечество вперёд",
-    errorTitle: "Не удалось загрузить article",
-    errorText: "Если у статьи нет перевода, открывается главная страница.",
-    themeReading: "paper/бумага",
+     footerMotto: "Следуй любопытству. Веди человечество вперёд",
+     errorTitle: "Не удалось загрузить article",
+     errorText: "Если у статьи нет перевода, открывается главная страница.",
+     missingTranslationTitle: "Пока не написано",
+     missingTranslationDescription: "Этой версии пока нет, но она обязательно будет.",
+     actionPdf: "pdf",
+     actionEdit: "edit",
+     actionZen: "zen",
+     actionDownload: "download",
+     themeReading: "paper/бумага",
     themeSystem: "system/система",
     themeLight: "day/день",
     themeDark: "night/ночь",

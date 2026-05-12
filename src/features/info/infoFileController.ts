@@ -6,6 +6,7 @@ import type { InfoFileMeta, Lang } from "@/core/types";
 import { setView } from "@/ui/view";
 import { ViewMode } from "@/core/enums";
 import { infoFileView } from "@/ui/views/infoFileView";
+import { missingTranslationCopy } from "@/ui/missingTranslation";
 
 type InfoFileRenderContext = { infoFile?: InfoFileMeta };
 
@@ -42,8 +43,9 @@ export class InfoFileController {
     this.deps.renderArticleToc();
     const translated = file.languages.includes(lang);
     this.deps.setFileDownloadVisible(translated && file.downloadPath ? file : null);
-    const title = translated ? label(file.title, lang) : (lang === "ru" ? "Пока не написано" : "Not written yet");
-    const description = translated ? label(file.description, lang) : (lang === "ru" ? "Этой версии пока нет, но она обязательно будет." : "This version does not exist yet, but it will be written.");
+    const fallback = missingTranslationCopy(lang);
+    const title = translated ? label(file.title, lang) : fallback.title;
+    const description = translated ? label(file.description, lang) : fallback.description;
     this.deps.applyWelcomeText(title, description);
     dom.renderIndicator.innerHTML = shellCommandMarkup(infoFileOpenCommand(file.section, file.slug));
     document.title = title + " :: " + text(lang).brand;

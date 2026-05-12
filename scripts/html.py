@@ -126,7 +126,7 @@ class Html:
 
     def item_meta(self, section: content.Section, item: content.Item) -> dict[str, Any]:
         languages = content.langs(item.sources)
-        kind = content.item_type(section, item)
+        kind = content.item_type(item)
         title = item.meta.get("title") or item.meta.get("label") or item.slug
         description = item.meta.get("description") or {}
         date = str(item.meta.get("date") or "")

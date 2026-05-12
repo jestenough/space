@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from functools import lru_cache
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -39,6 +40,7 @@ class Section:
         return bool(self.meta.get("system"))
 
 
+@lru_cache(maxsize=1)
 def sections() -> list[Section]:
     result: list[Section] = []
     for path in sorted(CONTENT_DIR.iterdir()):
@@ -80,7 +82,7 @@ def langs(sources: tuple[Source, ...]) -> list[str]:
     return values or [DEFAULT_LANG]
 
 
-def item_type(_section: Section | str, item: Item | dict[str, Any]) -> str:
+def item_type(item: Item | dict[str, Any]) -> str:
     meta = item.meta if isinstance(item, Item) else item
     return str(meta.get("type") or TEXT_TYPE)
 

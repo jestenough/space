@@ -1,6 +1,7 @@
 import { tagPath } from "@/router/routePaths";
 import type { ArticleMeta, InfoFileMeta, Lang, SectionMeta } from "@/core/types";
-import { escapeHtml } from "@/core/escape";
+import { escapeHtml, escapeShell } from "@/core/escape";
+import { SYSTEM_SECTION } from "@/core/config";
 
 const PUBLIC_FILE_PERMISSIONS = "-rw-rw-r--";
 const PUBLIC_FILE_OWNER = "root";
@@ -23,13 +24,13 @@ type TagPipelineOptions = { sortBy?: string; pageSize?: number; query?: string; 
 
 export function articlesCommand(options: PipelineOptions = {}): string {
   const base = shellCommandText("ls -p | grep -v /");
-  const filtered = options.query ? `${base} | grep -i -- "${shellEscape(options.query)}"` : base;
+  const filtered = options.query ? `${base} | grep -i -- "${escapeShell(options.query)}"` : base;
   return withContinuation([filtered, sortPipeline(options.sortBy), `head -n ${options.pageSize ?? 4}`], options.maxColumns);
 }
 
 export function tagsCommand(options: TagPipelineOptions = {}): string {
   const base = shellCommandText('grep -R "tag:" . | cut -d: -f2 | cut -d" " -f1');
-  const filtered = options.query ? `${base} | grep -i -- "${shellEscape(options.query)}"` : base;
+  const filtered = options.query ? `${base} | grep -i -- "${escapeShell(options.query)}"` : base;
   return withContinuation([filtered, tagSortPipeline(options.sortBy), `head -n ${options.pageSize ?? 4}`], options.maxColumns);
 }
 
@@ -56,8 +57,8 @@ export function infoFileOpenCommand(section: string, slug: string): string {
 }
 
 export function tagSearchCommand(tag: string, options: PipelineOptions = {}): string {
-  const base = shellCommandText(`grep -R "tag:${shellEscape(tag)}" .`);
-  const filtered = options.query ? `${base} | grep -i -- "${shellEscape(options.query)}"` : base;
+  const base = shellCommandText(`grep -R "tag:${escapeShell(tag)}" .`);
+  const filtered = options.query ? `${base} | grep -i -- "${escapeShell(options.query)}"` : base;
   return withContinuation([filtered, sortPipeline(options.sortBy), `head -n ${options.pageSize ?? 4}`], options.maxColumns);
 }
 
@@ -74,35 +75,6 @@ type SnapshotArgs = {
   words?: number;
   chars?: number;
 };
-
-export function processSnapshot(args: SnapshotArgs): string {
-  if (args.article) return articleMetadataSnapshot(args);
-  if (args.infoFile) return infoFileMetadataSnapshot(args.infoFile, args.lang);
-
-  const lines: string[] = [
-    shellCommandText(`statfs ${displaySectionPath(args.section?.slug ?? args.panel)}`),
-    "File system : autophanyfs",
-    `Mounted on  : ${mountedPath(args)}`,
-    `Type        : ${args.section?.system ? "system-section" : "section"}`,
-    "Flags       : ro, localized, indexed",
-    "──────────────────────────────",
-    ...sectionStats(args).map(([key, value]) => `${key.padEnd(11, " ")}: ${value}`)
-  ];
-
-  if (args.panel === "articles") {
-    lines.push(
-      "scope   : ./",
-      `filter  : ${args.query ? `grep ${args.query}` : "none"}`,
-      `matches : ${args.matches ?? 0}`
-    );
-  }
-  if (args.panel === "tags") {
-    lines.push(args.tag ? `scope   : tag:${args.tag}` : "scope   : tags-index");
-    if (args.tag) lines.push(`matches : ${args.matches ?? 0}`);
-  }
-
-  return lines.join("\n");
-}
 
 export function processSnapshotHtml(args: SnapshotArgs): string {
   if (args.article) return articleMetadataSnapshotHtml(args);
@@ -160,37 +132,7 @@ const sectionStats = (args: SnapshotArgs): Array<[string, string]> => {
 
 const mountedPath = (args: SnapshotArgs): string => {
   const section = args.section?.slug ?? args.panel;
-  return args.section?.system || section === "site" ? `/${args.lang}` : `/${args.lang}/${section}`;
-};
-
-const articleMetadataSnapshot = (args: SnapshotArgs): string => {
-  const article = args.article;
-  if (!article) return "";
-  const filePath = `~/articles/${article.slug}.tex`;
-  const stamp = `${article.date} 00:00:00 +0000`;
-  return [
-    shellCommandText(`stat ${filePath}`),
-    `File   : ${filePath}`,
-    `Size   : ${estimatedSize(article)}`,
-    "Blocks : 8",
-    "IO     : 4096 regular file",
-    "Device : autophanyfs",
-    "Inode  : 042",
-    "Links  : 1",
-    "Access : (0664/" + PUBLIC_FILE_PERMISSIONS + ")",
-    "Uid    : (0/" + PUBLIC_FILE_OWNER + ")",
-    "Gid    : (42/" + PUBLIC_FILE_GROUP + ")",
-    `Birth  : ${stamp}`,
-    `Mtime  : ${stamp}`,
-    "──────────────────────────────",
-    `slug   : ${article.slug}`,
-    `lang   : ${args.lang}`,
-    `langs  : ${article.languages.join(", ")}`,
-    `tags   : ${article.tags.map((tag) => `#${tag}`).join(" ")}`,
-    `words  : ${args.words ?? 0}`,
-    `chars  : ${args.chars ?? 0}`,
-    `pdf    : ~/articles/${article.slug}.pdf`
-  ].join("\n");
+  return args.section?.system || section === SYSTEM_SECTION ? `/${args.lang}` : `/${args.lang}/${section}`;
 };
 
 const articleMetadataSnapshotHtml = (args: SnapshotArgs): string => {
@@ -227,31 +169,6 @@ const articleMetadataSnapshotHtml = (args: SnapshotArgs): string => {
   ].join("");
 };
 
-const infoFileMetadataSnapshot = (file: InfoFileMeta, lang: Lang): string => {
-  const filePath = displayFilePath(file.section, file.slug);
-  const stamp = `${file.date || "1970-01-01"} 00:00:00 +0000`;
-
-  return [
-    shellCommandText(`stat ${filePath}`),
-    `File   : ${filePath}`,
-    `Size   : 0`,
-    "Blocks : 8",
-    "IO     : 4096 regular file",
-    "Device : autophanyfs",
-    "Inode  : 021",
-    "Links  : 1",
-    "Access : (0664/" + PUBLIC_FILE_PERMISSIONS + ")",
-    "Uid    : (0/" + PUBLIC_FILE_OWNER + ")",
-    "Gid    : (42/" + PUBLIC_FILE_GROUP + ")",
-    `Birth  : ${stamp}`,
-    `Mtime  : ${stamp}`,
-    "──────────────────────────────",
-    `name   : ${file.slug}`,
-    `lang   : ${lang}`,
-    `type   : service-file`
-  ].join("\n");
-};
-
 const infoFileMetadataSnapshotHtml = (file: InfoFileMeta, lang: Lang): string => {
   const filePath = displayFilePath(file.section, file.slug);
   const stamp = `${file.date || "1970-01-01"} 00:00:00 +0000`;
@@ -278,9 +195,9 @@ const infoFileMetadataSnapshotHtml = (file: InfoFileMeta, lang: Lang): string =>
 
 const shellCommandHtml = shellCommandMarkup;
 
-const displaySectionPath = (section: string): string => section === "site" ? "~" : `~/${section}`;
+const displaySectionPath = (section: string): string => section === SYSTEM_SECTION ? "~" : `~/${section}`;
 
-const displayFilePath = (section: string, slug: string): string => section === "site" ? `~/${slug}` : `~/${section}/${slug}`;
+const displayFilePath = (section: string, slug: string): string => section === SYSTEM_SECTION ? `~/${slug}` : `~/${section}/${slug}`;
 
 const statRow = (key: string, value: string): string => statRowHtml(key, escapeHtml(value));
 
@@ -323,7 +240,5 @@ const withContinuation = (commands: string[], maxColumns = Number.POSITIVE_INFIN
   }
   return lines.join("\n");
 };
-
-const shellEscape = (value: string): string => value.replace(/["`\\$]/g, "\\$&");
 
 const estimatedSize = (article: ArticleMeta): number => 640 + article.slug.length * 12 + article.tags.join(" ").length * 8;

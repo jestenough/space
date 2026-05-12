@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 from xml.sax.saxutils import escape as xml_escape
 
 from . import generated, routes
-from .config import ARTICLE_TYPE, ARTICLES_SECTION, DEFAULT_LANG, DIST_DIR, GENERATED_SITE_META_PATH, NOT_FOUND_PAGE, SITE_URL
+from .config import ARTICLE_TYPE, ARTICLES_SECTION, DEFAULT_LANG, DIST_DIR, FEED_ITEM_LIMIT, GENERATED_SITE_META_PATH, NOT_FOUND_PAGE, SITE_URL
 from .jsonio import read_object
 
 XML_HEADER = '<?xml version="1.0" encoding="UTF-8"?>'
@@ -27,7 +28,7 @@ class Seo:
         files = generated.items(sections)
         articles = generated.articles(sections)
         languages = generated.item_languages(files)
-        tags_by_lang = self.collect_tags_by_lang(articles)
+        tags_by_lang = generated.collect_tags_by_lang(articles)
 
         self.write_text(DIST_DIR / "sitemap.xml", self.render_sitemap(self.build_sitemap_entries(articles, tags_by_lang, sections, files)))
         self.write_text(DIST_DIR / "robots.txt", self.render_robots())
@@ -85,10 +86,10 @@ class Seo:
         return "\n".join([XML_HEADER, SITEMAP_ROOT, *(self.render_sitemap_entry(entry) for entry in entries), "</urlset>", ""])
 
     def render_sitemap_entry(self, entry: dict[str, Any]) -> str:
-        lines = ["  <url>", f"    <loc>{self.xml(self.absolute_url(entry['path']))}</loc>", f"    <lastmod>{self.xml(entry['lastmod'])}</lastmod>"]
+        lines = ["  <url>", f"    <loc>{self.xml(routes.absolute_url(entry['path']))}</loc>", f"    <lastmod>{self.xml(entry['lastmod'])}</lastmod>"]
         for hreflang, path in entry.get("alternates", {}).items():
             if path:
-                lines.append(f"    <xhtml:link rel=\"alternate\" hreflang=\"{self.xml(hreflang)}\" href=\"{self.xml(self.absolute_url(path))}\" />")
+                lines.append(f"    <xhtml:link rel=\"alternate\" hreflang=\"{self.xml(hreflang)}\" href=\"{self.xml(routes.absolute_url(path))}\" />")
         lines.append("  </url>")
         return "\n".join(lines)
 
@@ -125,7 +126,7 @@ class Seo:
                 article_path = routes.generated_item_route(article, lang)
                 lines.extend([
                     self.article_pdf_path(article, lang),
-                    f"  Link: <{self.absolute_url(article_path)}>; rel=\"canonical\"",
+                    f"  Link: <{routes.absolute_url(article_path)}>; rel=\"canonical\"",
                     "  X-Robots-Tag: index, follow",
                     "  Cache-Control: no-cache, must-revalidate",
                     "",
@@ -155,8 +156,8 @@ class Seo:
         lang_articles.sort(key=lambda article: article["date"], reverse=True)
         items = []
 
-        for article in lang_articles[:20]:
-            url = self.absolute_url(routes.generated_item_route(article, lang))
+        for article in lang_articles[:FEED_ITEM_LIMIT]:
+            url = routes.absolute_url(routes.generated_item_route(article, lang))
             items.append("\n".join([
                 "    <item>",
                 f"      <title>{self.xml(self.localized(article['title'], lang))}</title>",
@@ -174,7 +175,7 @@ class Seo:
             '<rss version="2.0">',
             "  <channel>",
             f"    <title>{self.xml(title)}</title>",
-            f"    <link>{self.xml(self.absolute_url(routes.section_route(ARTICLES_SECTION, lang)))}</link>",
+            f"    <link>{self.xml(routes.absolute_url(routes.section_route(ARTICLES_SECTION, lang)))}</link>",
             f"    <description>{self.xml(description)}</description>",
             f"    <language>{self.xml(lang)}</language>",
             *items,
@@ -191,13 +192,6 @@ class Seo:
             if isinstance(text, str) and text.strip():
                 return text.strip()
         return ""
-
-    def collect_tags_by_lang(self, articles: list[dict[str, Any]]) -> dict[str, set[str]]:
-        result = {lang: set() for lang in generated.item_languages(articles)}
-        for article in articles:
-            for lang in article["languages"]:
-                result.setdefault(lang, set()).update(article["tags"])
-        return result
 
     def article_alternates(self, article: dict[str, Any]) -> dict[str, str]:
         return routes.alternates(article["languages"], lambda lang: routes.generated_item_route(article, lang))
@@ -232,15 +226,11 @@ class Seo:
         return routes.generated_pdf_route(article, lang)
 
     @staticmethod
-    def absolute_url(path: str) -> str:
-        return f"{SITE_URL}/{path.lstrip('/')}"
-
-    @staticmethod
     def xml(value: Any) -> str:
         return xml_escape(str(value), {"'": "&apos;", '"': "&quot;"})
 
     @staticmethod
-    def write_text(path, value: str) -> None:
+    def write_text(path: Path, value: str) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(value, encoding="utf-8")
 

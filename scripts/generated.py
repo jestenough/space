@@ -76,3 +76,13 @@ def section_languages(section: dict[str, Any]) -> list[str]:
         if isinstance(value, dict):
             values.update(lang for lang in value if isinstance(lang, str))
     return language_list(values)
+
+
+def collect_tags_by_lang(articles: list[GeneratedItem]) -> dict[str, set[str]]:
+    result: dict[str, set[str]] = {}
+    for article in articles:
+        tags = [tag for tag in article.get("tags", []) if isinstance(tag, str)]
+        for lang in article.get("languages", []):
+            if isinstance(lang, str):
+                result.setdefault(lang, set()).update(tags)
+    return result

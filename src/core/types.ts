@@ -88,6 +88,12 @@ export type UiText = {
   footerMotto: string;
   errorTitle: string;
   errorText: string;
+  missingTranslationTitle: string;
+  missingTranslationDescription: string;
+  actionPdf: string;
+  actionEdit: string;
+  actionZen: string;
+  actionDownload: string;
   themeReading: string;
   themeSystem: string;
   themeLight: string;

@@ -1,4 +1,4 @@
-import { ALL_TAGS, DEFAULT_PAGE_SIZE, GITHUB_EDIT_BASE, PAGE_SIZE_OPTIONS } from "@/core/config";
+import { ALL_TAGS, GITHUB_EDIT_BASE, SITE_NAME, SYSTEM_SECTION, normalizePageSize } from "@/core/config";
 import { articleDescription, articleTitle, hasTranslation, loadArticleIndex } from "@/services/articleService";
 import { panelInfo } from "@/components/panels";
 import { controls } from "@/components/controls";
@@ -34,7 +34,7 @@ import { loadSectionIndex, loadSections } from "@/features/info/infoFiles";
 type RenderContext = { article?: ArticleMeta; infoFile?: InfoFileMeta; tag?: string; matches?: number };
 const MAX_ARTICLE_STATS_CACHE = 80;
 
-const PANEL_HOME = "site" as const;
+const PANEL_HOME = SYSTEM_SECTION;
 const PANEL_ARTICLES = "articles" as const;
 const PANEL_TAGS = "tags" as const;
 const PAGE_ARTICLE = "article" as const;
@@ -241,10 +241,6 @@ export class AppController {
     const theme = themeService.apply(value);
     storageService.set(StorageKey.Theme, theme);
     dom.themeSwitcher.value = theme;
-  }
-
-  private normalizePageSize(value: number): number {
-    return PAGE_SIZE_OPTIONS.includes(value as (typeof PAGE_SIZE_OPTIONS)[number]) ? value : DEFAULT_PAGE_SIZE;
   }
 
   private renderIndexRoute(lang: Lang): void {
@@ -578,14 +574,14 @@ export class AppController {
     dom.downloadPdfBtn.classList.toggle("hidden", !file);
     dom.zenModeBtn.classList.add("hidden");
     dom.editArticleBtn.classList.add("hidden");
-    dom.downloadPdfBtn.textContent = "download";
+    dom.downloadPdfBtn.textContent = text(parseRoute(this.state.sections).lang).actionDownload;
   }
 
   private activeSection(): SectionMeta {
     return this.state.sections.find((section) => section.slug === this.state.activePanel) ?? this.state.sections[0] ?? {
       slug: PANEL_HOME,
       label: { [DEFAULT_LANG]: "site/" },
-      title: { [DEFAULT_LANG]: "autophany.space" },
+      title: { [DEFAULT_LANG]: SITE_NAME },
       description: { [DEFAULT_LANG]: "" },
       system: true,
       count: 0
@@ -618,8 +614,8 @@ export class AppController {
     dom.langSwitcher.value = lang;
     storageService.set(StorageKey.Lang, lang);
     controls.articles.sortSelect.value = this.state.sortBy;
-    this.state.pageSize = this.normalizePageSize(this.state.pageSize);
-    this.state.tagPageSize = this.normalizePageSize(this.state.tagPageSize);
+    this.state.pageSize = normalizePageSize(this.state.pageSize);
+    this.state.tagPageSize = normalizePageSize(this.state.tagPageSize);
     controls.articles.sizeSelect.value = String(this.state.pageSize);
     controls.tags.sortSelect.value = this.state.tagSortBy;
     controls.tags.sizeSelect.value = String(this.state.tagPageSize);

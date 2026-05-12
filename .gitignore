@@ -5,7 +5,7 @@ generated/
 .vite/
 coverage/
 
-public/*/articles/*.pdf
+public/**/*.pdf
 public/media/
 
 *.aux
@@ -36,5 +36,8 @@ public/media/
 *.gls
 *.ist
 
-.DS_Store__pycache__/
+.DS_Store
+__pycache__/
 *.pyc
+.env
+.env.*

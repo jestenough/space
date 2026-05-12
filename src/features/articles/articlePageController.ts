@@ -6,6 +6,7 @@ import { setView } from "@/ui/view";
 import { ViewMode } from "@/core/enums";
 import { articleView } from "@/ui/views/articleView";
 import { dom } from "@/ui/dom";
+import { missingTranslationCopy, missingTranslationHtml } from "@/ui/missingTranslation";
 
 type ArticleRenderContext = { article?: ArticleMeta; matches?: number };
 
@@ -60,9 +61,9 @@ export class ArticlePageController {
     this.deps.cacheCurrentArticleStats(lang, slug);
     this.deps.renderArticleToc();
     this.deps.setArticleActionsVisible(true);
-    dom.downloadPdfBtn.textContent = "pdf";
-    dom.editArticleBtn.textContent = "edit";
-    dom.zenModeBtn.textContent = "zen";
+    dom.downloadPdfBtn.textContent = text(lang).actionPdf;
+    dom.editArticleBtn.textContent = text(lang).actionEdit;
+    dom.zenModeBtn.textContent = text(lang).actionZen;
     this.deps.applyWelcomeText(articleTitle(article, lang), articleDescription(article, lang));
     dom.renderIndicator.innerHTML = shellCommandMarkup(articleOpenCommand(article.slug));
     document.title = `${articleTitle(article, lang)} :: ${text(lang).brand}`;
@@ -72,16 +73,12 @@ export class ArticlePageController {
   }
 
   private renderMissingTranslation(lang: Lang, article: ArticleMeta): void {
-    const title = lang === "ru" ? "Пока не написано" : "Not written yet";
-    const description = lang === "ru"
-      ? "Этой версии пока нет, но она обязательно будет."
-      : "This version does not exist yet, but it will be written.";
-    const available = article.languages.join(", ");
+    const { title, description } = missingTranslationCopy(lang);
     this.deps.setArticlesContext();
     this.deps.setActiveArticle(null);
     this.deps.applyPanelState(lang);
     this.deps.setArticleActionsVisible(false);
-    articleView.renderHtml(`<section class="file-document"><h1>${title}</h1><p>${description}</p><p class="meta">available: ${available}</p></section>`);
+    articleView.renderHtml(missingTranslationHtml(lang, article.languages));
     this.deps.renderArticleToc();
     this.deps.applyWelcomeText(title, description);
     dom.renderIndicator.innerHTML = shellCommandMarkup(shellCommandText(`test -f ~/articles/${article.slug}.${lang}.tex || echo not-translated`));

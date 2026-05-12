@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from . import content
-from .config import ARTICLE_TYPE, ITEM_ASSETS_DIR, PUBLIC_DIR, SYSTEM_SECTION, TEX_FORMAT
+from .config import ARTICLE_TYPE, ITEM_ASSETS_DIR, PDF_REQUIRED_BINARIES, PUBLIC_DIR, SYSTEM_SECTION, TEX_FORMAT
 
 
 @dataclass(frozen=True)
@@ -31,7 +31,8 @@ class Pdf:
     strict = os.environ.get("STRICT_PDF") == "1"
 
     def run(self) -> None:
-        self.check_compiler()
+        if not self.check_compiler():
+            return
         sources = self.scan_sources()
         if not sources:
             raise RuntimeError("No article sources found")
@@ -42,6 +43,7 @@ class Pdf:
             if not self.force and self.is_fresh(source.path, output):
                 skipped += 1
                 continue
+            output.parent.mkdir(parents=True, exist_ok=True)
             self.build_pdf(source, output)
             built += 1
 
@@ -52,22 +54,22 @@ class Pdf:
         sources: list[ArticleSource] = []
         for section in content.sections():
             for item in section.items:
-                if content.item_type(section, item) != ARTICLE_TYPE:
+                if content.item_type(item) != ARTICLE_TYPE:
                     continue
                 for source in item.sources:
                     if source.ext == TEX_FORMAT:
                         sources.append(ArticleSource(section=section.slug, slug=item.slug, lang=source.lang, path=source.path, article_dir=item.path))
         return sorted(sources, key=lambda item: f"{item.section}.{item.slug}.{item.lang}")
 
-    def check_compiler(self) -> None:
-        missing = [binary for binary in ("latexmk", "xelatex") if shutil.which(binary) is None]
+    def check_compiler(self) -> bool:
+        missing = [binary for binary in PDF_REQUIRED_BINARIES if shutil.which(binary) is None]
         if not missing:
-            return
+            return True
         message = "Missing PDF build tools: " + ", ".join(missing)
         if self.strict:
             raise RuntimeError(message)
         logger.warning("Skipping PDF generation: %s", message)
-        raise SystemExit(0)
+        return False
 
     @staticmethod
     def is_fresh(source_path: Path, pdf_path: Path) -> bool:
@@ -81,7 +83,6 @@ class Pdf:
             main_tex.write_text(source_text if self.is_standalone_latex(source_text) else self.wrap_latex_fragment(source_text, source.slug), encoding="utf-8")
             self.copy_images(source.article_dir, work_dir)
             self.run_compiler(work_dir, main_tex)
-            output.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(work_dir / "main.pdf", output)
 
     @staticmethod

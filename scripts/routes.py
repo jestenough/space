@@ -3,22 +3,35 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-from typing import Any
+from typing import Any, Protocol
 from urllib.parse import quote
 
-from .config import DEFAULT_LANG, SYSTEM_SECTION
+from .config import DEFAULT_LANG, SITE_URL, SYSTEM_SECTION
 
 
-def item_route(section: Any, lang: str, slug: str, system: bool | None = None) -> str:
-    section_slug = quote(section.slug if hasattr(section, "slug") else str(section), safe="")
+class SectionLike(Protocol):
+    slug: str
+    system: bool
+
+
+def _section_slug(section: SectionLike | str) -> str:
+    return quote(section.slug if hasattr(section, "slug") else str(section), safe="")
+
+
+def _section_system(section: SectionLike | str, system: bool | None) -> bool:
+    return bool(section.system) if hasattr(section, "system") else bool(system)
+
+
+def item_route(section: SectionLike | str, lang: str, slug: str, system: bool | None = None) -> str:
+    section_slug = _section_slug(section)
     item_slug = quote(slug, safe="")
-    is_system = bool(section.system) if hasattr(section, "system") else bool(system)
+    is_system = _section_system(section, system)
     return f"/{lang}/{item_slug}" if is_system else f"/{lang}/{section_slug}/{item_slug}"
 
 
-def section_route(section: Any, lang: str, system: bool | None = None) -> str:
-    section_slug = quote(section.slug if hasattr(section, "slug") else str(section), safe="")
-    is_system = bool(section.system) if hasattr(section, "system") else bool(system)
+def section_route(section: SectionLike | str, lang: str, system: bool | None = None) -> str:
+    section_slug = _section_slug(section)
+    is_system = _section_system(section, system)
     return f"/{lang}" if is_system else f"/{lang}/{section_slug}"
 
 
@@ -43,6 +56,10 @@ def generated_pdf_route(item: dict[str, Any], lang: str) -> str:
 
 def tag_route(lang: str, tag: str) -> str:
     return f"/{lang}/tags/{quote(tag, safe='')}"
+
+
+def absolute_url(path: str) -> str:
+    return f"{SITE_URL}/{path.lstrip('/')}"
 
 
 def alternates(languages: Sequence[str], build_path: Callable[[str], str]) -> dict[str, str]:

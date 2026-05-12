@@ -1,4 +1,4 @@
-import { ALL_TAGS, DEFAULT_PAGE_SIZE } from "@/core/config";
+import { ALL_TAGS, DEFAULT_PAGE_SIZE, SYSTEM_SECTION } from "@/core/config";
 import type { ArticleMeta, InfoFileMeta, Lang, SectionMeta, SortBy, TagInfo, TagSortBy } from "@/core/types";
 
 export class AppState {
@@ -6,7 +6,7 @@ export class AppState {
   articlesLoaded = false;
   sections: SectionMeta[] = [];
   sectionFiles = new Map<string, InfoFileMeta[]>();
-  activePanel = "site";
+  activePanel = SYSTEM_SECTION;
   activeTag = ALL_TAGS;
   tagDetail: string | null = null;
   activeArticle: ArticleMeta | null = null;

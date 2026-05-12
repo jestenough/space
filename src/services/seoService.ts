@@ -1,3 +1,4 @@
+import { SITE_NAME, SYSTEM_SECTION } from "@/core/config";
 import { updateSeoMeta } from "@/services/seoMeta";
 import { articlePath, articlesPath, homePath, infoFilePath, tagPath, tagsPath } from "@/router/routePaths";
 import { articleDescription, articleTitle } from "@/services/articleService";
@@ -31,11 +32,11 @@ const withDefaultAlternate = (paths: Partial<Record<Lang, string>>): Partial<Rec
 
 const canonicalPathForRoute = (args: RouteSeoArgs): string => {
   if (args.activeArticle) return articlePath(args.lang, args.activeArticle.slug);
-  if (args.activeInfoFile) return infoFilePath(args.lang, args.activeInfoFile.section, args.activeInfoFile.slug, args.activeInfoFile.section === "site");
+  if (args.activeInfoFile) return infoFilePath(args.lang, args.activeInfoFile.section, args.activeInfoFile.slug, args.activeInfoFile.section === SYSTEM_SECTION);
   if (args.route.page === "articles") return articlesPath(args.lang);
   if (args.route.page === "tags" && args.route.tag) return tagPath(args.lang, args.route.tag);
   if (args.route.page === "tags") return tagsPath(args.lang);
-  if (args.route.page === "info-file") return infoFilePath(args.lang, args.route.section, args.route.slug, args.route.section === "site");
+  if (args.route.page === "info-file") return infoFilePath(args.lang, args.route.section, args.route.slug, args.route.section === SYSTEM_SECTION);
   return homePath(args.lang);
 };
 
@@ -51,7 +52,7 @@ const alternatePathsForRoute = (args: RouteSeoArgs): Partial<Record<Lang | typeo
     if (args.route.page === "articles") paths[lang] = articlesPath(lang);
     else if (args.route.page === "tags" && args.route.tag) paths[lang] = tagPath(lang, args.route.tag);
     else if (args.route.page === "tags") paths[lang] = tagsPath(lang);
-    else if (args.route.page === "info-file") paths[lang] = infoFilePath(lang, args.route.section, args.route.slug, args.route.section === "site");
+    else if (args.route.page === "info-file") paths[lang] = infoFilePath(lang, args.route.section, args.route.slug, args.route.section === SYSTEM_SECTION);
     else paths[lang] = homePath(lang);
   }
   return withDefaultAlternate(paths);
@@ -72,19 +73,19 @@ const structuredDataForRoute = (args: RouteSeoArgs, canonicalPath: string): unkn
         "@type": "BlogPosting",
         headline: articleTitle(args.activeArticle, args.lang),
         description: articleDescription(args.activeArticle, args.lang),
-        author: { "@type": "Person", name: "autophany.space" },
+        author: { "@type": "Person", name: SITE_NAME },
         datePublished: args.activeArticle.date,
         dateModified: args.activeArticle.date,
         mainEntityOfPage: { "@type": "WebPage", "@id": url },
         inLanguage: args.lang,
         url,
         keywords: args.activeArticle.tags.join(", "),
-        isPartOf: { "@type": "Blog", name: "autophany.space", url: window.location.origin + homePath(args.lang) }
+        isPartOf: { "@type": "Blog", name: SITE_NAME, url: window.location.origin + homePath(args.lang) }
       },
       breadcrumbStructuredData([[text(args.lang).brand, homePath(args.lang)], [text(args.lang).listTitle, articlesPath(args.lang)], [articleTitle(args.activeArticle, args.lang), articlePath(args.lang, args.activeArticle.slug)]])
     ];
   }
-  return [{ "@context": "https://schema.org", "@type": "WebSite", name: "autophany.space", description: args.description, inLanguage: args.lang, url }, breadcrumbStructuredData([[args.title, canonicalPath]])];
+  return [{ "@context": "https://schema.org", "@type": "WebSite", name: SITE_NAME, description: args.description, inLanguage: args.lang, url }, breadcrumbStructuredData([[args.title, canonicalPath]])];
 };
 
 const update = (args: SeoUpdateArgs): void => updateSeoMeta(args);

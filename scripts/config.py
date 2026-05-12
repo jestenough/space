@@ -56,3 +56,8 @@ SITE_URL = (os.environ.get("SITE_URL") or DEFAULT_SITE_URL).rstrip("/")
 # Dates
 DATE_FORMAT = "%Y-%m-%d"
 DATE_FORMAT_LABEL = "YYYY-MM-DD"
+
+# Build
+REQUIRED_BINARIES = ("node", "npm", "pandoc", "latexmk", "xelatex")
+PDF_REQUIRED_BINARIES = ("latexmk", "xelatex")
+FEED_ITEM_LIMIT = 20

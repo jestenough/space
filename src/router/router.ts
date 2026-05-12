@@ -1,8 +1,7 @@
+import { SYSTEM_SECTION } from "@/core/config";
 import { DEFAULT_LANG, isLangCode, normalizeLang } from "@/core/languages";
 import type { Lang, Route, SectionMeta } from "@/core/types";
 import { safeDecodeURIComponent } from "@/core/url";
-
-export const SYSTEM_SECTION = "site";
 
 export const toLang = (value: string | undefined): Lang => normalizeLang(value);
 
@@ -48,8 +47,4 @@ export const parseRoute = (sections: readonly SectionMeta[] = []): Route => {
   }
 
   return { lang, page: "not-found", slug: path };
-};
-
-export const navigateHome = (lang: Lang): void => {
-  window.location.href = `/${lang}`;
 };

@@ -12,6 +12,9 @@
     "strict": true,
     "skipLibCheck": true,
     "noEmit": true,
+    "types": [
+      "node"
+    ],
     "paths": {
       "@/*": [
         "./src/*"
@@ -19,6 +22,12 @@
     }
   },
   "include": [
-    "src"
+    "src",
+    "vite.config.ts"
+  ],
+  "exclude": [
+    "dist",
+    "generated",
+    "node_modules"
   ]
 }

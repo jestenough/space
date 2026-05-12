@@ -60,7 +60,7 @@ seo:
 verify:
 	python3 -m scripts.cli verify
 
-build: clean preflight html pdf typecheck frontend prerender seo verify
+build: preflight html pdf typecheck frontend prerender seo verify
 
 clean:
 	python3 -m scripts.cli clean

@@ -1,5 +1,6 @@
-import { defineConfig, type Plugin } from "vite";
+import { defineConfig, type Plugin, type ViteDevServer } from "vite";
 import viteCompression from "vite-plugin-compression";
+import type { IncomingMessage, ServerResponse } from "node:http";
 import { resolve, extname } from "node:path";
 import { fileURLToPath, URL } from "node:url";
 import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
@@ -43,22 +44,6 @@ type RouteData = {
   filesBySection: Map<string, Set<string>>;
   fileBySectionSlug: Map<string, FileRecord>;
   downloads: Map<string, string>;
-};
-
-type ViteMiddlewareServer = {
-  middlewares: {
-    use: (
-      fn: (
-        req: { url?: string },
-        res: {
-          statusCode: number;
-          setHeader?: (key: string, value: string) => void;
-          end?: () => void;
-        },
-        next: () => void,
-      ) => void,
-    ) => void;
-  };
 };
 
 const rootDir = fileURLToPath(new URL(".", import.meta.url));
@@ -325,7 +310,7 @@ const localizedRouteRewrite = (): Plugin => {
   };
 
   const applyRewrite = (
-    server: ViteMiddlewareServer,
+    server: Pick<ViteDevServer, "middlewares">,
     preferPrerender: boolean,
   ): void => {
     server.middlewares.use((req, res, next) => {
@@ -349,10 +334,10 @@ const localizedRouteRewrite = (): Plugin => {
   return {
     name: "localized-route-rewrite",
     configureServer: (server) => {
-      applyRewrite(server as ViteMiddlewareServer, false);
+      applyRewrite(server, false);
     },
     configurePreviewServer: (server) => {
-      applyRewrite(server as ViteMiddlewareServer, true);
+      applyRewrite(server, true);
     },
   };
 };
@@ -360,11 +345,8 @@ const localizedRouteRewrite = (): Plugin => {
 const serveStaticDirectory = (
   basePath: string,
   directory: string,
-  req: { url?: string },
-  res: {
-    statusCode: number;
-    setHeader?: (key: string, value: string) => void;
-  },
+  req: IncomingMessage,
+  res: ServerResponse<IncomingMessage>,
   next: () => void,
 ): void => {
   const rawPath = req.url?.split("?")[0] ?? "";

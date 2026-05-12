@@ -1,6 +1,7 @@
-import { ROUTE_PREFIX, PAGE_SIZE_OPTIONS, DEFAULT_PAGE_SIZE } from "@/core/config";
+import { ROUTE_PREFIX, normalizePageSize } from "@/core/config";
 import { controls } from "@/components/controls";
 import { dom } from "@/ui/dom";
+import { normalizeQuery } from "@/features/articles/articleFilters";
 import { keyboardController } from "@/features/keyboard/keyboardController";
 import { articleCopyController } from "@/features/articles/articleCopyController";
 import { zenModeController } from "@/features/zen/zenModeController";
@@ -42,9 +43,6 @@ export type AppEventControllerOptions = {
   openHeadingAnchor: (id: string, pushState: boolean) => void;
   changeLanguage: () => void;
 };
-
-const normalizePageSize = (value: number): number => PAGE_SIZE_OPTIONS.includes(value as (typeof PAGE_SIZE_OPTIONS)[number]) ? value : DEFAULT_PAGE_SIZE;
-const normalizeQuery = (value: string): string => value.trim().toLowerCase();
 
 const bindSearchInput = (input: HTMLInputElement, options: { get: () => string; set: (value: string) => void; onChange: () => void }): void => {
   input.addEventListener("input", () => {

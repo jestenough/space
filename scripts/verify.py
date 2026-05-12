@@ -22,7 +22,7 @@ from .config import (
     GENERATED_SITE_META_FILE, 
     SITE_URL
 )
-from .jsonio import read_json
+from .jsonio import read_json, read_text
 
 
 logger = logging.getLogger(__name__)
@@ -96,7 +96,7 @@ class Verify:
             for lang in languages:
                 html_path = GENERATED_FILES_DIR / section / f"{slug}.{lang}.html"
                 meta_path = GENERATED_FILE_META_DIR / section / f"{slug}.{lang}.json"
-                self.read_text(html_path, f"Missing generated item HTML: {html_path}")
+                read_text(html_path, f"Missing generated item HTML: {html_path}")
                 self.check_item_meta(meta_path, item, lang)
             self.check_download_paths(item)
 
@@ -143,7 +143,7 @@ class Verify:
         return value.strip()
 
     def check_content_index(self, index: list[dict[str, Any]]) -> None:
-        source_slugs = {item.slug for section in content.sections() for item in section.items if content.item_type(section, item) == ARTICLE_TYPE}
+        source_slugs = {item.slug for section in content.sections() for item in section.items if content.item_type(item) == ARTICLE_TYPE}
         indexed_slugs = {article.get("slug") for article in index if isinstance(article.get("slug"), str)}
 
         missing = sorted(source_slugs - indexed_slugs)
@@ -211,7 +211,7 @@ class Verify:
         values[key] = location
 
     def check_html(self, path: Path, slug: str, lang: str) -> None:
-        html = self.read_text(path, f"Missing generated HTML: {path}")
+        html = read_text(path, f"Missing generated HTML: {path}")
 
         if '<article class="article"' not in html:
             raise RuntimeError(f"Generated article has no article wrapper: {slug}.{lang}")
@@ -253,7 +253,7 @@ class Verify:
                 raise RuntimeError(f"Missing article media asset for {slug}.{lang}: {public_path}")
 
     def check_meta(self, path: Path, slug: str, lang: str) -> None:
-        meta_text = self.read_text(path, f"Missing generated article metadata: {path}")
+        meta_text = read_text(path, f"Missing generated article metadata: {path}")
         meta = read_json(path)
         if meta.get("slug") != slug:
             raise RuntimeError(f"Metadata slug mismatch: {path}")
@@ -274,10 +274,10 @@ class Verify:
         return DIST_DIR / routes.generated_pdf_route(article, lang).lstrip("/")
 
     def check_seo(self, index: list[dict[str, Any]]) -> None:
-        sitemap = self.read_text(DIST_DIR / "sitemap.xml", "Missing dist/sitemap.xml")
-        robots = self.read_text(DIST_DIR / "robots.txt", "Missing dist/robots.txt")
-        headers = self.read_text(DIST_DIR / "_headers", "Missing dist/_headers")
-        four_oh_four = self.read_text(DIST_DIR / "404.html", "Missing dist/404.html")
+        sitemap = read_text(DIST_DIR / "sitemap.xml", "Missing dist/sitemap.xml")
+        robots = read_text(DIST_DIR / "robots.txt", "Missing dist/robots.txt")
+        headers = read_text(DIST_DIR / "_headers", "Missing dist/_headers")
+        four_oh_four = read_text(DIST_DIR / "404.html", "Missing dist/404.html")
         self.check_cache_headers(headers)
         if "Sitemap:" not in robots or SITE_URL not in robots:
             raise RuntimeError("robots.txt must reference sitemap.xml and SITE_URL")
@@ -344,13 +344,6 @@ class Verify:
             return
         if path.stat().st_size == 0:
             raise RuntimeError(f"Empty PDF: {path}")
-
-    @staticmethod
-    def read_text(path: Path, message: str) -> str:
-        if not path.is_file():
-            raise RuntimeError(message)
-        return path.read_text(encoding="utf-8")
-
 
 def run() -> None:
     Verify().run()

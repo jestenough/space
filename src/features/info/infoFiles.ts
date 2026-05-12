@@ -1,10 +1,10 @@
+import { SYSTEM_SECTION } from "@/core/config";
 import type { InfoFileMeta, Lang, SectionMeta } from "@/core/types";
 import { safeDecodeURIComponent } from "@/core/url";
-import { escapeHtml } from "@/core/escape";
 import { fetchGeneratedJson, fetchGeneratedText, PromiseLruCache } from "@/services/generatedAssets";
 import { generatedInfoFileHtmlPath, generatedSectionIndexPath, generatedSectionsIndexPath } from "@/services/generatedPaths";
+import { missingTranslationHtml } from "@/ui/missingTranslation";
 
-const SYSTEM_SECTION = "site";
 const MAX_HTML_CACHE_ITEMS = 40;
 const MAX_SECTION_CACHE_ITEMS = 64;
 const sectionCache = new PromiseLruCache<InfoFileMeta[]>(MAX_SECTION_CACHE_ITEMS);
@@ -92,11 +92,3 @@ const isRecord = (value: unknown): value is Record<string, unknown> => typeof va
 const string = (value: unknown): string => typeof value === "string" ? value : "";
 const stringArray = (value: unknown): string[] => Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.length > 0) : [];
 const langRecord = (value: unknown): Record<string, string> => isRecord(value) ? Object.fromEntries(Object.entries(value).filter(([, text]) => typeof text === "string" && text.length > 0)) as Record<string, string> : {};
-
-const missingTranslationHtml = (lang: Lang, languages: readonly Lang[]): string => {
-  const title = lang === "ru" ? "Пока не написано" : "Not written yet";
-  const description = lang === "ru"
-    ? "Этой версии пока нет, но она обязательно будет."
-    : "This version does not exist yet, but it will be written.";
-  return `<section class="file-document"><h1>${escapeHtml(title)}</h1><p>${escapeHtml(description)}</p><p class="meta">available: ${escapeHtml(languages.join(", "))}</p></section>`;
-};
