@@ -88,8 +88,9 @@ export class ListController {
     const sortValue = this.sortSelect?.value || "date-desc";
     const pageSizeValue = pageSize(this.sizeSelect?.value || null);
     const filtered = this.items.filter((item) => !query || item.search.includes(query));
+    const filteredSet = new Set(filtered);
     const ordered = filtered.slice().sort((left, right) => this.compare(left.element, right.element, sortValue));
-    const hidden = this.items.filter((item) => !filtered.includes(item));
+    const hidden = this.items.filter((item) => !filteredSet.has(item));
 
     this.list.replaceChildren(...ordered.map((item) => item.element), ...hidden.map((item) => item.element));
 

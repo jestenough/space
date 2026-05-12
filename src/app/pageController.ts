@@ -28,7 +28,9 @@ export class PageController {
   private initTheme(): void {
     const themeSwitcher = document.getElementById("theme-switcher") as HTMLSelectElement | null;
     const initialTheme = themeService.initBeforeRender();
-    if (themeSwitcher) themeSwitcher.value = initialTheme;
+    const activeTheme = themeService.apply(storageService.get(StorageKey.Theme) ?? initialTheme);
+    storageService.set(StorageKey.Theme, activeTheme);
+    if (themeSwitcher) themeSwitcher.value = activeTheme;
     themeSwitcher?.addEventListener("change", () => {
       const theme = themeService.apply(themeSwitcher.value);
       storageService.set(StorageKey.Theme, theme);

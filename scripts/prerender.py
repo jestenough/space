@@ -44,13 +44,10 @@ ASCII_LOGO = """#
 
 
 class Prerender:
-    article_content_re = re.compile(
-        r'<div\s+id=["\']file-content["\'][^>]*>[\s\S]*?</div>',
-        re.IGNORECASE,
-    )
-
     runtime_head_tag_re = re.compile(
         r'^\s*(?:'
+        r'<meta\b(?=[^>]*\bname=["\']color-scheme["\'])[^>]*>|'
+        r'<script\b(?![^>]*\bsrc=)[^>]*>[\s\S]*?</script>|'
         r'<script\b(?=[^>]*\bsrc=)[^>]*></script>|'
         r'<link\b(?=[^>]*\brel=["\'](?:stylesheet|modulepreload|preload)["\'])[^>]*>'
         r')\s*$',
@@ -161,7 +158,23 @@ class Prerender:
                     )
 
     def render_root(self, base_html: str, site_meta: dict[str, Any], sections: list[dict[str, Any]], section_files: dict[str, list[dict[str, Any]]], languages: list[str]) -> None:
-        lang = DEFAULT_LANG
+        self.render_home_page(base_html, site_meta, sections, section_files, languages, DEFAULT_LANG, "/", "/")
+
+    def render_language_pages(self, base_html: str, site_meta: dict[str, Any], sections: list[dict[str, Any]], section_files: dict[str, list[dict[str, Any]]], languages: list[str]) -> None:
+        for lang in languages:
+            self.render_home_page(base_html, site_meta, sections, section_files, languages, lang, f"/{lang}", f"/{lang}")
+
+    def render_home_page(
+        self,
+        base_html: str,
+        site_meta: dict[str, Any],
+        sections: list[dict[str, Any]],
+        section_files: dict[str, list[dict[str, Any]]],
+        languages: list[str],
+        lang: str,
+        route: str,
+        canonical_path: str,
+    ) -> None:
         page_meta = self.page_meta(site_meta, HOME_PAGE, lang)
         system_section = next(section for section in sections if section.get("system"))
         system_slug = str(system_section["slug"])
@@ -178,49 +191,18 @@ class Prerender:
         )
 
         self.write_route(
-            "/",
+            route,
             self.render_page(
                 base_html=base_html,
                 lang=lang,
                 title=page_meta["title"],
                 description=page_meta["description"],
-                canonical_path="/",
+                canonical_path=canonical_path,
                 alternates=routes.alternates(languages, lambda item_lang: f"/{item_lang}"),
                 og_type="website",
                 shell=shell,
             ),
         )
-
-    def render_language_pages(self, base_html: str, site_meta: dict[str, Any], sections: list[dict[str, Any]], section_files: dict[str, list[dict[str, Any]]], languages: list[str]) -> None:
-        for lang in languages:
-            page_meta = self.page_meta(site_meta, HOME_PAGE, lang)
-            system_section = next(section for section in sections if section.get("system"))
-            system_slug = str(system_section["slug"])
-            shell = self.list_shell(
-                lang=lang,
-                sections=sections,
-                folder_type=FolderType.SYSTEM,
-                active_section=None,
-                welcome_title=page_meta["title"],
-                welcome_lead=page_meta["description"],
-                home_files=section_files[system_slug],
-                render_command="ls -p | grep -v /",
-                process_html=self.section_process_html(lang, system_slug, section_files[system_slug], system=True),
-            )
-
-            self.write_route(
-                f"/{lang}",
-                self.render_page(
-                    base_html=base_html,
-                    lang=lang,
-                    title=page_meta["title"],
-                    description=page_meta["description"],
-                    canonical_path=f"/{lang}",
-                    alternates=routes.alternates(languages, lambda item_lang: f"/{item_lang}"),
-                    og_type="website",
-                    shell=shell,
-                ),
-            )
 
     def render_article_index_pages(
         self,
@@ -416,7 +398,6 @@ class Prerender:
         canonical_path: str,
         alternates: dict[str, str],
         og_type: str,
-        article_html: str | None = None,
         shell: dict[str, Any] | None = None,
     ) -> str:
         head = self.render_head(
@@ -432,9 +413,6 @@ class Prerender:
 
         if shell is not None:
             page = self.apply_shell(page, shell)
-
-        if article_html is not None and not (shell and shell.get("file_stage_html")):
-            page = self.inject_article_content(page, article_html)
 
         return page
 
@@ -1083,15 +1061,6 @@ class Prerender:
             item.group(0).strip()
             for item in cls.runtime_head_tag_re.finditer(match.group(1))
         )
-
-    @classmethod
-    def inject_article_content(cls, page: str, article_html: str) -> str:
-        replacement = f'<div id="file-content">\n{article_html}\n</div>'
-
-        if not cls.article_content_re.search(page):
-            raise RuntimeError("Cannot find #file-content placeholder in base HTML")
-
-        return cls.article_content_re.sub(lambda _: replacement, page, count=1)
 
     def page_meta(self, site_meta: dict[str, Any], page: str, lang: str) -> dict[str, str]:
         pages = site_meta.get("pages")
