@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from .config import CONTENT_DIR, DEFAULT_LANG, ITEM_ASSETS_DIR, ITEM_META_SUFFIX, SYSTEM_SECTION, TEXT_TYPE
+from .config import CONTENT_DIR, DEFAULT_LANG, FileType, FolderType, ITEM_ASSETS_DIR, ITEM_META_SUFFIX, SYSTEM_SECTION
 from .jsonio import read_object
 from .localization import norm_lang
 
@@ -38,6 +38,10 @@ class Section:
     @property
     def system(self) -> bool:
         return bool(self.meta.get("system"))
+
+    @property
+    def kind(self) -> FolderType:
+        return section_kind(self)
 
 
 @lru_cache(maxsize=1)
@@ -82,9 +86,21 @@ def langs(sources: tuple[Source, ...]) -> list[str]:
     return values or [DEFAULT_LANG]
 
 
-def item_type(item: Item | dict[str, Any]) -> str:
+def item_type(item: Item | dict[str, Any]) -> FileType:
     meta = item.meta if isinstance(item, Item) else item
-    return str(meta.get("type") or TEXT_TYPE)
+    return FileType(str(meta.get("type") or FileType.PAGE.value))
+
+
+def section_kind(section: Section | dict[str, Any]) -> FolderType:
+    meta = section.meta if isinstance(section, Section) else section
+    if meta.get("system") is True:
+        return FolderType.SYSTEM
+    return FolderType(str(meta.get("kind") or FolderType.FILES.value))
+
+
+def first_section_slug(sections_index: list[Section], kind: FolderType) -> str | None:
+    match = next((section for section in sections_index if section.kind == kind), None)
+    return match.slug if match else None
 
 
 def relative_path(path: Path) -> str:

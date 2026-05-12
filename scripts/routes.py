@@ -54,8 +54,8 @@ def generated_pdf_route(item: dict[str, Any], lang: str) -> str:
     return f"{generated_item_route(item, lang)}.pdf"
 
 
-def tag_route(lang: str, tag: str) -> str:
-    return f"/{lang}/tags/{quote(tag, safe='')}"
+def tag_route(section: SectionLike | str, lang: str, tag: str, system: bool | None = None) -> str:
+    return f"{section_route(section, lang, system)}/{quote(tag, safe='')}"
 
 
 def absolute_url(path: str) -> str:

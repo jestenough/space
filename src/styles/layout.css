@@ -1,21 +1,21 @@
 @layer layout {
-  .command-deck,
-  .left-stack,
-  .article-stage,
-  .right-feed,
-  .dock {
+  .sessbar,
+  .userpane,
+  .file-stage,
+  .statpane,
+  .footbar {
     border: 1px solid var(--color-border);
     background: linear-gradient(180deg, var(--color-surface-2), var(--color-surface));
     box-shadow: var(--shadow-panel);
   }
 
-  .command-deck,
-  .control-room,
-  .dock {
+  .sessbar,
+  .tty,
+  .footbar {
     width: min(var(--shell-width), calc(100% - 1.2rem));
   }
 
-  .control-room {
+  .tty {
     margin-inline: auto;
     padding-bottom: 4.5rem;
     flex: 1;
@@ -25,37 +25,37 @@
     gap: 0.8rem;
   }
 
-  .left-stack,
-  .right-feed,
-  .article-stage {
+  .userpane,
+  .statpane,
+  .file-stage {
     padding: 0.82rem;
   }
 
-  .left-stack,
-  .right-feed {
+  .userpane,
+  .statpane {
     position: sticky;
     top: var(--sticky-top);
     align-self: start;
   }
 
-  .right-feed {
+  .statpane {
     min-width: 0;
     max-width: 100%;
     max-height: none;
     overflow: visible;
   }
 
-  .center-stream {
+  .mainpane {
     min-width: 0;
     align-self: start;
   }
-  .left-stack,
-  .center-stream,
-  .right-feed {
+  .userpane,
+  .mainpane,
+  .statpane {
     margin-block-start: 0;
   }
 
-  .center-stream > .render-indicator {
+  .mainpane > .cmdrun {
     margin-block-start: 0;
   }
 

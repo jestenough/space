@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from enum import StrEnum
 from pathlib import Path
 
 
@@ -19,10 +20,20 @@ VITE_CONFIG = ROOT_DIR / "vite.config.ts"
 
 # Content model
 SYSTEM_SECTION = os.environ.get("SYSTEM_SECTION", "site")
-ARTICLES_SECTION = "articles"
-TAGS_SECTION = "tags"
-ARTICLE_TYPE = "article"
-TEXT_TYPE = "text"
+class FolderType(StrEnum):
+    SYSTEM = "system"
+    FILES = "files"
+    ARTICLES = "articles"
+    TAGS = "tags"
+
+
+class FileType(StrEnum):
+    PAGE = "page"
+    ARTICLE = "article"
+
+
+FOLDER_TYPES = tuple(FolderType)
+FILE_TYPES = tuple(FileType)
 TEX_FORMAT = "tex"
 MARKDOWN_FORMAT = "markdown"
 TEXT_FORMAT = "text"
@@ -45,6 +56,7 @@ GENERATED_FILE_META_DIR = GENERATED_DIR / GENERATED_FILE_META_NAME
 GENERATED_SECTIONS_DIR = GENERATED_DIR / GENERATED_SECTIONS_NAME
 GENERATED_SITE_META_PATH = GENERATED_DIR / GENERATED_SITE_META_FILE
 DIST_DIR = ROOT_DIR / "dist"
+TEMPLATES_DIR = ROOT_DIR / "templates"
 
 # Localization
 DEFAULT_LANG = "en"
@@ -52,6 +64,7 @@ DEFAULT_LANG = "en"
 # Site
 DEFAULT_SITE_URL = "https://autophany.space"
 SITE_URL = (os.environ.get("SITE_URL") or DEFAULT_SITE_URL).rstrip("/")
+GITHUB_EDIT_BASE = "https://github.com/jestenough/personal/edit/main/content"
 
 # Dates
 DATE_FORMAT = "%Y-%m-%d"

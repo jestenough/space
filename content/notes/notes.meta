@@ -1,5 +1,6 @@
 {
   "slug": "notes",
+  "kind": "files",
   "label": {
     "en": "notes/",
     "ru": "notes/"

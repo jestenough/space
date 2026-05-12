@@ -1,4 +1,4 @@
-import type { ArticleMeta, Lang } from "@/core/types";
+import type { Lang } from "@/core/types";
 
 export const DEFAULT_LANG: Lang = "en";
 export const DEFAULT_HREFLANG = "x-default" as const;
@@ -28,16 +28,3 @@ export const formatLangLabel = (lang: Lang): string => {
 };
 
 export const formatOgLocale = (lang: Lang): string => formatLangLabel(lang).replace(".UTF-8", "");
-
-export const pickLangText = (texts: Record<string, string>, lang: Lang): string => texts[lang] ?? "";
-
-export const languagesFromArticles = (articles: readonly ArticleMeta[]): Lang[] => {
-  const langs = new Set<Lang>();
-  for (const article of articles) for (const lang of article.languages) langs.add(lang);
-  if (langs.size === 0) langs.add(DEFAULT_LANG);
-  return [...langs].sort((a, b) => a.localeCompare(b));
-};
-
-export const xDefaultPath = (paths: Partial<Record<Lang, string>>, preferredLang: Lang = DEFAULT_LANG): string | undefined => {
-  return paths[preferredLang] ?? paths[Object.keys(paths).sort()[0] as Lang];
-};

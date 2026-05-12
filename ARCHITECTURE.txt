@@ -1,0 +1,184 @@
+Autophany technical overview
+
+1. Source content
+
+Content lives in content/<section>/<item>/.
+
+Important files:
+- content/<section>/<section>.meta
+- content/<section>/<slug>/<slug>.meta
+- content/<section>/<slug>/<slug>.<lang>.<ext>
+
+Current type definitions live in:
+- scripts/config.py
+
+Enums:
+- FolderType: system, files, articles, tags
+- FileType: page, article
+
+
+2. Build pipeline
+
+The Python build pipeline is the source of truth.
+
+Main modules:
+- scripts/content.py
+  Scans sections, items, sources, and resolves FolderType/FileType from meta.
+
+- scripts/html.py
+  Converts source files into localized HTML fragments and localized metadata.
+  Writes generated data to:
+  - generated/sections-index.json
+  - generated/sections/<section>.json
+  - generated/files/<section>/<slug>.<lang>.html
+  - generated/files-meta/<section>/<slug>.<lang>.json
+  - generated/site-meta.json
+
+- scripts/prerender.py
+  Reads dist/index.html as a shell/base document.
+  Reads generated data and localized file metadata.
+  Selects templates by enum type.
+  Injects final HTML into the shell and writes prerendered pages into dist/<lang>/.../index.html.
+
+- scripts/templating.py
+  Small file-based template renderer for placeholders like {{ name }}.
+
+- scripts/seo.py
+  Generates SEO artifacts such as sitemap, feeds, robots, headers, and 404.
+
+- scripts/verify.py
+  Verifies generated output.
+
+
+3. Templates
+
+Templates are selected by Python only.
+
+Folder templates:
+- templates/folders/system.html
+- templates/folders/files.html
+- templates/folders/articles.html
+- templates/folders/tags.html
+
+File templates:
+- templates/files/page.html
+- templates/files/article.html
+
+Template selection happens in:
+- scripts/prerender.py
+
+Folder templates render the list-stage structure.
+File templates render the file-stage structure.
+
+
+4. Generated stats and metadata
+
+Build-time metadata is generated in Python, not in TypeScript.
+
+Important fields are written in generated/files-meta/<section>/<slug>.<lang>.json.
+Examples:
+- sourcePath
+- wordCount
+- charCount
+- byteSize
+- readingTime
+- pdfPath
+- downloadPath
+
+These values are used by scripts/prerender.py while building final pages.
+
+
+5. Final prerendered pages
+
+The browser should receive already assembled pages.
+
+Examples:
+- dist/en/index.html
+- dist/en/about/index.html
+- dist/en/articles/index.html
+- dist/en/articles/hello-world/index.html
+- dist/ru/about/index.html
+
+Each page already includes:
+- navigation
+- list or file layout
+- process/status block
+- buttons and action links
+- TOC markup when needed
+- localized strings
+
+
+6. Frontend runtime
+
+Frontend code is only a DOM enhancement layer.
+
+Entry point:
+- src/main.ts
+
+Runtime controller:
+- src/app/pageController.ts
+
+Frontend modules:
+- src/features/lists/listController.ts
+  Client-side filtering, sorting, and pagination over prerendered DOM.
+
+- src/features/toc/tocEnhancer.ts
+  TOC activation, heading anchors, and hash scrolling.
+
+- src/features/content/contentCopyController.ts
+  Copy behavior inside rendered content.
+
+- src/features/zen/zenModeController.ts
+  Zen mode behavior.
+
+- src/services/themeService.ts
+  Theme switching.
+
+- src/services/storageService.ts
+  Local storage access for theme and language preference.
+
+TypeScript must not:
+- define content types
+- choose templates
+- fetch generated content to build pages
+- compute build-time stats
+- assemble article/tag/info page markup
+
+
+7. Preview and assets
+
+Vite config lives in:
+- vite.config.ts
+
+It does not render content.
+It only:
+- builds frontend assets
+- serves generated assets and raw downloads in dev
+- rewrites preview requests to prerendered dist/<lang>/.../index.html files
+- copies generated and media artifacts into dist where needed
+
+
+8. Command flow
+
+CLI entry point:
+- scripts/cli.py
+
+Typical production flow:
+1. python3 -m scripts.cli preflight
+2. python3 -m scripts.cli html
+3. python3 -m scripts.cli pdf
+4. npm run typecheck
+5. npm run build
+6. python3 -m scripts.cli prerender
+7. python3 -m scripts.cli seo
+8. python3 -m scripts.cli verify
+
+
+9. Rule of thumb for future changes
+
+If a new content type is added:
+1. add enum value in scripts/config.py
+2. add matching template in templates/
+3. update scripts/prerender.py only where specific rendering behavior is actually needed
+
+Do not move content architecture back into TypeScript.

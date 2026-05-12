@@ -1,0 +1,22 @@
+const nodeInside = (root: HTMLElement, node: Node | null): boolean => {
+  if (!node) return false;
+  const candidate = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
+  return candidate instanceof Node && root.contains(candidate);
+};
+
+export const contentCopyController = {
+  bind(root: HTMLElement): () => void {
+    const handler = (event: ClipboardEvent): void => {
+      const selection = window.getSelection();
+      if (!selection || selection.isCollapsed) return;
+      if (!nodeInside(root, selection.anchorNode) && !nodeInside(root, selection.focusNode)) return;
+      const text = selection.toString();
+      if (!text) return;
+      event.clipboardData?.setData("text/plain", text);
+      event.preventDefault();
+    };
+
+    document.addEventListener("copy", handler);
+    return () => document.removeEventListener("copy", handler);
+  }
+} as const;

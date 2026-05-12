@@ -1,5 +1,5 @@
 @layer components {
-  .prompt-line {
+  .cmdline {
     margin: 0 0 0.7rem;
     color: var(--color-ok);
     font-size: 0.84rem;
@@ -28,7 +28,7 @@
     background: var(--color-accent-soft);
   }
 
-  .render-indicator {
+  .cmdrun {
     margin: 0 0 0.5rem;
     padding: 0.42rem 1rem;
     border: 1px dashed var(--color-border);

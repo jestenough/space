@@ -1,2 +1,0 @@
-import type { PageModel } from "@/components/directory";
-export const paginate = <T>(items: readonly T[], page: number, pageSize: number): PageModel<T> => { const safePageSize = Number.isFinite(pageSize) && pageSize > 0 ? pageSize : 4; const totalPages = Math.max(1, Math.ceil(items.length / safePageSize)); const boundedPage = Math.min(Math.max(page, 1), totalPages); return { totalPages, totalItems: items.length, items: items.slice((boundedPage - 1) * safePageSize, boundedPage * safePageSize) }; };

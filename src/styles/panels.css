@@ -1,5 +1,5 @@
 @layer components {
-  .welcome-screen {
+  .motd {
     border-top: 1px dashed var(--color-border);
     padding-top: 0.62rem;
   }
@@ -30,7 +30,7 @@
   .panel { margin-top: 0.75rem; }
   .info-panel { min-height: 14rem; }
 
-  .right-feed {
+  .statpane {
     display: flex;
     flex-direction: column;
     gap: 0.65rem;
@@ -63,14 +63,14 @@
 
   #process-log .shell-cmd { color: var(--color-ok); }
 
-  .prompt-line .shell-prompt,
-  .render-indicator .shell-prompt {
+  .cmdline .shell-prompt,
+  .cmdrun .shell-prompt {
     color: var(--color-accent);
     font-weight: 800;
   }
 
-  .prompt-line .shell-cmd,
-  .render-indicator .shell-cmd {
+  .cmdline .shell-cmd,
+  .cmdrun .shell-cmd {
     color: var(--color-ok);
   }
 
@@ -106,7 +106,7 @@
     border-bottom-color: var(--color-accent);
   }
 
-  body.not-found-mode .right-feed {
+  body.not-found-mode .statpane {
     border-style: dashed;
     background: repeating-linear-gradient(180deg, color-mix(in srgb, var(--color-surface-2) 88%, black 12%) 0, color-mix(in srgb, var(--color-surface-2) 88%, black 12%) 6px, color-mix(in srgb, var(--color-surface) 86%, black 14%) 6px, color-mix(in srgb, var(--color-surface) 86%, black 14%) 12px);
   }

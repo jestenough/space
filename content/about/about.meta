@@ -1,5 +1,6 @@
 {
   "slug": "about",
+  "kind": "files",
   "label": {
     "en": "about/",
     "ru": "about/"

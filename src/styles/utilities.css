@@ -22,29 +22,29 @@
     background: var(--color-bg);
   }
 
-  body.zen-mode .command-deck,
-  body.zen-mode .left-stack,
-  body.zen-mode .right-feed,
-  body.zen-mode .dock,
+  body.zen-mode .sessbar,
+  body.zen-mode .userpane,
+  body.zen-mode .statpane,
+  body.zen-mode .footbar,
   body.zen-mode #render-indicator,
-  body.zen-mode .article-actions {
+  body.zen-mode .file-bar {
     display: none !important;
   }
 
-  body.zen-mode .control-room {
+  body.zen-mode .tty {
     display: block;
     width: min(880px, calc(100% - 2rem));
     margin: 0 auto;
   }
 
-  body.zen-mode .article-stage {
+  body.zen-mode .file-stage {
     border: 0;
     background: transparent;
     box-shadow: none;
     padding: 8vh 0 14vh;
   }
 
-  body.zen-mode #article-content {
+  body.zen-mode #file-content {
     font-size: calc(1.22rem * var(--content-font-scale));
     line-height: 1.95;
   }

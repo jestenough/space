@@ -1,5 +1,5 @@
 @layer components {
-  .dock {
+  .footbar {
     position: fixed;
     inset-inline-start: 50%;
     inset-block-end: 0;
@@ -14,7 +14,7 @@
     gap: var(--space-4);
   }
 
-  .dock .motto {
+  .footbar .motto {
     margin: 0;
     color: var(--color-muted);
     font-size: clamp(0.78rem, 1vw, 0.95rem);
@@ -38,14 +38,14 @@
     50% { background-position: 100% 50%; }
   }
 
-  .dock nav {
+  .footbar nav {
     margin-left: auto;
     display: flex;
     gap: 0.9rem;
     justify-content: flex-end;
   }
 
-  .dock a {
+  .footbar a {
     position: relative;
     isolation: isolate;
     min-height: var(--tap-target);
@@ -59,7 +59,7 @@
     border-radius: var(--radius-sm);
   }
 
-  .dock a::before {
+  .footbar a::before {
     content: "";
     position: absolute;
     inset: 0.18rem -0.28rem;
@@ -73,13 +73,13 @@
     transform: translateY(1px);
   }
 
-  .dock a:hover,
-  .dock a:focus-visible {
+  .footbar a:hover,
+  .footbar a:focus-visible {
     color: var(--color-accent);
   }
 
-  .dock a:hover::before,
-  .dock a:focus-visible::before {
+  .footbar a:hover::before,
+  .footbar a:focus-visible::before {
     opacity: 0.24;
     transform: translateY(0);
   }

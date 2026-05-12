@@ -33,17 +33,17 @@
     <link rel="alternate" type="application/rss+xml" title="autophany.space RSS" href="/en/feed.xml" />
   </head>
   <body data-default-panel="home" class="terminal-only">
-    <header class="command-deck">
-      <div class="deck-brand">
+    <header class="sessbar">
+      <div class="brandbox">
         <a id="brand-link" class="brand-link" href="/" aria-label="Open root">
           <pre id="ascii-logo" class="ascii-logo" aria-label="autophany.space"></pre>
         </a>
       </div>
 
-      <div class="deck-controls">
+      <div class="sessctl">
         <label class="control-box">
           <span id="theme-label">$ export THEME</span>
-          <select id="theme-switcher" aria-label="Theme switcher">
+          <select id="theme-switcher" aria-label="Theme switcher" data-theme-switcher>
             <option value="reading">paper</option>
             <option value="light">day</option>
             <option value="system">system</option>
@@ -52,128 +52,56 @@
         </label>
         <label class="control-box">
           <span id="lang-label">$ locale | grep LANG</span>
-          <select id="lang-switcher" aria-label="Language switcher">
+          <select id="lang-switcher" aria-label="Language switcher" data-lang-switcher>
             <option value="en">en_US.UTF-8</option>
             <option value="ru">ru_RU.UTF-8</option>
           </select>
         </label>
       </div>
+      <script>
+        (() => {
+          const langSelect = document.getElementById("lang-switcher");
+          if (langSelect instanceof HTMLSelectElement) langSelect.value = document.documentElement.lang || "en";
+          const themeSelect = document.getElementById("theme-switcher");
+          if (themeSelect instanceof HTMLSelectElement) themeSelect.value = document.documentElement.dataset.themeChoice || "system";
+        })();
+      </script>
     </header>
 
-    <main class="control-room">
-      <section class="left-stack" aria-live="polite">
-        <p id="pwd-line" class="prompt-line"><span class="stat-command"><span class="shell-prompt">guest@cray-1:~$</span><span class="shell-gap"> </span><span class="shell-cmd">ls -d */</span></span></p>
+    <main class="tty">
+      <section class="userpane" aria-live="polite">
+        <p id="pwd-line" class="cmdline"><span class="stat-command"><span class="shell-prompt">guest@cray-1:~$</span><span class="shell-gap"> </span><span class="shell-cmd">ls -d */</span></span></p>
 
-        <nav class="quick-nav" aria-label="Sections"></nav>
+        <nav class="quick-nav" aria-label="Sections" data-quick-nav></nav>
 
-        <section id="welcome-panel" class="welcome-screen" aria-label="Welcome message">
-          <p id="welcome-command" class="prompt-line welcome-command"><span class="stat-command"><span class="shell-prompt">guest@cray-1:~$</span><span class="shell-gap"> </span><span class="shell-cmd">sed -n '1,2p' ~/.meta</span></span></p>
+        <section id="welcome-panel" class="motd" aria-label="Welcome message">
+          <p id="welcome-command" class="cmdline welcome-command"><span class="stat-command"><span class="shell-prompt">guest@cray-1:~$</span><span class="shell-gap"> </span><span class="shell-cmd">sed -n '1,2p' ~/.meta</span></span></p>
           <h1 id="welcome-title" class="welcome-title"></h1>
           <p id="welcome-lead"></p>
           <p id="welcome-body"></p>
         </section>
 
-        <section id="toc-panel" class="toc-panel hidden" aria-label="Article headings">
+        <section id="toc-panel" class="toc-panel hidden" aria-label="Article headings" data-toc-panel>
           <h3 class="toc-title">headings</h3>
           <ul id="toc-list" class="toc-list"></ul>
         </section>
       </section>
 
-      <section class="center-stream">
-        <p id="render-indicator" class="render-indicator"><span class="stat-command"><span class="shell-prompt">guest@cray-1:~$</span><span class="shell-gap"> </span><span class="shell-cmd">ls -p | grep -v /</span></span></p>
+      <section class="mainpane">
+        <p id="render-indicator" class="cmdrun"><span class="stat-command"><span class="shell-prompt">guest@cray-1:~$</span><span class="shell-gap"> </span><span class="shell-cmd">ls -p | grep -v /</span></span></p>
 
-        <section id="article-list-view" class="list-stage" aria-live="polite">
-          <section id="home-files-panel" class="panel info-panel" aria-label="Home files panel"></section>
+          <section id="content-list-view" class="list-stage" aria-live="polite" data-list-view></section>
 
-          <section id="articles-panel" class="panel hidden directory-panel" aria-label="Articles panel">
-            <p id="list-title" class="sr-only">articles</p>
-            <div class="tools-row" role="group" aria-label="Article controls">
-              <label class="command-input" aria-label="Filter articles">
-                <span>$ grep -i --</span>
-                <input id="article-search-input" class="search-input" type="search" placeholder="pattern" maxlength="48" />
-              </label>
-              <label class="inline-tool">
-                <span id="sort-label">sort:</span>
-                <select id="sort-select" aria-label="Sort articles">
-                  <option value="date-desc">mtime ↓</option>
-                  <option value="date-asc">mtime ↑</option>
-                  <option value="title-asc">name ↑</option>
-                  <option value="title-desc">name ↓</option>
-                </select>
-              </label>
-              <label class="inline-tool">
-                <span id="size-label">size:</span>
-                <select id="page-size-select" aria-label="Articles per page">
-                  <option value="4">4</option>
-                  <option value="8">8</option>
-                  <option value="16">16</option>
-                  <option value="32">32</option>
-                </select>
-              </label>
-            </div>
-            <ul id="article-list" class="article-list"></ul>
-            <div class="pager-row" role="group" aria-label="Article pagination">
-              <button id="page-prev" type="button">[PREV]</button>
-              <span id="page-info" class="muted">1/1</span>
-              <button id="page-next" type="button">[NEXT]</button>
-            </div>
-          </section>
+        <article id="file-view" class="file-stage hidden" aria-live="polite" data-file-view></article>
 
-          <section id="tags-panel" class="panel hidden directory-panel" aria-label="Tags panel">
-            <p id="tags-headline" class="sr-only">Tags</p>
-            <div class="tools-row tags-tools" role="group" aria-label="Tag controls">
-              <label class="command-input" aria-label="Filter tags">
-                <span>$ grep -i --</span>
-                <input id="tag-search-input" class="search-input" type="search" placeholder="pattern" maxlength="36" />
-              </label>
-              <label class="inline-tool">
-                <span id="tag-sort-label">sort:</span>
-                <select id="tag-sort-select" aria-label="Sort tags">
-                  <option value="name-asc">name ↑</option>
-                  <option value="name-desc">name ↓</option>
-                  <option value="count-desc">count ↓</option>
-                  <option value="count-asc">count ↑</option>
-                </select>
-              </label>
-              <label class="inline-tool">
-                <span id="tag-size-label">head:</span>
-                <select id="tag-page-size-select" aria-label="Tags per page">
-                  <option value="4">4</option>
-                  <option value="8">8</option>
-                  <option value="16">16</option>
-                  <option value="32">32</option>
-                </select>
-              </label>
-            </div>
-            <ul id="tag-list" class="article-list"></ul>
-            <div class="pager-row tag-pager-row" role="group" aria-label="Tag pagination">
-              <button id="tag-page-prev" type="button">prev</button>
-              <span id="tag-page-info" class="muted">1/1</span>
-              <button id="tag-page-next" type="button">next</button>
-            </div>
-          </section>
-        </section>
-
-        <article id="article-view" class="article-stage hidden" aria-live="polite">
-          <div class="article-actions">
-            <a id="back-link" href="/en" class="back-link">cd ..</a>
-            <div class="article-action-buttons">
-              <button id="download-pdf-btn" class="download-btn action-chip" type="button">pdf</button>
-              <button id="edit-article-btn" class="download-btn action-chip" type="button">edit</button>
-              <button id="zen-mode-btn" class="download-btn action-chip" type="button">zen</button>
-            </div>
-          </div>
-          <div id="article-content"></div>
-        </article>
-
-        <section id="error-view" class="article-stage hidden" aria-live="assertive">
-          <h2 id="error-title">Could not load article</h2>
-          <p id="error-text">Check that the file exists in generated/sections.</p>
+        <section id="error-view" class="file-stage hidden" aria-live="assertive">
+          <h2 id="error-title">Could not load file</h2>
+          <p id="error-text">The requested path could not be resolved.</p>
         </section>
       </section>
 
-      <aside class="right-feed" aria-label="Status feed">
-        <pre id="process-log">guest@cray-1:~$ ps -eo pid,tty,stat,comm | grep autophany
+      <aside class="statpane" aria-label="Status feed">
+        <pre id="process-log" data-process-log>guest@cray-1:~$ ps -eo pid,tty,stat,comm | grep autophany
 PID   TTY    STAT  COMMAND
 042   pts/0  R+    proc.autophany
 ──────────────────────────────
@@ -182,10 +110,10 @@ lang    : en</pre>
       </aside>
     </main>
 
-    <button id="zen-exit-btn" class="zen-exit-btn" type="button" aria-label="Exit zen mode">×</button>
+    <button id="zen-exit-btn" class="zen-exit-btn" type="button" aria-label="Exit zen mode" data-zen-exit>×</button>
 
-    <footer class="dock">
-      <p id="footer-motto" class="motto"></p>
+    <footer class="footbar">
+      <p id="footer-motto" class="motto">Follow your curiosity. Lead humanity forward</p>
       <nav aria-label="Contacts">
         <a href="https://github.com/jestenough/space" target="_blank" rel="noreferrer" aria-label="GitHub">[git]</a>
         <a href="mailto:jestenough.personal@gmail.com" aria-label="Mail">[mail]</a>

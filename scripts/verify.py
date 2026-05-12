@@ -11,8 +11,7 @@ from urllib.parse import urlparse
 
 from . import content, generated, routes
 from .config import (
-    ARTICLE_TYPE, 
-    ARTICLES_SECTION, 
+    FileType,
     DIST_DIR, 
     GENERATED_DIR, 
     GENERATED_FILE_META_DIR, 
@@ -68,9 +67,9 @@ class Verify:
 
     def check_no_generated_artifacts(self) -> None:
         forbidden = [
-            GENERATED_DIR / f"{ARTICLES_SECTION}-index.json",
-            GENERATED_DIR / ARTICLES_SECTION,
-            GENERATED_DIR / f"{ARTICLES_SECTION}-meta",
+            GENERATED_DIR / "articles-index.json",
+            GENERATED_DIR / "articles",
+            GENERATED_DIR / "articles-meta",
         ]
         stale = [path for path in forbidden if path.exists()]
         stale.extend(path for path in GENERATED_DIR.glob("*-index.json") if path.name != GENERATED_SECTIONS_INDEX_FILE)
@@ -143,7 +142,7 @@ class Verify:
         return value.strip()
 
     def check_content_index(self, index: list[dict[str, Any]]) -> None:
-        source_slugs = {item.slug for section in content.sections() for item in section.items if content.item_type(item) == ARTICLE_TYPE}
+        source_slugs = {item.slug for section in content.sections() for item in section.items if content.item_type(item) == FileType.ARTICLE}
         indexed_slugs = {article.get("slug") for article in index if isinstance(article.get("slug"), str)}
 
         missing = sorted(source_slugs - indexed_slugs)
@@ -174,7 +173,7 @@ class Verify:
         description = self.get_localized_value(article, "description", lang)
         self.push_unique(titles, title, f"{slug}.{lang}", "Duplicate title")
         self.push_unique(descriptions, description, f"{slug}.{lang}", "Duplicate description")
-        section = str(article.get("section") or ARTICLES_SECTION)
+        section = str(article.get("section") or "")
         self.check_html(GENERATED_FILES_DIR / section / f"{slug}.{lang}.html", slug, lang)
         self.check_meta(GENERATED_FILE_META_DIR / section / f"{slug}.{lang}.json", slug, lang)
         self.check_pdf(self.dist_pdf_path(article, lang))

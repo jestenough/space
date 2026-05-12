@@ -13,8 +13,8 @@ from typing import Any
 
 from . import content, routes
 from .config import (
-    ARTICLE_TYPE, 
-    ARTICLES_SECTION, 
+    FileType,
+    FolderType,
     GENERATED_DIR, 
     GENERATED_FILE_META_NAME, 
     GENERATED_FILES_NAME, 
@@ -27,7 +27,6 @@ from .config import (
     NOT_FOUND_PAGE, 
     SYSTEM_SECTION, 
     TAG_PAGE, 
-    TAGS_SECTION, 
     TEX_FORMAT, 
     TEXT_FORMAT, 
     WORDS_PER_MINUTE
@@ -46,6 +45,7 @@ class Html:
         self.files_dir = generated_dir / GENERATED_FILES_NAME
         self.file_meta_dir = generated_dir / GENERATED_FILE_META_NAME
         self.sections_dir = generated_dir / GENERATED_SECTIONS_NAME
+        self.tag_section_slug: str | None = None
 
     def run(self) -> None:
         with tempfile.TemporaryDirectory(prefix="autophany-generated-", dir=GENERATED_DIR.parent) as temp_dir:
@@ -60,6 +60,7 @@ class Html:
     def generate(self) -> None:
         self.prepare()
         sections = content.sections()
+        self.tag_section_slug = content.first_section_slug(sections, FolderType.TAGS)
         indexes: dict[str, list[dict[str, Any]]] = {}
 
         write_json(self.generated_dir / GENERATED_SECTIONS_INDEX_FILE, [self.section_meta(section) for section in sections])
@@ -69,7 +70,7 @@ class Html:
             index = [self.item_meta(section, item) for item in section.items]
             indexes[section.slug] = index
 
-        articles = indexes.get(ARTICLES_SECTION, [])
+        articles = [item for index in indexes.values() for item in index if item.get("type") == FileType.ARTICLE]
         self.link_neighbors(articles)
 
         for section in sections:
@@ -102,6 +103,8 @@ class Html:
     def section_meta(section: content.Section) -> dict[str, Any]:
         return {
             "slug": section.slug,
+            "kind": section.kind,
+            "folderType": section.kind,
             "label": section.meta.get("label") or section.meta.get("title") or section.slug,
             "title": section.meta.get("title") or section.meta.get("label") or section.slug,
             "description": section.meta.get("description") or {},
@@ -118,7 +121,9 @@ class Html:
             }
             for section in sections
         }
-        if tags := pages.get(TAGS_SECTION):
+        tags_section = next((section for section in sections if section.kind == FolderType.TAGS), None)
+        tags = pages.get(tags_section.slug) if tags_section else None
+        if tags:
             pages.setdefault(TAG_PAGE, Html.tag_page_meta(tags))
         if home := pages.get(HOME_PAGE):
             pages.setdefault(NOT_FOUND_PAGE, home)
@@ -135,6 +140,8 @@ class Html:
             "slug": item.slug,
             "label": item.meta.get("label") or title,
             "type": kind,
+            "folderType": section.kind,
+            "fileType": kind,
             "format": item.meta.get("format") or self.format_for(item),
             "date": date,
             "title": title,
@@ -144,8 +151,9 @@ class Html:
             "canonicalPath": routes.item_route(section, languages[0], item.slug),
             "downloadPath": self.download_path(section, item, languages[0]) if self.is_downloadable(item) else None,
         }
-        if kind == ARTICLE_TYPE:
+        if kind == FileType.ARTICLE:
             meta["tags"] = self.string_list(item.meta.get("tags", []), f"{item.slug}.tags")
+            meta["tagSection"] = self.tag_section_slug
             meta["pdfPath"] = f"{routes.item_route(section, languages[0], item.slug)}.pdf"
             meta["prev"] = None
             meta["next"] = None
@@ -178,9 +186,15 @@ class Html:
             meta_out.parent.mkdir(parents=True, exist_ok=True)
             out.write_text(html_text, encoding="utf-8")
             item_meta = {**meta, "lang": source.lang, "canonicalPath": routes.item_route(section, source.lang, item.slug), "downloadPath": self.download_path(section, item, source.lang) if self.is_downloadable(item) else None}
-            if item_meta.get("type") == ARTICLE_TYPE:
-                stats = self.text_stats(source.path.read_text(encoding="utf-8"))
-                item_meta.update({"pdfPath": f"{routes.item_route(section, source.lang, item.slug)}.pdf", "wordCount": stats["words"], "readingTime": max(1, round(stats["words"] / WORDS_PER_MINUTE)), "sourcePath": content.relative_path(source.path)})
+            stats = self.text_stats(source.path.read_text(encoding="utf-8"))
+            item_meta.update({
+                "sourcePath": content.relative_path(source.path),
+                "wordCount": stats["words"],
+                "charCount": stats["chars"],
+                "byteSize": source.path.stat().st_size,
+            })
+            if item_meta.get("type") == FileType.ARTICLE:
+                item_meta.update({"pdfPath": f"{routes.item_route(section, source.lang, item.slug)}.pdf", "readingTime": max(1, round(stats["words"] / WORDS_PER_MINUTE))})
             write_json(meta_out, item_meta)
 
     @staticmethod

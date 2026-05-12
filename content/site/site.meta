@@ -1,5 +1,6 @@
 {
   "slug": "site",
+  "kind": "system",
   "system": true,
   "label": {
     "en": "site/",

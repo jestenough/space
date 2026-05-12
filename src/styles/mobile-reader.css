@@ -9,13 +9,13 @@
       padding-bottom: 5.7rem;
     }
 
-    .command-deck,
-    .control-room,
-    .dock {
+    .sessbar,
+    .tty,
+    .footbar {
       width: min(100% - 0.75rem, var(--shell-width));
     }
 
-    .command-deck {
+    .sessbar {
       position: static;
       margin-block: 0.38rem;
       min-height: auto;
@@ -24,7 +24,7 @@
       box-shadow: var(--shadow-panel-soft);
     }
 
-    .deck-brand {
+    .brandbox {
       width: 100%;
       align-items: center;
     }
@@ -35,7 +35,7 @@
       overflow: hidden;
     }
 
-    .deck-controls {
+    .sessctl {
       gap: 0.4rem;
     }
 
@@ -44,25 +44,25 @@
       flex: 1 1 9rem;
     }
 
-    .control-room {
+    .tty {
       display: block;
       padding-bottom: 1.1rem;
     }
 
-    .left-stack,
-    .center-stream,
-    .right-feed,
-    .article-stage {
+    .userpane,
+    .mainpane,
+    .statpane,
+    .file-stage {
       width: 100%;
     }
 
-    .left-stack {
+    .userpane {
       padding: 0.62rem;
       margin-bottom: 0.56rem;
       box-shadow: var(--shadow-panel-soft);
     }
 
-    .prompt-line {
+    .cmdline {
       margin-bottom: 0.42rem;
       font-size: 0.78rem;
     }
@@ -81,7 +81,7 @@
       font-size: 0.82rem;
     }
 
-    .welcome-screen {
+    .motd {
       padding-top: 0.48rem;
     }
 
@@ -152,23 +152,23 @@
       border-bottom-color: var(--color-accent);
     }
 
-    .right-feed {
+    .statpane {
       display: none;
     }
 
-    .render-indicator {
+    .cmdrun {
       margin-bottom: 0.45rem;
       padding: 0.35rem 0.55rem;
       font-size: 0.78rem;
     }
 
-    .article-stage,
+    .file-stage,
     .panel {
       padding: var(--mobile-panel-padding);
       box-shadow: var(--shadow-panel-soft);
     }
 
-    #articles-panel,
+    #content-panel,
     #tags-panel {
       min-height: auto;
     }
@@ -249,34 +249,34 @@
       overflow-wrap: anywhere;
     }
 
-    .article-actions {
+    .file-bar {
       align-items: flex-start;
       flex-direction: column;
       gap: 0.55rem;
     }
 
-    .article-action-buttons {
+    .file-act {
       width: 100%;
       flex-wrap: wrap;
     }
 
-    .article-action-buttons .action-chip {
+    .file-act .action-chip {
       flex: 1 1 4.2rem;
       min-height: var(--tap-target);
     }
 
-    #article-content {
+    #file-content {
       line-height: 1.75;
     }
 
-    #article-content pre,
+    #file-content pre,
     .info-file-pre {
       white-space: pre-wrap;
       overflow-x: auto;
       font-size: 0.84rem;
     }
 
-    .dock {
+    .footbar {
       min-height: 4.6rem;
       padding: 0.52rem 0.6rem;
       align-items: center;
@@ -287,13 +287,13 @@
       box-shadow: var(--shadow-panel-soft);
     }
 
-    .dock .motto {
+    .footbar .motto {
       max-width: 100%;
       font-size: 0.78rem;
       line-height: 1.25;
     }
 
-    .dock nav {
+    .footbar nav {
       width: 100%;
       margin-left: 0;
       justify-content: center;
@@ -301,7 +301,7 @@
       gap: 0.72rem;
     }
 
-    .dock a {
+    .footbar a {
       min-height: 1.8rem;
     }
   }
@@ -311,7 +311,7 @@
       font-size: clamp(0.2rem, 1.16vw, 0.28rem);
     }
 
-    .deck-controls {
+    .sessctl {
       width: 100%;
     }
 

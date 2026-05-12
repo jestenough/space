@@ -1,5 +1,5 @@
 @layer components {
-  #articles-panel,
+  #content-panel,
   #tags-panel {
     min-height: calc(100dvh - 13.4rem);
     display: flex;

@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from . import content
-from .config import ARTICLE_TYPE, ITEM_ASSETS_DIR, PDF_REQUIRED_BINARIES, PUBLIC_DIR, SYSTEM_SECTION, TEX_FORMAT
+from .config import FileType, ITEM_ASSETS_DIR, PDF_REQUIRED_BINARIES, PUBLIC_DIR, SYSTEM_SECTION, TEX_FORMAT
 
 
 @dataclass(frozen=True)
@@ -54,7 +54,7 @@ class Pdf:
         sources: list[ArticleSource] = []
         for section in content.sections():
             for item in section.items:
-                if content.item_type(item) != ARTICLE_TYPE:
+                if content.item_type(item) != FileType.ARTICLE:
                     continue
                 for source in item.sources:
                     if source.ext == TEX_FORMAT:

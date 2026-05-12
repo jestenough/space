@@ -1,5 +1,6 @@
 {
   "slug": "projects",
+  "kind": "files",
   "label": {
     "en": "projects/",
     "ru": "projects/"

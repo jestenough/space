@@ -8,9 +8,9 @@ HOST_GID := $(shell id -g)
 help:
 	@echo "autophany.space build commands"
 	@echo "  make install           install npm dependencies"
-	@echo "  make dev               prepare content and start Vite dev server"
-	@echo "  make dev-host          prepare content and start Vite on 0.0.0.0:4173"
-	@echo "  make preview           preview production build"
+	@echo "  make dev               build prerendered pages and preview locally"
+	@echo "  make dev-host          build prerendered pages and preview on 0.0.0.0:4173"
+	@echo "  make preview           preview current production build"
 	@echo "  make typecheck         run TypeScript checks"
 	@echo "  make preflight         validate source content and required tools"
 	@echo "  make html              generate content HTML fragments and metadata"
@@ -27,11 +27,11 @@ help:
 install:
 	npm ci
 
-dev: html
-	npm run dev
+dev: html frontend prerender
+	npm run preview
 
-dev-host: html
-	npm run dev -- --host 0.0.0.0 --port 4173
+dev-host: html frontend prerender
+	npm run preview -- --host 0.0.0.0 --port 4173
 
 preview:
 	npm run preview

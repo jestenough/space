@@ -1,5 +1,4 @@
 import "./styles/index.css";
-import { AppController } from "@/app/appController";
+import { PageController } from "@/app/pageController";
 
-const app = new AppController();
-void app.init();
+new PageController().init();

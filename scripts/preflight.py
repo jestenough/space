@@ -11,10 +11,12 @@ from typing import Any
 
 from . import content, routes
 from .config import (
-    ARTICLE_TYPE, 
-    ARTICLES_SECTION, 
     CONTENT_DIR, 
     DATE_FORMAT_LABEL, 
+    FILE_TYPES,
+    FileType,
+    FOLDER_TYPES,
+    FolderType,
     ITEM_META_SUFFIX, 
     PACKAGE_JSON, 
     REQUIRED_BINARIES,
@@ -22,7 +24,6 @@ from .config import (
     SRC_DIR, 
     SYSTEM_SECTION, 
     TEX_FORMAT, 
-    TEXT_TYPE, 
     TSCONFIG, 
     VITE_CONFIG
 )
@@ -52,12 +53,12 @@ class Preflight:
             routes.item_route(SYSTEM_SECTION, "en", "readme", system=True): "/en/readme",
             routes.item_route("about", "ru", "gpg.asc"): "/ru/about/gpg.asc",
             routes.section_route(SYSTEM_SECTION, "en", system=True): "/en",
-            routes.generated_pdf_route({"section": ARTICLES_SECTION, "slug": "hello-world"}, "en"): f"/en/{ARTICLES_SECTION}/hello-world.pdf",
+            routes.generated_pdf_route({"section": "articles", "slug": "hello-world"}, "en"): "/en/articles/hello-world.pdf",
         }
         for actual, expected in checks.items():
             if actual != expected:
                 raise RuntimeError(f"Route invariant failed: expected {expected}, got {actual}")
-        if content.item_type({}) != TEXT_TYPE or content.item_type({"type": ARTICLE_TYPE}) != ARTICLE_TYPE:
+        if content.item_type({}) != FileType.PAGE or content.item_type({"type": FileType.ARTICLE.value}) != FileType.ARTICLE:
             raise RuntimeError("Item type invariant failed")
 
     def check_binaries(self) -> None:
@@ -100,24 +101,28 @@ class Preflight:
         self.check_download(item.meta.get("download"), meta_path)
         self.check_item_languages(item)
         kind = content.item_type(item)
-        if section.slug == ARTICLES_SECTION and kind != ARTICLE_TYPE:
-            raise RuntimeError(f"Article section item `{item.section}/{item.slug}` must set `type: \"{ARTICLE_TYPE}\"` in {meta_path}")
-        if kind == ARTICLE_TYPE:
+        if section.kind == FolderType.ARTICLES and kind != FileType.ARTICLE:
+            raise RuntimeError(f"Article section item `{item.section}/{item.slug}` must set `type: \"{FileType.ARTICLE.value}\"` in {meta_path}")
+        if kind == FileType.ARTICLE:
             for source in item.sources:
                 if source.ext != TEX_FORMAT:
-                    raise RuntimeError(f"Article item `{item.section}/{item.slug}` has non-TeX source: {source.path}\nItems with type `{ARTICLE_TYPE}` must use .tex sources only.")
+                    raise RuntimeError(f"Article item `{item.section}/{item.slug}` has non-TeX source: {source.path}\nItems with type `{FileType.ARTICLE.value}` must use .tex sources only.")
             self.check_tags(item.meta.get("tags"), meta_path)
 
     def check_meta(self, meta: dict[str, Any], slug: str, path: Path, section_meta: bool) -> None:
         for key in ("slug", "label", "title", "description"):
             if key not in meta:
                 raise RuntimeError(f"Missing required meta field `{key}` in {path}")
+        if section_meta:
+            self.check_section_kind(meta.get("kind"), meta.get("system"), path)
         if meta["slug"] != slug:
             raise RuntimeError(f"Slug mismatch in {path}\nFolder slug: `{slug}`\nMeta slug: `{meta['slug']}`\nMake them identical.")
         for field in ("label", "title", "description"):
             self.check_localized_field(meta[field], field, path)
         if not section_meta and "date" in meta:
             self.check_date(meta["date"], path)
+        if not section_meta:
+            self.check_file_type(meta.get("type"), path)
 
     def check_item_languages(self, item: content.Item) -> None:
         source_langs = {source.lang for source in item.sources}
@@ -182,6 +187,25 @@ class Preflight:
     def check_download(value: Any, path: Path) -> None:
         if value is not None and not isinstance(value, bool):
             raise RuntimeError(f"`download` must be boolean in {path}\nUse `\"download\": true` only for files that should expose a raw download route.")
+
+    @staticmethod
+    def check_section_kind(kind: Any, system: Any, path: Path) -> None:
+        expected = FolderType.SYSTEM if system is True else None
+        if kind is None and expected is None:
+            return
+        if not isinstance(kind, str) or kind not in {value.value for value in FOLDER_TYPES}:
+            raise RuntimeError(f"`kind` must be one of {', '.join(value.value for value in FOLDER_TYPES)} in {path}")
+        if expected and kind != expected:
+            raise RuntimeError(f"System section must use `kind: \"{FolderType.SYSTEM.value}\"` in {path}")
+        if system is not True and kind == FolderType.SYSTEM:
+            raise RuntimeError(f"Only the system section may use `kind: \"{FolderType.SYSTEM.value}\"` in {path}")
+
+    @staticmethod
+    def check_file_type(value: Any, path: Path) -> None:
+        if value is None:
+            return
+        if not isinstance(value, str) or value not in {item.value for item in FILE_TYPES}:
+            raise RuntimeError(f"`type` must be one of {', '.join(item.value for item in FILE_TYPES)} in {path}")
 
 
 def run() -> None:

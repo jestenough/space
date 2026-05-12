@@ -5,19 +5,22 @@ from __future__ import annotations
 from typing import Any, TypedDict
 
 from .config import (
-    ARTICLE_TYPE, 
     DEFAULT_LANG, 
     GENERATED_DIR, 
+    GENERATED_FILE_META_DIR,
     GENERATED_SECTIONS_DIR, 
     GENERATED_SECTIONS_INDEX_FILE, 
-    GENERATED_SECTIONS_NAME
+    GENERATED_SECTIONS_NAME,
+    FileType,
+    FolderType,
 )
-from .jsonio import read_list
+from .jsonio import read_list, read_object
 from .localization import language_list
 
 
 class GeneratedSection(TypedDict, total=False):
     slug: str
+    kind: FolderType
     label: dict[str, str]
     title: dict[str, str]
     description: dict[str, str]
@@ -29,7 +32,9 @@ class GeneratedItem(TypedDict, total=False):
     section: str
     slug: str
     label: dict[str, str]
-    type: str
+    type: FileType
+    folderType: FolderType
+    fileType: FileType
     format: str
     date: str
     title: dict[str, str]
@@ -40,6 +45,22 @@ class GeneratedItem(TypedDict, total=False):
     downloadPath: str | None
     tags: list[str]
     pdfPath: str
+
+
+class GeneratedLocalizedItem(TypedDict, total=False):
+    section: str
+    slug: str
+    lang: str
+    type: FileType
+    fileType: FileType
+    canonicalPath: str
+    downloadPath: str | None
+    pdfPath: str
+    sourcePath: str
+    wordCount: int
+    charCount: int
+    readingTime: int
+    byteSize: int
 
 
 def sections() -> list[GeneratedSection]:
@@ -61,7 +82,7 @@ def items(sections_index: list[GeneratedSection] | None = None) -> list[Generate
 
 
 def articles(sections_index: list[GeneratedSection] | None = None) -> list[GeneratedItem]:
-    return [item for item in items(sections_index) if item.get("type") == ARTICLE_TYPE]
+    return [item for item in items(sections_index) if item.get("type") == FileType.ARTICLE]
 
 
 def item_languages(items: list[GeneratedItem]) -> list[str]:
@@ -86,3 +107,18 @@ def collect_tags_by_lang(articles: list[GeneratedItem]) -> dict[str, set[str]]:
             if isinstance(lang, str):
                 result.setdefault(lang, set()).update(tags)
     return result
+
+
+def first_section_slug(sections_index: list[GeneratedSection], kind: FolderType) -> str | None:
+    for section in sections_index:
+        section_kind = FolderType.SYSTEM if section.get("system") else section.get("kind")
+        if section_kind == kind:
+            slug = section.get("slug")
+            if isinstance(slug, str):
+                return slug
+    return None
+
+
+def localized_item(section: str, slug: str, lang: str) -> GeneratedLocalizedItem:
+    path = GENERATED_FILE_META_DIR / section / f"{slug}.{lang}.json"
+    return read_object(path, f"generated/files-meta/{section}/{slug}.{lang}.json")

@@ -1,4 +1,4 @@
-import { SessionKey, StorageKey } from "@/core/enums";
+import { StorageKey } from "@/core/enums";
 
 const safeGet = (storage: Storage, key: string): string | null => {
   try {
@@ -27,7 +27,4 @@ export const storageService = {
   get: (key: StorageKey): string | null => safeGet(window.localStorage, key),
   set: (key: StorageKey, value: string): boolean => safeSet(window.localStorage, key, value),
   remove: (key: StorageKey): void => safeRemove(window.localStorage, key),
-  getSession: (key: SessionKey): string | null => safeGet(window.sessionStorage, key),
-  setSession: (key: SessionKey, value: string): boolean => safeSet(window.sessionStorage, key, value),
-  removeSession: (key: SessionKey): void => safeRemove(window.sessionStorage, key)
 } as const;

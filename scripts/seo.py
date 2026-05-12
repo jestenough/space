@@ -9,7 +9,7 @@ from typing import Any
 from xml.sax.saxutils import escape as xml_escape
 
 from . import generated, routes
-from .config import ARTICLE_TYPE, ARTICLES_SECTION, DEFAULT_LANG, DIST_DIR, FEED_ITEM_LIMIT, GENERATED_SITE_META_PATH, NOT_FOUND_PAGE, SITE_URL
+from .config import DEFAULT_LANG, DIST_DIR, FEED_ITEM_LIMIT, FileType, FolderType, GENERATED_SITE_META_PATH, NOT_FOUND_PAGE, SITE_URL
 from .jsonio import read_object
 
 XML_HEADER = '<?xml version="1.0" encoding="UTF-8"?>'
@@ -25,18 +25,20 @@ class Seo:
 
         site_meta = self.read_site_meta()
         sections = generated.sections()
+        article_section = generated.first_section_slug(sections, FolderType.ARTICLES)
+        tag_section = generated.first_section_slug(sections, FolderType.TAGS)
         files = generated.items(sections)
         articles = generated.articles(sections)
         languages = generated.item_languages(files)
         tags_by_lang = generated.collect_tags_by_lang(articles)
 
-        self.write_text(DIST_DIR / "sitemap.xml", self.render_sitemap(self.build_sitemap_entries(articles, tags_by_lang, sections, files)))
+        self.write_text(DIST_DIR / "sitemap.xml", self.render_sitemap(self.build_sitemap_entries(articles, tags_by_lang, sections, files, tag_section)))
         self.write_text(DIST_DIR / "robots.txt", self.render_robots())
         self.write_text(DIST_DIR / "_headers", self.render_headers(articles))
         self.write_text(DIST_DIR / "404.html", self.render_404(site_meta))
 
         for lang in languages:
-            self.write_text(DIST_DIR / lang / "feed.xml", self.render_feed(lang, articles, site_meta))
+            self.write_text(DIST_DIR / lang / "feed.xml", self.render_feed(lang, articles, site_meta, article_section))
 
         logger.info("Generated SEO files and %s feed(s).", len(languages))
 
@@ -44,7 +46,7 @@ class Seo:
     def read_site_meta() -> dict[str, Any]:
         return read_object(GENERATED_SITE_META_PATH, "generated site meta")
 
-    def build_sitemap_entries(self, articles: list[dict[str, Any]], tags_by_lang: dict[str, set[str]], sections: list[dict[str, Any]], files: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    def build_sitemap_entries(self, articles: list[dict[str, Any]], tags_by_lang: dict[str, set[str]], sections: list[dict[str, Any]], files: list[dict[str, Any]], tag_section: str | None) -> list[dict[str, Any]]:
         languages = generated.item_languages(files)
         latest = self.latest_date(articles)
         entries: list[dict[str, Any]] = []
@@ -58,9 +60,9 @@ class Seo:
             for tag in sorted(tags_by_lang.get(lang, set())):
                 entries.append(
                     {
-                        "path": routes.tag_route(lang, tag),
+                        "path": routes.tag_route(tag_section or "tags", lang, tag),
                         "lastmod": self.latest_date(self.articles_with_tag(articles, lang, tag)),
-                        "alternates": self.tag_alternates(tag, tags_by_lang),
+                        "alternates": self.tag_alternates(tag_section or "tags", tag, tags_by_lang),
                     }
                 )
 
@@ -75,7 +77,7 @@ class Seo:
                 )
 
         for item in files:
-            if item.get("type") == ARTICLE_TYPE:
+            if item.get("type") == FileType.ARTICLE:
                 continue
             for lang in item.get("languages", []):
                 entries.append({"path": routes.generated_item_route(item, lang), "lastmod": item.get("date") or latest, "alternates": self.item_alternates(item)})
@@ -151,7 +153,7 @@ class Seo:
 </html>
 """
 
-    def render_feed(self, lang: str, articles: list[dict[str, Any]], site_meta: dict[str, Any]) -> str:
+    def render_feed(self, lang: str, articles: list[dict[str, Any]], site_meta: dict[str, Any], article_section: str | None) -> str:
         lang_articles = [article for article in articles if lang in article["languages"]]
         lang_articles.sort(key=lambda article: article["date"], reverse=True)
         items = []
@@ -168,14 +170,15 @@ class Seo:
                 "    </item>",
             ]))
 
-        title = self.page_value(site_meta, ARTICLES_SECTION, "title", lang)
-        description = self.page_value(site_meta, ARTICLES_SECTION, "description", lang)
+        page_key = article_section or "articles"
+        title = self.page_value(site_meta, page_key, "title", lang)
+        description = self.page_value(site_meta, page_key, "description", lang)
         return "\n".join([
             XML_HEADER,
             '<rss version="2.0">',
             "  <channel>",
             f"    <title>{self.xml(title)}</title>",
-            f"    <link>{self.xml(routes.absolute_url(routes.section_route(ARTICLES_SECTION, lang)))}</link>",
+            f"    <link>{self.xml(routes.absolute_url(routes.section_route(page_key, lang)))}</link>",
             f"    <description>{self.xml(description)}</description>",
             f"    <language>{self.xml(lang)}</language>",
             *items,
@@ -196,8 +199,8 @@ class Seo:
     def article_alternates(self, article: dict[str, Any]) -> dict[str, str]:
         return routes.alternates(article["languages"], lambda lang: routes.generated_item_route(article, lang))
 
-    def tag_alternates(self, tag: str, tags_by_lang: dict[str, set[str]]) -> dict[str, str]:
-        alternates = {lang: routes.tag_route(lang, tag) for lang, tags in tags_by_lang.items() if tag in tags}
+    def tag_alternates(self, section: str, tag: str, tags_by_lang: dict[str, set[str]]) -> dict[str, str]:
+        alternates = {lang: routes.tag_route(section, lang, tag) for lang, tags in tags_by_lang.items() if tag in tags}
         alternates["x-default"] = alternates.get(DEFAULT_LANG) or next(iter(alternates.values()), "/")
         return alternates
 
