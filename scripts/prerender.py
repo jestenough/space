@@ -128,6 +128,7 @@ class Prerender:
                     localized_meta = generated.localized_item(section_slug, str(item["slug"]), lang)
                     title = self.localized(item.get("title"), lang, f"{section_slug}.{item.get('slug')}.title")
                     description = self.localized(item.get("description"), lang, f"{section_slug}.{item.get('slug')}.description")
+                    display_name = exact_text(item.get("label"), lang) or str(item["slug"])
                     shell = self.article_shell(
                         lang=lang,
                         sections=sections,
@@ -136,8 +137,8 @@ class Prerender:
                         welcome_title=title,
                         welcome_lead=description,
                         welcome_command=f"sed -n '1,2p' {item['slug']}.meta",
-                        render_command=f"cat {self.display_file_name(str(item['slug']))}",
-                        process_html=self.info_file_process_html(lang, section_slug, str(item["slug"]), item, localized_meta),
+                        render_command=f"cat {display_name}",
+                        process_html=self.info_file_process_html(lang, section_slug, str(item["slug"]), display_name, item, localized_meta),
                         content_html=content,
                         back_href=routes.generated_section_route(section, lang),
                         download_text="download",
@@ -658,13 +659,12 @@ class Prerender:
             self.stat_row("pdf", str(localized_meta.get("pdfPath") or routes.generated_pdf_route(article, lang))),
         ])
 
-    def info_file_process_html(self, lang: str, section: str, slug: str, item: dict[str, Any], localized_meta: dict[str, Any]) -> str:
+    def info_file_process_html(self, lang: str, section: str, slug: str, display_name: str, item: dict[str, Any], localized_meta: dict[str, Any]) -> str:
         stamp = f"{item.get('date') or '1970-01-01'} 00:00:00 +0000"
         cwd = self.cwd_for_section(section)
-        file_name = self.display_file_name(slug)
-        file_path = self.display_file_path(section, slug)
+        file_path = self.display_file_path(section, display_name)
         return "".join([
-            self.shell_command_markup(f"stat {file_name}", cwd=cwd),
+            self.shell_command_markup(f"stat {display_name}", cwd=cwd),
             self.stat_row("File", file_path),
             self.stat_row("Size", str(localized_meta.get("byteSize") or 0)),
             self.stat_row("Blocks", "8"),
@@ -678,7 +678,7 @@ class Prerender:
             self.stat_row("Birth", stamp),
             self.stat_row("Mtime", stamp),
             '<span class="meta-rule" aria-hidden="true"></span>',
-            self.stat_row("name", slug),
+            self.stat_row("name", display_name),
             self.stat_row("lang", lang),
             self.stat_row("langs", ", ".join(item.get("languages", []))),
             self.stat_row("type", str(item.get("type") or FileType.PAGE)),
@@ -906,10 +906,6 @@ class Prerender:
     @staticmethod
     def display_file_path(section: str, slug: str) -> str:
         return f"~/{slug}" if section == "site" else f"~/{section}/{slug}"
-
-    @staticmethod
-    def display_file_name(slug: str) -> str:
-        return slug
 
     @staticmethod
     def cwd_for_section(section: str | None) -> str:
