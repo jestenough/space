@@ -1,7 +1,7 @@
 @layer layout {
   .sessbar,
   .userpane,
-  .file-stage,
+  .main-stage-shell,
   .statpane,
   .footbar {
     border: 1px solid var(--color-border);
@@ -26,8 +26,7 @@
   }
 
   .userpane,
-  .statpane,
-  .file-stage {
+  .statpane {
     padding: 0.82rem;
   }
 
@@ -48,6 +47,11 @@
   .mainpane {
     min-width: 0;
     align-self: start;
+  }
+
+  .main-stage-shell {
+    min-width: 0;
+    overflow: hidden;
   }
   .userpane,
   .mainpane,

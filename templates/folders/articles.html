@@ -28,7 +28,7 @@
   <ul id="article-list" class="article-list" data-list-items>
     {{items_html}}
   </ul>
-  <div class="pager-row" role="group" aria-label="Content pagination">
+  <div class="{{pager_class}}" role="group" aria-label="Content pagination" data-list-pager>
     <button id="page-prev" type="button" data-list-prev>{{page_prev}}</button>
     <span id="page-info" class="muted" data-list-page-info>{{page_info}}</span>
     <button id="page-next" type="button" data-list-next>{{page_next}}</button>

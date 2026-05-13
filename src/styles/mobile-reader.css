@@ -162,10 +162,35 @@
       font-size: 0.78rem;
     }
 
+    .main-stage-shell > .cmdrun {
+      margin-bottom: 0;
+      padding: 0.35rem var(--mobile-panel-padding);
+    }
+
     .file-stage,
     .panel {
       padding: var(--mobile-panel-padding);
       box-shadow: var(--shadow-panel-soft);
+    }
+
+    .main-stage-shell {
+      box-shadow: var(--shadow-panel-soft);
+    }
+
+    .main-stage-shell > .list-stage,
+    .main-stage-shell > .file-stage,
+    .main-stage-shell > #error-view {
+      padding: var(--mobile-panel-padding);
+    }
+
+    .main-stage-shell > .file-stage,
+    .main-stage-shell > #error-view,
+    .main-stage-shell .panel {
+      box-shadow: none;
+    }
+
+    .main-stage-shell .panel {
+      padding: 0;
     }
 
     #content-panel,
@@ -222,8 +247,9 @@
 
     .pager-row,
     .tag-pager-row {
-      margin-bottom: 0.2rem;
-      padding-top: 0.74rem;
+      margin-top: 0.65rem;
+      margin-bottom: 0;
+      padding-top: 0.35rem;
     }
 
     .pager-row button,

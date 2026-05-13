@@ -11,6 +11,10 @@
     row-gap: 0.45rem;
   }
 
+  .main-stage-shell .tools-row {
+    margin-top: 0;
+  }
+
   .command-input,
   .inline-tool {
     min-height: 2.1rem;

@@ -28,6 +28,7 @@ export class ListController {
   private readonly prevButton: HTMLButtonElement | null;
   private readonly nextButton: HTMLButtonElement | null;
   private readonly pageInfo: HTMLElement | null;
+  private readonly pager: HTMLElement | null;
   private readonly items: Item[];
   private readonly defaultSortValue: string;
   private currentPage = 1;
@@ -40,6 +41,7 @@ export class ListController {
     this.prevButton = root.querySelector<HTMLButtonElement>("[data-list-prev]");
     this.nextButton = root.querySelector<HTMLButtonElement>("[data-list-next]");
     this.pageInfo = root.querySelector<HTMLElement>("[data-list-page-info]");
+    this.pager = root.querySelector<HTMLElement>("[data-list-pager]");
     const elements = this.list ? Array.from(this.list.querySelectorAll<HTMLElement>("[data-list-item]")) : [];
     this.items = elements.map((element) => ({
       element,
@@ -94,8 +96,8 @@ export class ListController {
 
     this.list.replaceChildren(...ordered.map((item) => item.element), ...hidden.map((item) => item.element));
 
-    const totalPages = Math.max(1, Math.ceil(ordered.length / pageSizeValue));
-    this.currentPage = Math.min(this.currentPage, totalPages);
+    const totalPages = Math.ceil(ordered.length / pageSizeValue);
+    this.currentPage = totalPages > 0 ? Math.min(this.currentPage, totalPages) : 1;
     const start = (this.currentPage - 1) * pageSizeValue;
     const end = start + pageSizeValue;
 
@@ -106,13 +108,14 @@ export class ListController {
       item.element.hidden = true;
     });
 
-    if (this.pageInfo) this.pageInfo.textContent = `${this.currentPage}/${totalPages}`;
+    if (this.pageInfo) this.pageInfo.textContent = totalPages > 0 ? `${this.currentPage}/${totalPages}` : "0/0";
+    this.pager?.classList.toggle("hidden", totalPages <= 1);
     if (this.prevButton) this.prevButton.disabled = this.currentPage <= 1;
     if (this.nextButton) this.nextButton.disabled = this.currentPage >= totalPages;
 
     this.setProcessField("shown", String(Math.max(0, Math.min(pageSizeValue, ordered.length - start))));
     this.setProcessField("total", String(ordered.length));
-    this.setProcessField("page", String(this.currentPage));
+    this.setProcessField("page", String(totalPages > 0 ? this.currentPage : 0));
     this.setProcessField("pages", String(totalPages));
 
     const params = new URLSearchParams(window.location.search);

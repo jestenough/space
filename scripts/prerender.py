@@ -778,6 +778,7 @@ class Prerender:
                 title_asc_label=html.escape(ui["title_asc_label"]),
                 title_desc_label=html.escape(ui["title_desc_label"]),
                 items_html=self.render_articles(articles, lang),
+                pager_class="pager-row hidden" if article_total_pages <= 1 else "pager-row",
                 page_prev=html.escape(ui["page_prev"]),
                 page_next=html.escape(ui["page_next"]),
                 page_info=html.escape(f"{article_page}/{article_total_pages}"),
@@ -794,6 +795,7 @@ class Prerender:
             title_asc_label=html.escape(ui["title_asc_label"]),
             title_desc_label=html.escape(ui["title_desc_label"]),
             articles_html=self.render_articles(articles, lang),
+            pager_class="pager-row hidden" if article_total_pages <= 1 else "pager-row",
             page_prev=html.escape(ui["page_prev"]),
             page_next=html.escape(ui["page_next"]),
             page_info=html.escape(f"{article_page}/{article_total_pages}"),
@@ -807,6 +809,7 @@ class Prerender:
             count_desc_label=html.escape(ui["count_desc_label"]),
             count_asc_label=html.escape(ui["count_asc_label"]),
             tags_html=self.render_tags(tags, lang, tag, active_section),
+            tag_pager_class="pager-row tag-pager-row hidden" if tag_total_pages <= 1 else "pager-row tag-pager-row",
             tag_page_info=html.escape(f"{tag_page}/{tag_total_pages}"),
         )
 

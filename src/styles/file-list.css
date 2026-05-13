@@ -7,6 +7,13 @@
     overflow-x: auto;
   }
 
+  .main-stage-shell .info-file-tree {
+    margin-top: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
   .info-file-link {
     display: block;
     color: var(--color-ok);

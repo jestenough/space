@@ -92,15 +92,17 @@
       </section>
 
       <section class="mainpane">
-        <p id="render-indicator" class="cmdrun"><span class="stat-command"><span class="shell-prompt"><span class="shell-prompt-text">guest@cray-1:~</span><span class="shell-prompt-sign">$</span></span><span class="shell-gap"> </span><span class="shell-cmd">ls -p | grep -v /</span></span></p>
+        <section class="main-stage-shell" aria-label="Content shell">
+          <p id="render-indicator" class="cmdrun"><span class="stat-command"><span class="shell-prompt"><span class="shell-prompt-text">guest@cray-1:~</span><span class="shell-prompt-sign">$</span></span><span class="shell-gap"> </span><span class="shell-cmd">ls -p | grep -v /</span></span></p>
 
           <section id="content-list-view" class="list-stage" aria-live="polite" data-list-view></section>
 
-        <article id="file-view" class="file-stage hidden" aria-live="polite" data-file-view></article>
+          <article id="file-view" class="file-stage hidden" aria-live="polite" data-file-view></article>
 
-        <section id="error-view" class="file-stage hidden" aria-live="assertive">
-          <h2 id="error-title">Could not load file</h2>
-          <p id="error-text">The requested path could not be resolved.</p>
+          <section id="error-view" class="file-stage hidden" aria-live="assertive">
+            <h2 id="error-title">Could not load file</h2>
+            <p id="error-text">The requested path could not be resolved.</p>
+          </section>
         </section>
       </section>
 

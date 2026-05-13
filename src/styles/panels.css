@@ -28,7 +28,16 @@
   }
 
   .panel { margin-top: 0.75rem; }
-  .info-panel { min-height: 14rem; }
+  .info-panel { min-height: 0; }
+
+  .main-stage-shell > .list-stage,
+  .main-stage-shell > .file-stage {
+    padding: 0.82rem;
+  }
+
+  .main-stage-shell > .list-stage .panel {
+    margin-top: 0;
+  }
 
   .statpane {
     display: flex;

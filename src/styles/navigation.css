@@ -38,4 +38,12 @@
     text-align: left;
     line-height: 1.48;
   }
+
+  .main-stage-shell > .cmdrun {
+    margin: 0;
+    border: 0;
+    border-bottom: 1px dashed var(--color-border);
+    background: transparent;
+    padding: 0.48rem 1rem 0.52rem;
+  }
 }

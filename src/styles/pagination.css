@@ -2,8 +2,8 @@
   .pager-row,
   .tag-pager-row {
     width: 100%;
-    margin: auto auto 2.1rem;
-    padding-block: 1.15rem 0.35rem;
+    margin: 0.75rem 0 0;
+    padding-block: 0.35rem 0 0;
     display: flex;
     align-items: center;
     justify-content: center;

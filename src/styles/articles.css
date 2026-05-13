@@ -3,6 +3,13 @@
     min-width: 0;
   }
 
+  .main-stage-shell > .file-stage,
+  .main-stage-shell > #error-view {
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
   .file-bar {
     margin-bottom: 0.55rem;
     display: flex;
