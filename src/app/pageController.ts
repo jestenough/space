@@ -13,6 +13,8 @@ const visibleSearchInput = (): HTMLInputElement | null => Array.from(document.qu
   .find((input) => !input.closest(".hidden")) ?? null;
 
 export class PageController {
+  private toastTimer: number | null = null;
+
   init(): void {
     this.initTheme();
     this.initLanguage();
@@ -72,6 +74,55 @@ export class PageController {
         else window.location.assign(href);
       });
     });
+
+    document.querySelectorAll<HTMLButtonElement>("button[data-copy-text]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const text = button.dataset.copyText;
+        if (!text) return;
+        const label = button.dataset.copyLabel || button.textContent || "copy";
+        const success = button.dataset.copySuccess || label;
+        const copied = await this.copyText(text);
+        button.textContent = copied ? success : label;
+        this.showToast(copied ? (button.dataset.copyToastSuccess || "citation copied to clipboard") : (button.dataset.copyToastFailure || "copy failed"));
+        window.setTimeout(() => {
+          button.textContent = label;
+        }, 1200);
+      });
+    });
+  }
+
+  private async copyText(value: string): Promise<boolean> {
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(value);
+        return true;
+      } catch {
+      }
+    }
+
+    const textarea = document.createElement("textarea");
+    textarea.value = value;
+    textarea.setAttribute("readonly", "true");
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.append(textarea);
+    textarea.select();
+    textarea.setSelectionRange(0, textarea.value.length);
+    const copied = document.execCommand("copy");
+    textarea.remove();
+    return copied;
+  }
+
+  private showToast(message: string): void {
+    const toast = document.getElementById("copy-toast");
+    if (!(toast instanceof HTMLElement)) return;
+    toast.textContent = message;
+    toast.dataset.visible = "true";
+    if (this.toastTimer !== null) window.clearTimeout(this.toastTimer);
+    this.toastTimer = window.setTimeout(() => {
+      toast.dataset.visible = "false";
+      this.toastTimer = null;
+    }, 1800);
   }
 
   private initLists(): void {

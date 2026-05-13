@@ -258,6 +258,14 @@
       min-height: var(--tap-target);
     }
 
+    .toast-status {
+      inset-inline: 0.8rem;
+      inset-block-end: 0.8rem;
+      inset-block-start: auto;
+      max-width: none;
+      width: auto;
+    }
+
     .info-file-tree {
       padding: 0.62rem;
       overflow-x: visible;

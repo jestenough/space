@@ -83,4 +83,34 @@
     opacity: 0.24;
     transform: translateY(0);
   }
+
+  .toast-status {
+    position: fixed;
+    inset-inline-end: max(0.8rem, calc((100vw - var(--shell-width)) / 2 + 0.8rem));
+    inset-block-end: 4.3rem;
+    z-index: 80;
+    max-width: min(28rem, calc(100vw - 1.6rem));
+    padding: 0.55rem 0.8rem;
+    border: 1px dashed var(--color-border-strong);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--color-surface-2) 94%, transparent), color-mix(in srgb, var(--color-surface) 96%, black 4%));
+    color: var(--color-ok);
+    box-shadow: var(--shadow-panel-soft);
+    font-size: 0.82rem;
+    line-height: 1.35;
+    opacity: 0;
+    transform: translateY(0.45rem);
+    pointer-events: none;
+    transition: opacity var(--duration-normal) var(--ease-standard), transform var(--duration-normal) var(--ease-standard);
+  }
+
+  .toast-status::before {
+    content: "copy:";
+    margin-right: 0.5rem;
+    color: var(--color-accent);
+  }
+
+  .toast-status[data-visible="true"] {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

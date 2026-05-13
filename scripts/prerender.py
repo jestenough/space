@@ -10,6 +10,7 @@ from __future__ import annotations
 import html
 import logging
 import re
+from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import quote
 
@@ -308,6 +309,7 @@ class Prerender:
                 localized_meta = generated.localized_item(str(article["section"]), str(slug), lang)
                 decorated_html = self.decorate_article_html(lang, article, article_html, tag_section or str(article["section"]))
                 toc_html = self.render_toc(article_html)
+                cite_value = self.tex_citation(article, lang)
                 shell = self.article_shell(
                     lang=lang,
                     sections=sections,
@@ -322,7 +324,9 @@ class Prerender:
                     back_href=routes.section_route(str(article["section"]), lang),
                     download_text="pdf",
                     download_href=routes.generated_pdf_route(article, lang),
+                    cite_value=cite_value,
                     edit_href=self.edit_href(localized_meta),
+                    show_cite=True,
                     show_edit=True,
                     show_zen=True,
                     toc_html=toc_html,
@@ -546,7 +550,9 @@ class Prerender:
         back_href: str,
         download_text: str,
         download_href: str | None = None,
+        cite_value: str | None = None,
         edit_href: str | None = None,
+        show_cite: bool = False,
         show_edit: bool = False,
         show_zen: bool = False,
         toc_html: str = "",
@@ -558,8 +564,10 @@ class Prerender:
             back_href=back_href,
             download_text=download_text,
             download_href=download_href,
+            cite_value=cite_value,
             edit_href=edit_href,
             content_html=content_html,
+            show_cite=show_cite,
             show_edit=show_edit,
             show_zen=show_zen,
         )
@@ -821,8 +829,10 @@ class Prerender:
         back_href: str,
         download_text: str,
         download_href: str | None,
+        cite_value: str | None,
         edit_href: str | None,
         content_html: str,
+        show_cite: bool,
         show_edit: bool,
         show_zen: bool,
     ) -> str:
@@ -834,6 +844,12 @@ class Prerender:
             download_class="download-btn action-chip" if download_href else "download-btn action-chip hidden",
             download_href=html.escape(download_href or "", quote=True),
             download_text=html.escape(download_text),
+            cite_class="download-btn action-chip" if show_cite and cite_value else "download-btn action-chip hidden",
+            cite_value=html.escape(cite_value or "", quote=True).replace("\n", "&#10;"),
+            cite_text=html.escape(ui["cite_text"]),
+            copied_text=html.escape(ui["copied_text"]),
+            copy_toast_success=html.escape(ui["copy_toast_success"]),
+            copy_toast_failure=html.escape(ui["copy_toast_failure"]),
             edit_class="download-btn action-chip" if show_edit and edit_href else "download-btn action-chip hidden",
             edit_href=html.escape(edit_href or "", quote=True),
             edit_text=html.escape(ui["edit_text"]),
@@ -937,6 +953,10 @@ class Prerender:
                 "page_next": "[NEXT]",
                 "toc_title": "headings",
                 "back_label": "cd ..",
+                "cite_text": "cite",
+                "copied_text": "copied",
+                "copy_toast_success": "цитата скопирована в буфер обмена",
+                "copy_toast_failure": "не удалось скопировать",
                 "edit_text": "edit",
                 "zen_text": "zen",
                 "date_desc_label": "mtime ↓",
@@ -966,6 +986,10 @@ class Prerender:
             "page_next": "[NEXT]",
             "toc_title": "headings",
             "back_label": "cd ..",
+            "cite_text": "cite",
+            "copied_text": "copied",
+            "copy_toast_success": "citation copied to clipboard",
+            "copy_toast_failure": "copy failed",
             "edit_text": "edit",
             "zen_text": "zen",
             "date_desc_label": "mtime ↓",
@@ -1137,6 +1161,40 @@ class Prerender:
 
         alternates["x-default"] = alternates.get(DEFAULT_LANG) or next(iter(alternates.values()))
         return alternates
+
+    def tex_citation(self, article: dict[str, Any], lang: str) -> str:
+        title = self.localized(article.get("title"), lang, f"articles.{article.get('slug')}.title")
+        year = str(article.get("date") or "").split("-", 1)[0] or "n.d."
+        article_url = routes.absolute_url(routes.generated_item_route(article, lang))
+        access_date = datetime.now(UTC).date().isoformat()
+        key = f"autophany-{self.bibtex_key(str(article['slug']))}-{self.bibtex_key(lang)}"
+        return "\n".join([
+            f"@misc{{{key},",
+            f"  title = {{{self.escape_tex(title)}}},",
+            f"  year = {{{self.escape_tex(year)}}},",
+            f"  howpublished = {{\\url{{{article_url}}}}},",
+            f"  note = {{{self.escape_tex(f'Article on autophany.space; accessed {access_date}')}}},",
+            f"  language = {{{self.escape_tex(lang)}}},",
+            "}",
+        ])
+
+    @staticmethod
+    def bibtex_key(value: str) -> str:
+        return re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-") or "item"
+
+    @staticmethod
+    def escape_tex(value: str) -> str:
+        replacements = {
+            "\\": r"\\textbackslash{}",
+            "{": r"\\{",
+            "}": r"\\}",
+            "#": r"\\#",
+            "$": r"\\$",
+            "%": r"\\%",
+            "&": r"\\&",
+            "_": r"\\_",
+        }
+        return "".join(replacements.get(char, char) for char in value)
 
 
     @staticmethod
