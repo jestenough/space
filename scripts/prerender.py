@@ -100,7 +100,7 @@ class Prerender:
                     welcome_title=self.localized(section.get("title"), lang, f"sections.{section.get('slug')}.title"),
                     welcome_lead=self.localized(section.get("description"), lang, f"sections.{section.get('slug')}.description"),
                     home_files=section_files[str(section["slug"])],
-                    render_command="ls -p | grep -v /",
+                    render_command="ls -l -p | grep -v /",
                     process_html=self.section_process_html(lang, str(section["slug"]), section_files[str(section["slug"])]),
                 )
                 self.write_route(
@@ -188,7 +188,7 @@ class Prerender:
             welcome_title=page_meta["title"],
             welcome_lead=page_meta["description"],
             home_files=section_files[system_slug],
-            render_command="ls -p | grep -v /",
+            render_command="ls -l -p | grep -v /",
             process_html=self.section_process_html(lang, system_slug, section_files[system_slug], system=True),
         )
 
@@ -231,7 +231,7 @@ class Prerender:
                 list_title=page_meta["title"],
                 article_page=1,
                 article_total_pages=total_pages,
-                render_command="ls -p | grep -v / | sort -k 6,7 -r | head -n 4",
+                render_command="ls -l -p | grep -v / | sort -k 6,7 -r | head -n 4",
                 process_html=self.list_process_html(lang, article_section, min(PAGE_SIZE, len(page_items)), len(page_items), total_pages),
             )
 
