@@ -2,16 +2,18 @@
 
 from __future__ import annotations
 
+from html.parser import HTMLParser
 import logging
 import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+import xml.etree.ElementTree as ET
 from xml.sax.saxutils import escape as xml_escape
 
 from . import generated, routes
-from .config import DEFAULT_LANG, DIST_DIR, FEED_ITEM_LIMIT, FileType, FolderType, GENERATED_SITE_META_PATH, NOT_FOUND_PAGE, SITE_URL
-from .jsonio import read_object
+from .config import DEFAULT_LANG, DIST_DIR, FEED_ITEM_LIMIT, FileType, FolderType, GENERATED_FILES_DIR, GENERATED_SITE_META_PATH, MEDIA_MANIFEST_PATH, NOT_FOUND_PAGE, SITE_URL
+from .jsonio import read_json, read_object, read_text
 
 XML_HEADER = '<?xml version="1.0" encoding="UTF-8"?>'
 SITEMAP_ROOT = '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">'
@@ -19,7 +21,31 @@ SITEMAP_ROOT = '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmln
 logger = logging.getLogger(__name__)
 
 
+class ArticleImageParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.images: list[dict[str, str]] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self.capture(tag, attrs)
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self.capture(tag, attrs)
+
+    def capture(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag.lower() != "img":
+            return
+        values = {key.lower(): (value or "") for key, value in attrs}
+        src = values.get("src", "").strip()
+        if not src.startswith("/media/"):
+            return
+        self.images.append({"src": src, "alt": values.get("alt", "").strip()})
+
+
 class Seo:
+    def __init__(self) -> None:
+        self.media_manifest = self.read_media_manifest()
+
     def run(self) -> None:
         if not DIST_DIR.exists():
             raise RuntimeError("dist/ does not exist; run vite build before seo")
@@ -33,19 +59,32 @@ class Seo:
         languages = generated.item_languages(files)
         tags_by_lang = generated.collect_tags_by_lang(articles)
 
-        self.write_text(DIST_DIR / "sitemap.xml", self.render_sitemap(self.build_sitemap_entries(articles, tags_by_lang, sections, files, tag_section)))
+        sitemap = self.render_sitemap(self.build_sitemap_entries(articles, tags_by_lang, sections, files, tag_section))
+        self.validate_xml(sitemap, "sitemap.xml")
+        self.write_text(DIST_DIR / "sitemap.xml", sitemap)
         self.write_text(DIST_DIR / "robots.txt", self.render_robots())
         self.write_text(DIST_DIR / "_headers", self.render_headers(articles))
         self.write_text(DIST_DIR / "404.html", self.render_404(site_meta))
 
         for lang in languages:
-            self.write_text(DIST_DIR / lang / "feed.xml", self.render_feed(lang, articles, site_meta, article_section))
+            feed = self.render_feed(lang, articles, site_meta, article_section)
+            self.validate_xml(feed, f"{lang}/feed.xml")
+            self.write_text(DIST_DIR / lang / "feed.xml", feed)
 
         logger.info("Generated SEO files and %s feed(s).", len(languages))
 
     @staticmethod
     def read_site_meta() -> dict[str, Any]:
         return read_object(GENERATED_SITE_META_PATH, "generated site meta")
+
+    @staticmethod
+    def read_media_manifest() -> dict[str, dict[str, Any]]:
+        if not MEDIA_MANIFEST_PATH.exists():
+            return {}
+        data = read_json(MEDIA_MANIFEST_PATH)
+        if not isinstance(data, dict):
+            raise RuntimeError(f"Media manifest must be an object: {MEDIA_MANIFEST_PATH}")
+        return {str(key): value for key, value in data.items() if isinstance(value, dict)}
 
     def build_sitemap_entries(self, articles: list[dict[str, Any]], tags_by_lang: dict[str, set[str]], sections: list[dict[str, Any]], files: list[dict[str, Any]], tag_section: str | None) -> list[dict[str, Any]]:
         languages = generated.item_languages(files)
@@ -89,6 +128,13 @@ class Seo:
     def render_sitemap(self, entries: list[dict[str, Any]]) -> str:
         return "\n".join([XML_HEADER, SITEMAP_ROOT, *(self.render_sitemap_entry(entry) for entry in entries), "</urlset>", ""])
 
+    @staticmethod
+    def validate_xml(value: str, label: str) -> None:
+        try:
+            ET.fromstring(value)
+        except ET.ParseError as exc:
+            raise RuntimeError(f"{label} is not valid XML: {exc}") from exc
+
     def render_sitemap_entry(self, entry: dict[str, Any]) -> str:
         lines = ["  <url>", f"    <loc>{self.xml(routes.absolute_url(entry['path']))}</loc>", f"    <lastmod>{self.xml(entry['lastmod'])}</lastmod>"]
         for hreflang, path in entry.get("alternates", {}).items():
@@ -97,8 +143,9 @@ class Seo:
         for image in entry.get("images", []):
             lines.append("    <image:image>")
             lines.append(f"      <image:loc>{self.xml(routes.absolute_url(image['src']))}</image:loc>")
-            if image.get("alt"):
-                lines.append(f"      <image:title>{self.xml(image['alt'])}</image:title>")
+            alt = self.meaningful_image_text(image.get("alt"))
+            if alt:
+                lines.append(f"      <image:title>{self.xml(alt)}</image:title>")
             lines.append("    </image:image>")
         lines.append("  </url>")
         return "\n".join(lines)
@@ -241,17 +288,30 @@ class Seo:
         return routes.generated_pdf_route(article, lang)
 
     def article_images(self, article: dict[str, Any], lang: str) -> list[dict[str, str]]:
-        page_path = DIST_DIR / routes.generated_item_route(article, lang).strip("/") / "index.html"
-        if not page_path.is_file():
+        fragment_path = GENERATED_FILES_DIR / str(article["section"]) / f"{article['slug']}.{lang}.html"
+        if not fragment_path.is_file():
             return []
-        html = page_path.read_text(encoding="utf-8")
+        parser = ArticleImageParser()
+        parser.feed(read_text(fragment_path, f"Missing generated article fragment: {fragment_path}"))
         images: list[dict[str, str]] = []
-        for match in re.finditer(r'<img\b[^>]*\bsrc=["\'](?P<src>/media/[^"\']+)["\'][^>]*\balt=["\'](?P<alt>[^"\']*)["\']|<img\b[^>]*\balt=["\'](?P<alt2>[^"\']*)["\'][^>]*\bsrc=["\'](?P<src2>/media/[^"\']+)["\']', html, re.IGNORECASE):
-            src = match.group("src") or match.group("src2")
-            alt = match.group("alt") or match.group("alt2") or ""
-            if src:
-                images.append({"src": src, "alt": alt})
+        seen: set[str] = set()
+        for image in parser.images:
+            src = image.get("src") or ""
+            resolved = self.media_manifest.get(src, {}).get("src") or src
+            if not isinstance(resolved, str) or not resolved.startswith("/media/") or resolved in seen:
+                continue
+            images.append({"src": resolved, "alt": self.meaningful_image_text(image.get("alt"))})
+            seen.add(resolved)
         return images
+
+    @staticmethod
+    def meaningful_image_text(value: Any) -> str:
+        if not isinstance(value, str):
+            return ""
+        text = value.strip()
+        if text.lower() in {"image", "img", "figure", "photo", "picture"}:
+            return ""
+        return text
 
     @staticmethod
     def xml(value: Any) -> str:

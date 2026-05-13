@@ -8,6 +8,7 @@ import re
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
+import xml.etree.ElementTree as ET
 
 from . import content, generated, routes
 from .config import (
@@ -294,6 +295,7 @@ class Verify:
         robots = read_text(DIST_DIR / "robots.txt", "Missing dist/robots.txt")
         headers = read_text(DIST_DIR / "_headers", "Missing dist/_headers")
         four_oh_four = read_text(DIST_DIR / "404.html", "Missing dist/404.html")
+        self.validate_xml(sitemap, "sitemap.xml")
         self.check_cache_headers(headers)
         if "Sitemap:" not in robots or SITE_URL not in robots:
             raise RuntimeError("robots.txt must reference sitemap.xml and SITE_URL")
@@ -301,6 +303,8 @@ class Verify:
             raise RuntimeError("robots.txt should keep generated fragments out of the index")
         if "xmlns:xhtml=" not in sitemap:
             raise RuntimeError("Sitemap must declare xhtml hreflang namespace")
+        if "xmlns:image=" not in sitemap:
+            raise RuntimeError("Sitemap must declare image namespace")
         for part in ("#/", "404", "/generated/"):
             if part in sitemap:
                 raise RuntimeError(f"Sitemap must not contain: {part}")
@@ -308,6 +312,9 @@ class Verify:
             raise RuntimeError("404.html must include noindex")
         sitemap_paths = self.extract_sitemap_paths(sitemap)
         headers_paths = self.extract_headers_paths(headers)
+        files = generated.items(generated.sections())
+        for lang in generated.item_languages(files):
+            self.validate_xml(read_text(DIST_DIR / lang / "feed.xml", f"Missing feed: {DIST_DIR / lang / 'feed.xml'}"), f"{lang}/feed.xml")
         self.check_section_routes(sitemap_paths)
         for article in index:
             slug = article["slug"]
@@ -346,7 +353,20 @@ class Verify:
 
     @staticmethod
     def extract_sitemap_paths(sitemap: str) -> set[str]:
-        return {urlparse(url).path.rstrip("/") for url in re.findall(r"<loc>([^<]+)</loc>", sitemap)}
+        root = ET.fromstring(sitemap)
+        namespace = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+        return {
+            urlparse((loc.text or "").strip()).path.rstrip("/")
+            for loc in root.findall("sm:url/sm:loc", namespace)
+            if (loc.text or "").strip()
+        }
+
+    @staticmethod
+    def validate_xml(value: str, label: str) -> None:
+        try:
+            ET.fromstring(value)
+        except ET.ParseError as exc:
+            raise RuntimeError(f"{label} is not valid XML: {exc}") from exc
 
     @staticmethod
     def extract_headers_paths(headers: str) -> set[str]:
