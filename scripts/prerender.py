@@ -8,6 +8,7 @@ while preserving Vite-generated JS and CSS assets in the document head.
 from __future__ import annotations
 
 import html
+import json
 import logging
 import re
 from datetime import UTC, datetime
@@ -22,6 +23,7 @@ from .config import (
     FolderType,
     GENERATED_FILES_DIR,
     GITHUB_EDIT_BASE,
+    MEDIA_MANIFEST_PATH,
     GENERATED_SITE_META_PATH,
     HOME_PAGE,
     TAG_PAGE,
@@ -45,6 +47,8 @@ ASCII_LOGO = """#
 
 
 class Prerender:
+    image_tag_re = re.compile(r"<img\b[^>]*>", re.IGNORECASE)
+    image_src_re = re.compile(r'\bsrc=(?P<quote>["\'])(?P<value>[^"\']+)(?P=quote)', re.IGNORECASE)
     runtime_head_tag_re = re.compile(
         r'^\s*(?:'
         r'<meta\b(?=[^>]*\bname=["\']color-scheme["\'])[^>]*>|'
@@ -58,9 +62,11 @@ class Prerender:
     def __init__(self) -> None:
         self.templates = TemplateRenderer(TEMPLATES_DIR)
         self.languages: list[str] = [DEFAULT_LANG]
+        self.media_manifest: dict[str, dict[str, Any]] = {}
 
     def run(self) -> None:
         base_html = read_text(DIST_DIR / "index.html", "Missing dist/index.html; run vite build before prerender")
+        self.media_manifest = self.load_media_manifest()
         site_meta = read_json(GENERATED_SITE_META_PATH)
         sections = generated.sections()
         files = generated.items(sections)
@@ -125,7 +131,7 @@ class Prerender:
                     continue
                 for lang in item.get("languages", []):
                     route = routes.generated_item_route(item, lang)
-                    content = read_text(GENERATED_FILES_DIR / section_slug / f"{item['slug']}.{lang}.html")
+                    content = self.enhance_content_images(read_text(GENERATED_FILES_DIR / section_slug / f"{item['slug']}.{lang}.html"))
                     localized_meta = generated.localized_item(section_slug, str(item["slug"]), lang)
                     title = self.localized(item.get("title"), lang, f"{section_slug}.{item.get('slug')}.title")
                     description = self.localized(item.get("description"), lang, f"{section_slug}.{item.get('slug')}.description")
@@ -305,11 +311,12 @@ class Prerender:
             slug = article["slug"]
 
             for lang in article["languages"]:
-                article_html = read_text(GENERATED_FILES_DIR / str(article["section"]) / f"{slug}.{lang}.html")
+                article_html = self.enhance_content_images(read_text(GENERATED_FILES_DIR / str(article["section"]) / f"{slug}.{lang}.html"))
                 localized_meta = generated.localized_item(str(article["section"]), str(slug), lang)
                 decorated_html = self.decorate_article_html(lang, article, article_html, tag_section or str(article["section"]))
                 toc_html = self.render_toc(article_html)
                 cite_value = self.tex_citation(article, lang)
+                article_images = self.extract_content_images(article_html)
                 shell = self.article_shell(
                     lang=lang,
                     sections=sections,
@@ -335,17 +342,18 @@ class Prerender:
 
                 self.write_route(
                     routes.generated_item_route(article, lang),
-                    self.render_page(
-                        base_html=base_html,
-                        lang=lang,
-                        title=article["title"][lang],
-                        description=article["description"][lang],
-                        canonical_path=routes.generated_item_route(article, lang),
-                        alternates=routes.alternates(article["languages"], lambda item_lang, article=article: routes.generated_item_route(article, item_lang)),
-                        og_type="article",
-                        shell=shell,
-                    ),
-                )
+                        self.render_page(
+                            base_html=base_html,
+                            lang=lang,
+                            title=article["title"][lang],
+                            description=article["description"][lang],
+                            canonical_path=routes.generated_item_route(article, lang),
+                            alternates=routes.alternates(article["languages"], lambda item_lang, article=article: routes.generated_item_route(article, item_lang)),
+                            og_type="article",
+                            extra_head=self.render_article_head_extras(article, lang, article_images),
+                            shell=shell,
+                        ),
+                    )
 
     def render_tag_pages(
         self,
@@ -403,6 +411,7 @@ class Prerender:
         canonical_path: str,
         alternates: dict[str, str],
         og_type: str,
+        extra_head: str = "",
         shell: dict[str, Any] | None = None,
     ) -> str:
         head = self.render_head(
@@ -412,6 +421,7 @@ class Prerender:
             canonical_path=canonical_path,
             alternates=alternates,
             og_type=og_type,
+            extra_head=extra_head,
         )
 
         page = self.inject_head(base_html, head)
@@ -903,6 +913,131 @@ class Prerender:
             )
         return "".join(items)
 
+    def load_media_manifest(self) -> dict[str, dict[str, Any]]:
+        if not MEDIA_MANIFEST_PATH.exists():
+            return {}
+        data = read_json(MEDIA_MANIFEST_PATH)
+        if not isinstance(data, dict):
+            raise RuntimeError(f"Media manifest must be an object: {MEDIA_MANIFEST_PATH}")
+        return {str(key): value for key, value in data.items() if isinstance(value, dict)}
+
+    def enhance_content_images(self, content_html: str) -> str:
+        if "<img" not in content_html:
+            return content_html
+
+        image_index = 0
+
+        def replace(match: re.Match[str]) -> str:
+            nonlocal image_index
+            tag = match.group(0)
+            src_match = self.image_src_re.search(tag)
+            if not src_match:
+                return tag
+
+            original_src = html.unescape(src_match.group("value"))
+            manifest = self.media_manifest.get(original_src)
+            tag = self.set_tag_attr(tag, "src", str(manifest.get("src") if manifest else original_src))
+            first_image = image_index == 0
+            image_index += 1
+            tag = self.set_tag_attr(tag, "loading", "eager" if first_image else "lazy")
+            tag = self.set_tag_attr(tag, "decoding", "async")
+            tag = self.set_tag_attr(tag, "fetchpriority", "high" if first_image else "low")
+
+            if manifest:
+                width = manifest.get("width")
+                height = manifest.get("height")
+                if isinstance(width, int) and width > 0:
+                    tag = self.set_tag_attr(tag, "width", str(width))
+                if isinstance(height, int) and height > 0:
+                    tag = self.set_tag_attr(tag, "height", str(height))
+                tag = self.set_tag_attr(tag, "sizes", "(max-width: 900px) 100vw, 72ch")
+                variants = manifest.get("variants")
+                if isinstance(variants, list) and variants:
+                    srcset = ", ".join(
+                        f"{item['src']} {item['width']}w"
+                        for item in variants
+                        if isinstance(item, dict) and isinstance(item.get("src"), str) and isinstance(item.get("width"), int)
+                    )
+                    if srcset:
+                        tag = self.set_tag_attr(tag, "srcset", srcset)
+
+            if original_src.startswith("/media/"):
+                full_src = str(manifest.get("src") if manifest else original_src)
+                tag = self.set_tag_attr(tag, "data-zoomable-image", "true")
+                tag = self.set_tag_attr(tag, "data-full-image", full_src)
+                tag = self.add_tag_class(tag, "zoomable-image")
+
+            return tag
+
+        return self.image_tag_re.sub(replace, content_html)
+
+    def extract_content_images(self, content_html: str) -> list[dict[str, str]]:
+        images: list[dict[str, str]] = []
+        for tag in self.image_tag_re.findall(content_html):
+            src_match = self.image_src_re.search(tag)
+            if not src_match:
+                continue
+            src = html.unescape(src_match.group("value"))
+            alt_match = re.search(r'\balt=(?P<quote>["\'])(?P<value>[^"\']*)(?P=quote)', tag, re.IGNORECASE)
+            alt = html.unescape(alt_match.group("value")) if alt_match else ""
+            images.append({"src": src, "alt": alt})
+        return images
+
+    def render_article_head_extras(self, article: dict[str, Any], lang: str, images: list[dict[str, str]]) -> str:
+        lines: list[str] = []
+        first_image = images[0] if images else None
+        if first_image:
+            image_url = routes.absolute_url(first_image["src"])
+            lines.append(f'    <meta property="og:image" content="{html.escape(image_url, quote=True)}" />')
+            lines.append(f'    <meta name="twitter:image" content="{html.escape(image_url, quote=True)}" />')
+            lines.append('    <meta name="twitter:card" content="summary_large_image" />')
+            if first_image.get("alt"):
+                lines.append(f'    <meta property="og:image:alt" content="{html.escape(first_image["alt"], quote=True)}" />')
+
+        payload: dict[str, Any] = {
+            "@context": "https://schema.org",
+            "@type": "Article",
+            "headline": self.localized(article.get("title"), lang, f"articles.{article.get('slug')}.title"),
+            "description": self.localized(article.get("description"), lang, f"articles.{article.get('slug')}.description"),
+            "datePublished": article.get("date") or "",
+            "dateModified": article.get("date") or "",
+            "inLanguage": lang,
+            "mainEntityOfPage": routes.absolute_url(routes.generated_item_route(article, lang)),
+            "url": routes.absolute_url(routes.generated_item_route(article, lang)),
+        }
+        image_urls = [routes.absolute_url(image["src"]) for image in images if image.get("src")]
+        if image_urls:
+            payload["image"] = image_urls
+        lines.append('    <script type="application/ld+json">')
+        lines.append(json.dumps(payload, ensure_ascii=False))
+        lines.append("    </script>")
+        return "\n".join(lines)
+
+    @staticmethod
+    def set_tag_attr(tag: str, attr: str, value: str) -> str:
+        replacement = html.escape(value, quote=True)
+        pattern = re.compile(rf'\s{re.escape(attr)}=["\'][^"\']*["\']', re.IGNORECASE)
+        updated = pattern.sub(f' {attr}="{replacement}"', tag, count=1)
+        if updated != tag:
+            return updated
+        suffix = "/>" if tag.endswith("/>") else ">"
+        prefix = tag[:-2].rstrip() if tag.endswith("/>") else tag[:-1].rstrip()
+        return f'{prefix} {attr}="{replacement}"{suffix}'
+
+    @staticmethod
+    def add_tag_class(tag: str, class_name: str) -> str:
+        class_re = re.compile(r'\sclass=["\']([^"\']*)["\']', re.IGNORECASE)
+        match = class_re.search(tag)
+        if match:
+            classes = match.group(1).split()
+            if class_name not in classes:
+                classes.append(class_name)
+            joined = html.escape(" ".join(classes), quote=True)
+            return class_re.sub(f' class="{joined}"', tag, count=1)
+        suffix = "/>" if tag.endswith("/>") else ">"
+        prefix = tag[:-2].rstrip() if tag.endswith("/>") else tag[:-1].rstrip()
+        return f'{prefix} class="{html.escape(class_name, quote=True)}"{suffix}'
+
     @staticmethod
     def shell_command_markup(command: str, cwd: str = "~") -> str:
         prompt = f"guest@cray-1:{cwd}"
@@ -1056,6 +1191,7 @@ class Prerender:
         canonical_path: str,
         alternates: dict[str, str],
         og_type: str,
+        extra_head: str = "",
     ) -> str:
         canonical_url = routes.absolute_url(canonical_path)
 
@@ -1067,7 +1203,7 @@ class Prerender:
             f'    <meta name="description" content="{html.escape(description, quote=True)}" />',
             '    <link rel="icon" type="image/png" sizes="96x96" href="/icons/favicon-96x96.png" />',
             '    <link rel="shortcut icon" href="/icons/favicon.ico" />',
-            '    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />',
+            '    <link rel="apple-touch-icon" sizes="152x152" href="/icons/apple-touch-icon.png" />',
             '    <link rel="manifest" href="/icons/site.webmanifest" />',
             f'    <link rel="canonical" href="{html.escape(canonical_url, quote=True)}" />',
             f'    <meta property="og:title" content="{html.escape(title, quote=True)}" />',
@@ -1082,6 +1218,9 @@ class Prerender:
                 f'    <link rel="alternate" hreflang="{html.escape(hreflang, quote=True)}" '
                 f'href="{html.escape(routes.absolute_url(path), quote=True)}" />'
             )
+
+        if extra_head:
+            lines.append(extra_head)
 
         return "\n".join(lines)
 

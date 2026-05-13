@@ -1,10 +1,11 @@
 import { defineConfig, type Plugin, type ViteDevServer } from "vite";
 import viteCompression from "vite-plugin-compression";
+import sharp from "sharp";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { resolve, extname } from "node:path";
 import { fileURLToPath, URL } from "node:url";
 import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
-import { copyFile, mkdir, readdir, rm } from "node:fs/promises";
+import { copyFile, mkdir, readdir, rm, writeFile } from "node:fs/promises";
 
 type FileRecord = {
   section?: string;
@@ -12,7 +13,18 @@ type FileRecord = {
   downloadPath?: string | null;
 };
 
+type MediaManifestEntry = {
+  src: string;
+  width: number;
+  height: number;
+  originalWidth: number;
+  originalHeight: number;
+  variants: Array<{ src: string; width: number; height: number }>;
+};
+
 const rootDir = fileURLToPath(new URL(".", import.meta.url));
+const cacheDir = resolve(rootDir, ".cache");
+const mediaManifestPath = resolve(cacheDir, "media-manifest.json");
 const generatedDir = resolve(rootDir, "generated");
 const contentDir = resolve(rootDir, "content");
 const distDir = resolve(rootDir, "dist");
@@ -20,6 +32,10 @@ const distGeneratedDir = resolve(distDir, "generated");
 const distMediaDir = resolve(distDir, "media");
 const DEFAULT_LANG = "en";
 const LANGUAGE_TAG_PATTERN = /^[a-z]{2,3}(?:-[A-Z]{2})?$/;
+const TRANSFORM_IMAGE_EXTENSIONS = new Set([".jpg", ".jpeg", ".png"]);
+const RASTER_IMAGE_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".webp"]);
+const MAX_IMAGE_DIMENSION = 2200;
+const RESPONSIVE_WIDTHS = [800, 1400, 2000];
 
 const safeDecodeURIComponent = (value: string): string | null => {
   try {
@@ -33,6 +49,11 @@ const normalizeLang = (value: string): string => {
   const [base = "", region] = value.trim().split("-");
   return region ? `${base.toLowerCase()}-${region.toUpperCase()}` : base.toLowerCase();
 };
+
+const replaceExtension = (value: string, nextExt: string): string => value.replace(/\.[^.]+$/u, nextExt);
+const responsiveVariantTargets = (width: number): number[] => RESPONSIVE_WIDTHS.filter((candidate) => candidate < width);
+const variantFilePath = (target: string, width: number): string => target.replace(/\.webp$/u, `-${width}w.webp`);
+const variantPublicPath = (target: string, width: number): string => target.replace(/\.webp$/u, `-${width}w.webp`);
 
 const isLang = (value: string | undefined): boolean => Boolean(value && LANGUAGE_TAG_PATTERN.test(normalizeLang(value)));
 const hasFileExtension = (path: string): boolean => /\.[a-zA-Z0-9]+$/.test(path);
@@ -185,6 +206,7 @@ const contentMediaPlugin = (): Plugin => ({
   closeBundle: async () => {
     if (!existsSync(contentDir)) return;
     await rm(distMediaDir, { recursive: true, force: true });
+    const manifest: Record<string, MediaManifestEntry> = {};
     for (const section of await readdir(contentDir, { withFileTypes: true })) {
       if (!section.isDirectory()) continue;
       const sectionDir = resolve(contentDir, section.name);
@@ -192,11 +214,101 @@ const contentMediaPlugin = (): Plugin => ({
         if (!entry.isDirectory()) continue;
         const source = resolve(sectionDir, entry.name, "assets");
         if (!existsSync(source)) continue;
-        await copyDirectory(source, resolve(distMediaDir, section.name, entry.name, "assets"));
+        await buildMediaDirectory(source, resolve(distMediaDir, section.name, entry.name, "assets"), manifest);
       }
     }
+    await mkdir(cacheDir, { recursive: true });
+    await writeFile(mediaManifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
   }
 });
+
+const buildMediaDirectory = async (from: string, to: string, manifest: Record<string, MediaManifestEntry>): Promise<void> => {
+  await mkdir(to, { recursive: true });
+  for (const entry of await readdir(from, { withFileTypes: true })) {
+    const source = resolve(from, entry.name);
+    const target = resolve(to, entry.name);
+    if (entry.isDirectory()) {
+      await buildMediaDirectory(source, target, manifest);
+      continue;
+    }
+    if (!entry.isFile()) continue;
+
+    const relative = source.slice(contentDir.length + 1).replaceAll("\\", "/");
+    const originalPublicPath = `/media/${relative}`;
+    const ext = extname(entry.name).toLowerCase();
+    const transformable = TRANSFORM_IMAGE_EXTENSIONS.has(ext);
+    const raster = RASTER_IMAGE_EXTENSIONS.has(ext);
+    const outputPath = transformable ? replaceExtension(target, ".webp") : target;
+    const outputPublicPath = transformable ? replaceExtension(originalPublicPath, ".webp") : originalPublicPath;
+
+    if (!raster) {
+      await copyFile(source, outputPath);
+      continue;
+    }
+
+    const metadata = await optimizeMediaAsset(source, outputPath, ext);
+    const variants: Array<{ src: string; width: number; height: number }> = [];
+    for (const variantWidth of responsiveVariantTargets(metadata.width)) {
+      const variantPath = variantFilePath(outputPath, variantWidth);
+      await sharp(outputPath)
+        .resize({ width: variantWidth, withoutEnlargement: true })
+        .webp({ quality: 84, effort: 6, smartSubsample: true })
+        .toFile(variantPath);
+      const variantMeta = await sharp(variantPath).metadata();
+      variants.push({
+        src: variantPublicPath(outputPublicPath, variantWidth),
+        width: variantMeta.width ?? variantWidth,
+        height: variantMeta.height ?? metadata.height,
+      });
+    }
+    variants.push({ src: outputPublicPath, width: metadata.width, height: metadata.height });
+    variants.sort((left, right) => left.width - right.width);
+    manifest[originalPublicPath] = {
+      src: outputPublicPath,
+      width: metadata.width,
+      height: metadata.height,
+      originalWidth: metadata.originalWidth,
+      originalHeight: metadata.originalHeight,
+      variants,
+    };
+  }
+};
+
+const optimizeMediaAsset = async (source: string, target: string, ext: string): Promise<{ width: number; height: number; originalWidth: number; originalHeight: number }> => {
+  const original = sharp(source, { animated: false }).rotate();
+  const originalMeta = await original.metadata();
+  const originalWidth = originalMeta.width ?? 0;
+  const originalHeight = originalMeta.height ?? 0;
+  if (!originalWidth || !originalHeight) {
+    throw new Error(`Could not read image dimensions: ${source}`);
+  }
+
+  await mkdir(resolve(target, ".."), { recursive: true });
+
+  if (ext === ".webp") {
+    await copyFile(source, target);
+    return { width: originalWidth, height: originalHeight, originalWidth, originalHeight };
+  }
+
+  let pipeline = sharp(source, { animated: false }).rotate();
+  if (originalWidth > MAX_IMAGE_DIMENSION || originalHeight > MAX_IMAGE_DIMENSION) {
+    pipeline = pipeline.resize({ width: MAX_IMAGE_DIMENSION, height: MAX_IMAGE_DIMENSION, fit: "inside", withoutEnlargement: true });
+  }
+
+  const hasAlpha = originalMeta.hasAlpha === true;
+  const writer = ext === ".png" || hasAlpha
+    ? pipeline.webp({ nearLossless: true, quality: 92, effort: 6 })
+    : pipeline.webp({ quality: 86, effort: 6, smartSubsample: true });
+
+  await writer.toFile(target);
+  const outputMeta = await sharp(target).metadata();
+  return {
+    width: outputMeta.width ?? originalWidth,
+    height: outputMeta.height ?? originalHeight,
+    originalWidth,
+    originalHeight,
+  };
+};
 
 const copyDirectory = async (from: string, to: string, options?: { skip?: Set<string> }): Promise<void> => {
   await mkdir(to, { recursive: true });

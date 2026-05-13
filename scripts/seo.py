@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -13,7 +14,7 @@ from .config import DEFAULT_LANG, DIST_DIR, FEED_ITEM_LIMIT, FileType, FolderTyp
 from .jsonio import read_object
 
 XML_HEADER = '<?xml version="1.0" encoding="UTF-8"?>'
-SITEMAP_ROOT = '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">'
+SITEMAP_ROOT = '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">'
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +74,7 @@ class Seo:
                         "path": routes.generated_item_route(article, lang),
                         "lastmod": article["date"],
                         "alternates": self.article_alternates(article),
+                        "images": self.article_images(article, lang),
                     }
                 )
 
@@ -92,6 +94,12 @@ class Seo:
         for hreflang, path in entry.get("alternates", {}).items():
             if path:
                 lines.append(f"    <xhtml:link rel=\"alternate\" hreflang=\"{self.xml(hreflang)}\" href=\"{self.xml(routes.absolute_url(path))}\" />")
+        for image in entry.get("images", []):
+            lines.append("    <image:image>")
+            lines.append(f"      <image:loc>{self.xml(routes.absolute_url(image['src']))}</image:loc>")
+            if image.get("alt"):
+                lines.append(f"      <image:title>{self.xml(image['alt'])}</image:title>")
+            lines.append("    </image:image>")
         lines.append("  </url>")
         return "\n".join(lines)
 
@@ -149,7 +157,7 @@ class Seo:
     <title>{self.xml(title)}</title>
     <link rel="icon" type="image/png" sizes="96x96" href="/icons/favicon-96x96.png" />
     <link rel="shortcut icon" href="/icons/favicon.ico" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/icons/apple-touch-icon.png" />
     <link rel="manifest" href="/icons/site.webmanifest" />
     <style>:root{{color-scheme:dark;--text:#d7dde7;--accent:#8ab4f8;--accent2:#66e3c4;--border:rgba(141,153,170,.22)}}*{{box-sizing:border-box}}body{{min-height:100vh;margin:0;display:grid;place-items:center;background:linear-gradient(180deg,#080a0f,#0c1118);color:var(--text);font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}}main{{width:min(92vw,40rem);padding:2rem;border:1px dashed var(--border);text-align:center}}h1{{margin:0 0 1rem;color:var(--accent);font-size:clamp(2rem,9vw,5rem);font-weight:700;text-transform:lowercase}}a{{color:var(--text);text-decoration:none;border-bottom:1px dashed var(--accent2)}}</style>
   </head>
@@ -231,6 +239,19 @@ class Seo:
 
     def article_pdf_path(self, article: dict[str, Any], lang: str) -> str:
         return routes.generated_pdf_route(article, lang)
+
+    def article_images(self, article: dict[str, Any], lang: str) -> list[dict[str, str]]:
+        page_path = DIST_DIR / routes.generated_item_route(article, lang).strip("/") / "index.html"
+        if not page_path.is_file():
+            return []
+        html = page_path.read_text(encoding="utf-8")
+        images: list[dict[str, str]] = []
+        for match in re.finditer(r'<img\b[^>]*\bsrc=["\'](?P<src>/media/[^"\']+)["\'][^>]*\balt=["\'](?P<alt>[^"\']*)["\']|<img\b[^>]*\balt=["\'](?P<alt2>[^"\']*)["\'][^>]*\bsrc=["\'](?P<src2>/media/[^"\']+)["\']', html, re.IGNORECASE):
+            src = match.group("src") or match.group("src2")
+            alt = match.group("alt") or match.group("alt2") or ""
+            if src:
+                images.append({"src": src, "alt": alt})
+        return images
 
     @staticmethod
     def xml(value: Any) -> str:

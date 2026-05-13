@@ -19,7 +19,7 @@
     <meta name="description" content="autophany.space: terminal-style LaTeX articles, notes, tags, metadata, and printable PDF versions." />
     <link rel="icon" type="image/png" sizes="96x96" href="/icons/favicon-96x96.png" />
     <link rel="shortcut icon" href="/icons/favicon.ico" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/icons/apple-touch-icon.png" />
     <link rel="manifest" href="/icons/site.webmanifest" />
     <meta name="robots" content="index,follow" />
     <meta property="og:title" content="autophany.space" />
@@ -120,6 +120,12 @@ lang       : en</pre>
 
     <button id="zen-exit-btn" class="zen-exit-btn" type="button" aria-label="Exit zen mode" data-zen-exit>×</button>
     <div id="copy-toast" class="toast-status" role="status" aria-live="polite" aria-atomic="true"></div>
+    <div id="image-viewer" class="image-viewer hidden" role="dialog" aria-modal="true" aria-label="Image viewer" aria-hidden="true">
+      <figure class="image-viewer-figure">
+        <img id="image-viewer-img" class="image-viewer-img" alt="" />
+        <figcaption id="image-viewer-caption" class="image-viewer-caption"></figcaption>
+      </figure>
+    </div>
 
     <footer class="footbar">
       <p id="footer-motto" class="motto">Follow your curiosity. Lead humanity forward</p>

@@ -2,6 +2,7 @@ import { StorageKey } from "@/core/enums";
 import { DEFAULT_LANG, normalizeLang } from "@/core/languages";
 import { safeDecodeURIComponent } from "@/core/url";
 import { contentCopyController } from "@/features/content/contentCopyController";
+import { imageViewerController } from "@/features/content/imageViewerController";
 import { ListController } from "@/features/lists/listController";
 import { initTocEnhancer, scrollToHeading } from "@/features/toc/tocEnhancer";
 import { zenModeController } from "@/features/zen/zenModeController";
@@ -22,6 +23,7 @@ export class PageController {
     this.initLists();
     this.initToc();
     this.initCopy();
+    this.initImageViewer();
     this.initZenMode();
     this.initDocumentNavigation();
     this.initKeyboard();
@@ -138,6 +140,11 @@ export class PageController {
   private initCopy(): void {
     const contentRoot = document.querySelector<HTMLElement>("[data-file-content]");
     if (contentRoot) contentCopyController.bind(contentRoot);
+  }
+
+  private initImageViewer(): void {
+    const contentRoot = document.querySelector<HTMLElement>("[data-file-content]");
+    if (contentRoot) imageViewerController.bind(contentRoot);
   }
 
   private initZenMode(): void {

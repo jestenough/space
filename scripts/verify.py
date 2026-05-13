@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 
 from . import content, generated, routes
 from .config import (
+    MEDIA_MANIFEST_PATH,
     FileType,
     DIST_DIR, 
     GENERATED_DIR, 
@@ -43,6 +44,7 @@ class Verify:
 
     def __init__(self) -> None:
         self.warnings: list[str] = []
+        self.media_manifest = self.read_media_manifest()
 
     def run(self) -> None:
         index = self.read_articles()
@@ -56,6 +58,15 @@ class Verify:
         for warning in self.warnings:
             logger.warning(warning)
         logger.info("Verified production build for %s article(s)%s.", len(index), f" with {len(self.warnings)} warning(s)" if self.warnings else "")
+
+    @staticmethod
+    def read_media_manifest() -> dict[str, dict[str, Any]]:
+        if not MEDIA_MANIFEST_PATH.exists():
+            return {}
+        data = read_json(MEDIA_MANIFEST_PATH)
+        if not isinstance(data, dict):
+            raise RuntimeError(f"Media manifest must be an object: {MEDIA_MANIFEST_PATH}")
+        return {str(key): value for key, value in data.items() if isinstance(value, dict)}
 
     def read_articles(self) -> list[dict[str, Any]]:
         return generated.articles()
@@ -242,12 +253,18 @@ class Verify:
             f"{slug}.{lang}"
         )
 
-    @staticmethod
-    def check_article_media_links(html: str, slug: str, lang: str) -> None:
+    def check_article_media_links(self, html: str, slug: str, lang: str) -> None:
         paths = re.findall(r"(?:src|href)=[\"'](/media/[^\"']+)", html)
 
         for public_path in paths:
-            dist_path = DIST_DIR / public_path.lstrip("/")
+            resolved_path = public_path
+            if not (DIST_DIR / public_path.lstrip("/")).is_file():
+                manifest_entry = self.media_manifest.get(public_path)
+                if manifest_entry:
+                    candidate = manifest_entry.get("src")
+                    if isinstance(candidate, str) and candidate.startswith("/media/"):
+                        resolved_path = candidate
+            dist_path = DIST_DIR / resolved_path.lstrip("/")
             if not dist_path.is_file():
                 raise RuntimeError(f"Missing article media asset for {slug}.{lang}: {public_path}")
 

@@ -266,6 +266,14 @@
       width: auto;
     }
 
+    .image-viewer {
+      padding: 0.8rem;
+    }
+
+    .image-viewer-img {
+      max-height: calc(100vh - 4.8rem);
+    }
+
     .info-file-tree {
       padding: 0.62rem;
       overflow-x: visible;
