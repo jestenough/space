@@ -74,12 +74,12 @@
 
     <main class="tty">
       <section class="userpane" aria-live="polite">
-        <p id="pwd-line" class="cmdline"><span class="stat-command"><span class="shell-prompt">guest@cray-1:~$</span><span class="shell-gap"> </span><span class="shell-cmd">ls -d */</span></span></p>
+        <p id="pwd-line" class="cmdline"><span class="stat-command"><span class="shell-prompt"><span class="shell-prompt-text">guest@cray-1:~</span><span class="shell-prompt-sign">$</span></span><span class="shell-gap"> </span><span class="shell-cmd">ls -d */</span></span></p>
 
         <nav class="quick-nav" aria-label="Sections" data-quick-nav></nav>
 
         <section id="welcome-panel" class="motd" aria-label="Welcome message">
-          <p id="welcome-command" class="cmdline welcome-command"><span class="stat-command"><span class="shell-prompt">guest@cray-1:~$</span><span class="shell-gap"> </span><span class="shell-cmd">sed -n '1,2p' ~/.meta</span></span></p>
+          <p id="welcome-command" class="cmdline welcome-command"><span class="stat-command"><span class="shell-prompt"><span class="shell-prompt-text">guest@cray-1:~</span><span class="shell-prompt-sign">$</span></span><span class="shell-gap"> </span><span class="shell-cmd">sed -n '1,2p' .meta</span></span></p>
           <h1 id="welcome-title" class="welcome-title"></h1>
           <p id="welcome-lead"></p>
           <p id="welcome-body"></p>
@@ -92,7 +92,7 @@
       </section>
 
       <section class="mainpane">
-        <p id="render-indicator" class="cmdrun"><span class="stat-command"><span class="shell-prompt">guest@cray-1:~$</span><span class="shell-gap"> </span><span class="shell-cmd">ls -p | grep -v /</span></span></p>
+        <p id="render-indicator" class="cmdrun"><span class="stat-command"><span class="shell-prompt"><span class="shell-prompt-text">guest@cray-1:~</span><span class="shell-prompt-sign">$</span></span><span class="shell-gap"> </span><span class="shell-cmd">ls -p | grep -v /</span></span></p>
 
           <section id="content-list-view" class="list-stage" aria-live="polite" data-list-view></section>
 
@@ -105,12 +105,14 @@
       </section>
 
       <aside class="statpane" aria-label="Status feed">
-        <pre id="process-log" data-process-log>guest@cray-1:~$ ps -eo pid,tty,stat,comm | grep autophany
-PID   TTY    STAT  COMMAND
-042   pts/0  R+    proc.autophany
+        <pre id="process-log" data-process-log>guest@cray-1:~$ statfs ~
+File system: autophanyfs
+Mounted on : /en
+Type       : system-section
+Flags      : ro, localized, indexed
 ──────────────────────────────
-mode    : home
-lang    : en</pre>
+mode       : home
+lang       : en</pre>
       </aside>
     </main>
 

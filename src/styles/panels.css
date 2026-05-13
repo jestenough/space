@@ -57,21 +57,41 @@
   }
 
   #process-log .shell-prompt {
-    color: var(--color-accent);
     font-weight: 800;
+  }
+
+  #process-log .shell-prompt-text {
+    color: var(--color-accent);
+  }
+
+  #process-log .shell-prompt-sign {
+    color: var(--color-muted);
   }
 
   #process-log .shell-cmd { color: var(--color-ok); }
 
   .cmdline .shell-prompt,
   .cmdrun .shell-prompt {
-    color: var(--color-accent);
     font-weight: 800;
+  }
+
+  .cmdline .shell-prompt-text,
+  .cmdrun .shell-prompt-text {
+    color: var(--color-accent);
+  }
+
+  .cmdline .shell-prompt-sign,
+  .cmdrun .shell-prompt-sign {
+    color: var(--color-muted);
   }
 
   .cmdline .shell-cmd,
   .cmdrun .shell-cmd {
     color: var(--color-ok);
+  }
+
+  #pwd-line .shell-cmd {
+    color: var(--color-accent);
   }
 
   #process-log .stat-row {

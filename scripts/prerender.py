@@ -136,7 +136,7 @@ class Prerender:
                         welcome_title=title,
                         welcome_lead=description,
                         welcome_command=f"sed -n '1,2p' {item['slug']}.meta",
-                        render_command=f"cat {self.display_file_path(section_slug, str(item['slug']))}",
+                        render_command=f"cat {self.display_file_name(str(item['slug']))}",
                         process_html=self.info_file_process_html(lang, section_slug, str(item["slug"]), item, localized_meta),
                         content_html=content,
                         back_href=routes.generated_section_route(section, lang),
@@ -315,7 +315,7 @@ class Prerender:
                     welcome_title=article["title"][lang],
                     welcome_lead=article["description"][lang],
                     welcome_command=f"sed -n '1,2p' {slug}.meta",
-                    render_command=f"cat ~/{article['section']}/{slug}.tex",
+                    render_command=f"cat {slug}.tex",
                     process_html=self.article_process_html(lang, article, localized_meta),
                     content_html=decorated_html,
                     back_href=routes.section_route(str(article["section"]), lang),
@@ -418,8 +418,10 @@ class Prerender:
 
     def apply_shell(self, page: str, shell: dict[str, Any]) -> str:
         ui = self.shell_ui(str(shell["lang"]))
+        cwd = str(shell.get("cwd") or "~")
         page = self.set_html_lang(page, str(shell["lang"]))
         page = self.replace_inner_html(page, "ascii-logo", html.escape(ASCII_LOGO), tag="pre")
+        page = self.replace_inner_html(page, "pwd-line", self.shell_command_markup("ls -d */", cwd="~"), tag="p")
         page = self.replace_inner_html(page, "theme-label", html.escape(ui["theme_label"]), tag="span")
         page = self.replace_inner_html(page, "lang-label", html.escape(ui["lang_label"]), tag="span")
         page = self.replace_option_text(page, "reading", ui["theme_reading"])
@@ -427,11 +429,11 @@ class Prerender:
         page = self.replace_option_text(page, "system", ui["theme_system"])
         page = self.replace_option_text(page, "dark", ui["theme_dark"])
         page = self.replace_inner_html(page, "lang-switcher", self.render_language_options(str(shell["lang"])), tag="select")
-        page = self.replace_inner_html(page, "welcome-command", self.shell_command_markup(str(shell["welcome_command"])))
+        page = self.replace_inner_html(page, "welcome-command", self.shell_command_markup(str(shell["welcome_command"]), cwd=cwd))
         page = self.replace_inner_html(page, "welcome-title", html.escape(str(shell["welcome_title"])))
         page = self.replace_inner_html(page, "welcome-lead", html.escape(str(shell["welcome_lead"])))
         page = self.replace_inner_html(page, "welcome-body", html.escape(str(shell.get("welcome_body") or "")))
-        page = self.replace_inner_html(page, "render-indicator", self.shell_command_markup(str(shell["render_command"])))
+        page = self.replace_inner_html(page, "render-indicator", self.shell_command_markup(str(shell["render_command"]), cwd=cwd))
         page = self.replace_inner_html(page, "process-log", str(shell["process_html"]))
         page = self.replace_inner_html(page, "content-list-view", str(shell.get("list_stage_html") or ""), tag="section")
         page = self.replace_inner_html(page, "file-view", str(shell.get("file_stage_html") or ""), tag="article")
@@ -512,6 +514,7 @@ class Prerender:
         )
         return {
             "lang": lang,
+            "cwd": self.cwd_for_section(active_section),
             "sections": sections,
             "active_section": active_section,
             "view": "list",
@@ -561,6 +564,7 @@ class Prerender:
         )
         return {
             "lang": lang,
+            "cwd": self.cwd_for_section(active_section),
             "sections": sections,
             "active_section": active_section,
             "view": "article",
@@ -576,6 +580,7 @@ class Prerender:
         }
 
     def section_process_html(self, lang: str, section: str, files: list[dict[str, Any]], system: bool = False) -> str:
+        cwd = self.cwd_for_section(None if system else section)
         languages = sorted({item_lang for file in files for item_lang in file.get("languages", [])})
         translated = sum(1 for file in files if lang in file.get("languages", []))
         raw_files = sum(1 for file in files if file.get("format") != "tex")
@@ -583,7 +588,7 @@ class Prerender:
         articles = sum(1 for file in files if file.get("type") == FileType.ARTICLE)
         downloads = sum(1 for file in files if file.get("downloadPath"))
         return "".join([
-            self.shell_command_markup(f"statfs {'~' if system else f'~/{section}'}"),
+            self.shell_command_markup("statfs ~", cwd=cwd),
             self.stat_row("File system", "autophanyfs"),
             self.stat_row("Mounted on", f"/{lang}" if system else f"/{lang}/{section}"),
             self.stat_row("Type", "system-section" if system else "section"),
@@ -602,9 +607,10 @@ class Prerender:
         ])
 
     def list_process_html(self, lang: str, section: str, visible_items: int, total_items: int, total_pages: int, tag: str | None = None) -> str:
+        cwd = self.cwd_for_section(section)
         scope = f"tag:{tag}" if tag else section
         return "".join([
-            self.shell_command_markup(f"statfs ~/{section}"),
+            self.shell_command_markup("statfs ~", cwd=cwd),
             self.stat_row("File system", "autophanyfs"),
             self.stat_row("Mounted on", f"/{lang}/{section}"),
             self.stat_row("Type", "section"),
@@ -621,13 +627,15 @@ class Prerender:
 
     def article_process_html(self, lang: str, article: dict[str, Any], localized_meta: dict[str, Any]) -> str:
         stamp = f"{article.get('date') or '1970-01-01'} 00:00:00 +0000"
+        cwd = self.cwd_for_section(str(article["section"]))
+        file_name = f"{article['slug']}.tex"
         file_path = f"~/{article['section']}/{article['slug']}.tex"
         tags_html = " ".join(
             f'<a class="meta-tag-link" href="{html.escape(routes.tag_route(str(article.get("tagSection") or article["section"]), lang, str(tag)), quote=True)}" data-internal="true">#{html.escape(str(tag))}</a>'
             for tag in article.get("tags", [])
         )
         return "".join([
-            self.shell_command_markup(f"stat {file_path}"),
+            self.shell_command_markup(f"stat {file_name}", cwd=cwd),
             self.stat_row("File", file_path),
             self.stat_row("Size", str(localized_meta.get("byteSize") or 0)),
             self.stat_row("Blocks", "8"),
@@ -652,9 +660,11 @@ class Prerender:
 
     def info_file_process_html(self, lang: str, section: str, slug: str, item: dict[str, Any], localized_meta: dict[str, Any]) -> str:
         stamp = f"{item.get('date') or '1970-01-01'} 00:00:00 +0000"
+        cwd = self.cwd_for_section(section)
+        file_name = self.display_file_name(slug)
         file_path = self.display_file_path(section, slug)
         return "".join([
-            self.shell_command_markup(f"stat {file_path}"),
+            self.shell_command_markup(f"stat {file_name}", cwd=cwd),
             self.stat_row("File", file_path),
             self.stat_row("Size", str(localized_meta.get("byteSize") or 0)),
             self.stat_row("Blocks", "8"),
@@ -875,8 +885,9 @@ class Prerender:
         return "".join(items)
 
     @staticmethod
-    def shell_command_markup(command: str) -> str:
-        return f'<span class="stat-command"><span class="shell-prompt">guest@cray-1:~$</span><span class="shell-gap"> </span><span class="shell-cmd">{html.escape(command)}</span></span>'
+    def shell_command_markup(command: str, cwd: str = "~") -> str:
+        prompt = f"guest@cray-1:{cwd}"
+        return f'<span class="stat-command"><span class="shell-prompt"><span class="shell-prompt-text">{html.escape(prompt)}</span><span class="shell-prompt-sign">$</span></span><span class="shell-gap"> </span><span class="shell-cmd">{html.escape(command)}</span></span>'
 
     @staticmethod
     def stat_row(key: str, value: str) -> str:
@@ -889,12 +900,22 @@ class Prerender:
     @staticmethod
     def left_info_command(active_section: str | None) -> str:
         if not active_section:
-            return "sed -n '1,2p' ~/.meta"
+            return "sed -n '1,2p' .meta"
         return f"sed -n '1,2p' {active_section}.meta"
 
     @staticmethod
     def display_file_path(section: str, slug: str) -> str:
         return f"~/{slug}" if section == "site" else f"~/{section}/{slug}"
+
+    @staticmethod
+    def display_file_name(slug: str) -> str:
+        return slug
+
+    @staticmethod
+    def cwd_for_section(section: str | None) -> str:
+        if not section or section == "site":
+            return "~"
+        return f"~/{section}"
 
     @staticmethod
     def shell_ui(lang: str) -> dict[str, str]:

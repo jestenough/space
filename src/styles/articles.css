@@ -98,8 +98,15 @@
   }
 
   #error-text .shell-prompt {
-    color: var(--color-accent);
     font-weight: 800;
+  }
+
+  #error-text .shell-prompt-text {
+    color: var(--color-accent);
+  }
+
+  #error-text .shell-prompt-sign {
+    color: var(--color-muted);
   }
 }
 
