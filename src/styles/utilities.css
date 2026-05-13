@@ -31,6 +31,12 @@
     display: none !important;
   }
 
+  body.zen-mode .main-stage-shell {
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
   body.zen-mode .tty {
     display: block;
     width: min(880px, calc(100% - 2rem));
