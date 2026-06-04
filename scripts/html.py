@@ -210,10 +210,10 @@ class Html:
   </div>
 </article>
 """
-        text = source.path.read_text(encoding="utf-8")
         if source.ext == "md":
-            body = self.render_markdown(text)
+            body = self.convert_markdown_to_html(source.path, item.path, item.section, item.slug)
         else:
+            text = source.path.read_text(encoding="utf-8")
             body = f'<pre class="info-file-pre">{html.escape(text.rstrip())}</pre>'
         return f'<section class="file-document" data-source="{html.escape(str(source.path))}">{body}</section>\n'
 
@@ -232,33 +232,26 @@ class Html:
             )
         return self.rewrite_asset_paths(result.stdout.strip(), section, slug)
 
+    def convert_markdown_to_html(self, source_path: Path, item_dir: Path, section: str, slug: str) -> str:
+        command = ["pandoc", str(source_path), "--from", "gfm+tex_math_dollars", "--to", "html5", "--mathml", "--resource-path", str(item_dir)]
+        try:
+            result = subprocess.run(command, check=False, text=True, capture_output=True)
+        except FileNotFoundError as exc:
+            raise RuntimeError(f"Missing required build tool: pandoc\nCannot render Markdown source: {source_path}\nInstall pandoc or run preflight before html generation.") from exc
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"Pandoc failed while rendering Markdown source: {source_path}\n"
+                f"Section/item: {section}/{slug}\n"
+                f"Command exited with code {result.returncode}.\n"
+                f"stderr:\n{result.stderr.strip() or '(empty)'}"
+            )
+        return self.rewrite_asset_paths(result.stdout.strip(), section, slug)
+
     def rewrite_asset_paths(self, value: str, section: str, slug: str) -> str:
         def replace(match: re.Match[str]) -> str:
             file_name = match.group("path").removeprefix(f"{ITEM_ASSETS_DIR}/")
             return f'{match.group("prefix")}/media/{html.escape(section, quote=True)}/{html.escape(slug, quote=True)}/{ITEM_ASSETS_DIR}/{html.escape(file_name, quote=True)}{match.group("suffix")}'
         return self.asset_src_re.sub(replace, value)
-
-    @staticmethod
-    def render_markdown(markdown: str) -> str:
-        lines = markdown.replace("\r\n", "\n").split("\n")
-        result: list[str] = []
-        paragraph: list[str] = []
-        def flush() -> None:
-            if paragraph:
-                result.append(f"<p>{html.escape(' '.join(paragraph))}</p>")
-                paragraph.clear()
-        for line in lines:
-            text = line.strip()
-            if not text:
-                flush()
-            elif match := re.match(r"^(#{1,3})\s+(.+)$", text):
-                flush()
-                level = len(match.group(1))
-                result.append(f"<h{level}>{html.escape(match.group(2))}</h{level}>")
-            else:
-                paragraph.append(text)
-        flush()
-        return "".join(result)
 
     @staticmethod
     def link_neighbors(articles: list[dict[str, Any]]) -> None:
