@@ -1,15 +1,18 @@
 {
   "slug": "readme",
   "label": {
-    "en": "ABOUT.md"
+    "en": "ABOUT.md",
+    "ru": "ABOUT.md"
   },
   "type": "page",
   "format": "markdown",
   "date": "2026-05-02",
   "title": {
-    "en": "ABOUT.md"
+    "en": "ABOUT.md",
+    "ru": "ABOUT.md"
   },
   "description": {
-    "en": "A description of autophany.space, its tone, and its internal logic."
+    "en": "Some information about who I am, etc.",
+    "ru": "Немного информации о том кто я такой, и так далее."
   }
 }

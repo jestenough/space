@@ -7,11 +7,11 @@
     "ru": "site/"
   },
   "title": {
-    "en": "Test Site name",
-    "ru": "autophany.space"
+    "en": "Autophany Space",
+    "ru": "Autophany Space"
   },
   "description": {
-    "en": "Personal space of autophany with service files, articles, notes, and tags.",
-    "ru": "Персональное пространство autophany со служебными файлами, статьями, заметками и тегами."
+    "en": "Personal space of autophany with service files, articles, notes, etc.",
+    "ru": "Персональное пространство autophany с файлами, статьями, заметками и так далее."
   }
 }

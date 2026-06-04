@@ -1,7 +1,13 @@
 # README.md
 
-autophany.space is a small LaTeX-first writing space. It behaves like a quiet file system: service files live in `site/`, long texts live in `articles/`, and semantic links live in `tags/`.
+This website is my personal space where I share information about myself, my knowledge in the form of articles and notes, and other materials. It is organized like a file system: content is divided into sections, and pages have structure, tags, metadata, and links to additional formats such as PDF.
 
-The project prefers readable HTML pages for search engines and humans, while PDF files are generated from the same LaTeX sources as printable companions.
+The interface is inspired by a terminal: minimal visual noise, a focus on text and structure, and quick navigation between sections.
 
-Guest users are intentionally read-only. The content can be inspected, followed, downloaded, and indexed, but not modified from the public interface.
+## Navigation
+
+**about** — information about the website and the author;  
+**articles** — long-form texts and articles;  
+**notes** — short notes;  
+**projects** — project-related materials;  
+**tags** — search and navigation by topics;
