@@ -1,7 +1,7 @@
 {
   "name": "autophany-space",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.6",
   "type": "module",
   "engines": {
     "node": ">=24.0.0",
