@@ -1,0 +1,22 @@
+{
+  "slug": "rekeeply",
+  "type": "project",
+  "label": {
+    "en": "rekeeply",
+    "ru": "rekeeply"
+  },
+  "title": {
+    "en": "Rekeeply",
+    "ru": "Rekeeply"
+  },
+  "description": {
+    "en": "The knowledge tracker that keeps your materials, progress, and notes in one searchable place",
+    "ru": "Система отслеживания знаний, которая хранит ваши материалы, прогресс и заметки в одном месте с возможностью поиска"
+  },
+  "sourceUrl": "https://github.com/rekeeply/",
+  "stack": ["Go", "Python"],
+  "status": {
+    "en": "Development",
+    "ru": "В разработке"
+  }
+}

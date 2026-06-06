@@ -1,0 +1,22 @@
+{
+  "slug": "lenta-ru-extractor",
+  "type": "project",
+  "label": {
+    "en": "lenta",
+    "ru": "lenta"
+  },
+  "title": {
+    "en": "lenta-ru-extractor",
+    "ru": "lenta-ru-extractor"
+  },
+  "description": {
+    "en": "A CLI utility for extracting structured content from Lenta.ru pages.",
+    "ru": "CLI-утилита для извлечения структурированного контента со страниц Lenta.ru."
+  },
+  "sourceUrl": "https://github.com/jestenough/lenta-ru-extractor",
+  "stack": ["Python"],
+  "status": {
+    "en": "Ready",
+    "ru": "Готов"
+  }
+}

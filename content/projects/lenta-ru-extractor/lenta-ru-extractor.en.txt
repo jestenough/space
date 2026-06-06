@@ -1,0 +1,1 @@
+CLI utility for extracting structured content from Lenta.ru pages.

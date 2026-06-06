@@ -1,8 +1,8 @@
 # README.md
 
-This website is my personal space where I share information about myself, my knowledge in the form of articles and notes, and other materials. It is organized like a file system: content is divided into sections, and pages have structure, tags, metadata, and links to additional formats such as PDF.
+This website is my personal space for texts, notes, projects, and a few service files that make the whole thing navigable. It is organized like a small file system: content lives in sections, every page has metadata, and long-form texts can have generated formats such as HTML and PDF.
 
-The interface is inspired by a terminal: minimal visual noise, a focus on text and structure, and quick navigation between sections.
+The interface is intentionally terminal-like: quiet, text-first, and built around paths, commands, and readable structure instead of decorative pages. Version 1 is the first complete version of the site: the section model, localized routes, generated pages, articles, notes, tags, downloads, and static output are all in place.
 
 ## Navigation
 
@@ -11,3 +11,9 @@ The interface is inspired by a terminal: minimal visual noise, a focus on text a
 **notes** — short notes;  
 **projects** — project-related materials;  
 **tags** — search and navigation by topics;
+
+## Status
+
+**version** — 1.0.0;  
+**content** — section-based, localized, and generated at build time;  
+**output** — static pages ready to be served without client-side content rendering;

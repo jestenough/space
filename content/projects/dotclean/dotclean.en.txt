@@ -1,0 +1,3 @@
+During associative analysis, I encountered the need for a large amount of data, which prompted the creation of this parser. 
+The convenience and advantage is that the context for a word can be adjusted, 
+meaning it can be taken from several sentences before it, several sentences after it, or even all at once.

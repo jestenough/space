@@ -6,13 +6,13 @@
   },
   "type": "page",
   "format": "markdown",
-  "date": "2026-05-02",
+  "date": "2026-06-05",
   "title": {
     "en": "README.md",
     "ru": "README.md"
   },
   "description": {
-    "en": "Information about site",
-    "ru": "Информация о сайте: что это, зачем он нужен?"
+    "en": "Information about the site and its v1 status",
+    "ru": "Информация о сайте и статусе первой версии"
   }
 }

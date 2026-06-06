@@ -1,0 +1,22 @@
+{
+  "slug": "dotclean",
+  "type": "project",
+  "label": {
+    "en": "dotclean",
+    "ru": "dotclean"
+  },
+  "title": {
+    "en": "dotclean",
+    "ru": "dotclean"
+  },
+  "description": {
+    "en": " CLI tool to remove temporary files and caches from project directories",
+    "ru": "CLI-утилита для очистки рабочего пространства от временных файлов и файлов кэша"
+  },
+  "sourceUrl": "https://github.com/jestenough/dotclean",
+  "stack": ["Go"],
+  "status": {
+    "en": "Ready",
+    "ru": "Готов"
+  }
+}

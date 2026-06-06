@@ -1,1 +1,2 @@
+06.06.2026: Split Docker build into frontend, content, and pdf containers; separated source preflight from toolchain checks
 05.06.2026: Init v1 of site
