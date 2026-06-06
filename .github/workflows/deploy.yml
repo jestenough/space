@@ -22,19 +22,24 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      - name: Build project toolchain image
-        run: docker build -t autophany-toolchain .
+      - name: Build check images
+        run: make docker-build
 
-      - name: Check Python, TypeScript and source content
+      - name: Check Docker toolchains
+        run: make docker-toolchain
+
+      - name: Check Python and source content
         run: |
           docker run --rm \
             -e SITE_URL="${SITE_URL}" \
-            autophany-toolchain \
+            content \
             sh -lc '
               python3 -m compileall -q scripts &&
-              make preflight &&
-              make typecheck
+              make preflight
             '
+
+      - name: Check TypeScript
+        run: docker run --rm frontend npm run typecheck
 
   build:
     name: Build and verify dist
@@ -54,22 +59,8 @@ jobs:
           restore-keys: |
             autophany-pdf-cache-${{ runner.os }}-
 
-      - name: Build project toolchain image
-        run: docker build -t autophany-toolchain .
-
       - name: Build and verify production dist
-        run: |
-          mkdir -p dist public generated .cache
-
-          docker run --rm \
-            -e SITE_URL="${SITE_URL}" \
-            -e STRICT_PDF=1 \
-            -v "$PWD/public:/app/public" \
-            -v "$PWD/dist:/app/dist" \
-            -v "$PWD/generated:/app/generated" \
-            -v "$PWD/.cache:/app/.cache" \
-            autophany-toolchain \
-            sh -lc 'make preflight html pdf typecheck frontend prerender seo verify'
+        run: make docker-build-site
 
       - name: Show production artifact summary
         run: |
