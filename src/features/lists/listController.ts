@@ -31,6 +31,7 @@ export class ListController {
   private readonly pager: HTMLElement | null;
   private readonly items: Item[];
   private readonly defaultSortValue: string;
+  private routeQuery = "";
   private currentPage = 1;
 
   constructor(private readonly root: HTMLElement) {
@@ -54,7 +55,8 @@ export class ListController {
     if (!this.list || this.items.length === 0) return;
 
     const params = new URLSearchParams(window.location.search);
-    if (this.searchInput) this.searchInput.value = params.get("q") ?? this.searchInput.value;
+    this.routeQuery = params.get("q") ?? "";
+    if (this.searchInput) this.searchInput.value = this.routeQuery || this.searchInput.value;
     if (this.sortSelect && params.get("sort")) this.sortSelect.value = params.get("sort") || this.sortSelect.value;
     if (this.sizeSelect && params.get("size")) this.sizeSelect.value = String(pageSize(params.get("size")));
     this.currentPage = positiveInt(params.get("page"));
@@ -86,7 +88,7 @@ export class ListController {
   render(): void {
     if (!this.list || !isVisibleRoot(this.root)) return;
 
-    const query = normalizeQuery(this.searchInput?.value || "");
+    const query = normalizeQuery(this.searchInput ? this.searchInput.value : this.routeQuery);
     const sortValue = this.sortSelect?.value || "date-desc";
     const pageSizeValue = pageSize(this.sizeSelect?.value || null);
     const filtered = this.items.filter((item) => !query || item.search.includes(query));

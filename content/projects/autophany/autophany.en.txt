@@ -1,0 +1,3 @@
+autophany.space is a static personal site built around section-based content.
+
+The build pipeline turns localized source files into generated indexes, HTML fragments, prerendered routes, SEO artifacts, and optional article PDFs.

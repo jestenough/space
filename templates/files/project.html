@@ -1,0 +1,22 @@
+<div class="file-bar project-file-bar">
+  <a id="back-link" href="{{back_href}}" class="back-link">{{back_label}}</a>
+  <div class="file-act">
+    <button id="download-pdf-btn" class="{{download_class}}" type="button" data-action-href="{{download_href}}" data-action-target="_blank">{{download_text}}</button>
+  </div>
+</div>
+<article id="file-content" class="project-detail" data-file-content>
+  <header class="project-detail-hero">
+    <div class="project-detail-hero-copy">
+      <span class="{{project_status_class}}">{{project_status}}</span>
+      <h1>{{project_title}}</h1>
+      <p>{{project_description}}</p>
+    </div>
+    <div class="project-detail-actions">{{project_actions_html}}</div>
+  </header>
+  <section class="project-detail-brief" aria-label="{{project_overview_label}}">
+    <div class="project-detail-stack" aria-label="{{project_stack_label}}">{{project_stack_html}}</div>
+  </section>
+  <section class="project-detail-body" aria-label="{{project_overview_label}}">
+    {{content_html}}
+  </section>
+</article>

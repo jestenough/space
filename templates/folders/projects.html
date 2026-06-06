@@ -1,0 +1,33 @@
+<section id="home-files-panel" class="panel info-panel hidden" aria-label="Home files panel"></section>
+<section id="content-panel" class="panel directory-panel" aria-label="Projects panel" data-list-root>
+  <p id="list-title" class="sr-only">{{list_title}}</p>
+  <div class="tools-row" role="group" aria-label="Project controls">
+    <label class="inline-tool">
+      <span id="sort-label">{{sort_label}}</span>
+      <select id="sort-select" aria-label="Sort projects" data-list-sort>
+        <option value="date-desc">{{date_desc_label}}</option>
+        <option value="date-asc">{{date_asc_label}}</option>
+        <option value="title-asc">{{title_asc_label}}</option>
+        <option value="title-desc">{{title_desc_label}}</option>
+      </select>
+    </label>
+    <label class="inline-tool">
+      <span id="size-label">{{size_label}}</span>
+      <select id="page-size-select" aria-label="Projects per page" data-list-size>
+        <option value="4">4</option>
+        <option value="8">8</option>
+        <option value="16">16</option>
+        <option value="32">32</option>
+      </select>
+    </label>
+  </div>
+  <div class="project-grid" data-list-items>
+    {{items_html}}
+  </div>
+  <div class="{{pager_class}}" role="group" aria-label="Project pagination" data-list-pager>
+    <button id="page-prev" type="button" data-list-prev>{{page_prev}}</button>
+    <span id="page-info" class="muted" data-list-page-info>{{page_info}}</span>
+    <button id="page-next" type="button" data-list-next>{{page_next}}</button>
+  </div>
+</section>
+<section id="tags-panel" class="panel hidden directory-panel" aria-label="Tags panel"></section>

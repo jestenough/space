@@ -1,0 +1,3 @@
+autophany.space - статический персональный сайт, построенный вокруг секционной структуры контента.
+
+Пайплайн сборки превращает локализованные исходники в generated indexes, HTML fragments, prerendered routes, SEO artifacts и опциональные PDF для статей.

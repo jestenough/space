@@ -1,0 +1,23 @@
+{
+  "slug": "autophany",
+  "type": "project",
+  "label": {
+    "en": "autophany",
+    "ru": "autophany"
+  },
+  "title": {
+    "en": "autophany.space",
+    "ru": "autophany.space"
+  },
+  "description": {
+    "en": "A section-based static personal site with prerendered pages and a shell-inspired interface.",
+    "ru": "Секционный статический персональный сайт с пререндером страниц и shell-inspired интерфейсом."
+  },
+  "projectUrl": "https://autophany.space",
+  "sourceUrl": "https://github.com/jestenough/space",
+  "stack": ["Python", "TypeScript", "Vite", "Pandoc", "TeX"],
+  "status": {
+    "en": "Launched",
+    "ru": "Запущен"
+  }
+}
