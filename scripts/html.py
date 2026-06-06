@@ -250,7 +250,7 @@ class Html:
             result = subprocess.run(command, check=False, text=True, capture_output=True)
         except FileNotFoundError as exc:
             raise RuntimeError(
-                f"Missing required build tool: pandoc\nCannot render TeX source: {source_path}\nInstall pandoc or run preflight before html generation."
+                f"Missing required build tool: pandoc\nCannot render TeX source: {source_path}\nInstall pandoc or run `make toolchain` before html generation."
             ) from exc
 
         if result.returncode != 0:
@@ -279,7 +279,7 @@ class Html:
             result = subprocess.run(command, check=False, text=True, capture_output=True)
         except FileNotFoundError as exc:
             raise RuntimeError(
-                f"Missing required build tool: pandoc\nCannot render Markdown source: {source_path}\nInstall pandoc or run preflight before html generation."
+                f"Missing required build tool: pandoc\nCannot render Markdown source: {source_path}\nInstall pandoc or run `make toolchain` before html generation."
             ) from exc
 
         if result.returncode != 0:

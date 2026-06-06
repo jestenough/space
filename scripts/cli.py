@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import importlib
 import logging
-import subprocess
 import sys
 from collections.abc import Callable, Sequence
 from types import ModuleType
@@ -53,7 +52,7 @@ class AutophanyCLI:
         parser = argparse.ArgumentParser(
             prog="autophany.space",
             description="Local build tools for autophany.space.",
-            epilog="Example: python3 -m scripts.cli build",
+            epilog="Example: python3 -m scripts.cli preflight",
             formatter_class=argparse.RawDescriptionHelpFormatter,
         )
         parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logging.")
@@ -67,8 +66,6 @@ class AutophanyCLI:
         self.add_command(subparsers, "verify", "Verify generated production output.")
         self.add_command(subparsers, "clean", "Remove generated files and caches.")
 
-        build_parser = subparsers.add_parser("build", help="Run full build pipeline.")
-        build_parser.set_defaults(handler=self.run_build)
         return parser
 
     def add_command(self, subparsers: argparse._SubParsersAction, name: str, description: str) -> None:
@@ -80,21 +77,6 @@ class AutophanyCLI:
             self.load_module(name).run()
 
         return handler
-
-    def run_build(self, _: argparse.Namespace) -> None:
-        for step in ("preflight", "html", "pdf"):
-            logger.info("Running step: %s", step)
-            self.load_module(step).run()
-
-        logger.info("Running step: typecheck")
-        subprocess.run(["npm", "run", "typecheck"], check=True)
-
-        logger.info("Running step: frontend")
-        subprocess.run(["npm", "run", "build"], check=True)
-
-        for step in ("prerender", "seo", "verify"):
-            logger.info("Running step: %s", step)
-            self.load_module(step).run()
 
     @classmethod
     def load_module(cls, name: str) -> ModuleType:

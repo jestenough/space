@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from . import content
-from .config import ITEM_ASSETS_DIR, PDF_REQUIRED_BINARIES, PUBLIC_DIR, SYSTEM_SECTION, ContentExtension, FileType
+from .config import ITEM_ASSETS_DIR, PUBLIC_DIR, SYSTEM_SECTION, ContentExtension, FileType
 
 
 @dataclass(frozen=True)
@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 class Pdf:
     force = os.environ.get("FORCE_PDF") == "1"
     strict = os.environ.get("STRICT_PDF") == "1"
+    REQUIRED_BINARIES = ("latexmk", "xelatex")
 
     def run(self) -> None:
         if not self.check_compiler():
@@ -72,7 +73,7 @@ class Pdf:
         return sorted(sources, key=lambda item: f"{item.section}.{item.slug}.{item.lang}")
 
     def check_compiler(self) -> bool:
-        missing = [binary for binary in PDF_REQUIRED_BINARIES if shutil.which(binary) is None]
+        missing = [binary for binary in self.REQUIRED_BINARIES if shutil.which(binary) is None]
         if not missing:
             return True
 

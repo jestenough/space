@@ -83,8 +83,3 @@ GITHUB_EDIT_BASE = "https://github.com/jestenough/space/edit/master/content"
 # Dates
 DATE_FORMAT = "%Y-%m-%d"
 DATE_FORMAT_LABEL = "YYYY-MM-DD"
-
-# Build
-REQUIRED_BINARIES = ("node", "npm", "pandoc", "latexmk", "xelatex")
-PDF_REQUIRED_BINARIES = ("latexmk", "xelatex")
-FEED_ITEM_LIMIT = 20

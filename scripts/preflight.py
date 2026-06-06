@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 import re
-import shutil
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -16,7 +15,6 @@ from .config import (
     FILE_TYPES,
     FOLDER_TYPES,
     PACKAGE_JSON,
-    REQUIRED_BINARIES,
     ROOT_DIR,
     SRC_DIR,
     SYSTEM_SECTION,
@@ -33,7 +31,6 @@ logger = logging.getLogger(__name__)
 
 
 class Preflight:
-    required_binaries = REQUIRED_BINARIES
     required_paths = (ROOT_DIR, CONTENT_DIR, SRC_DIR, PACKAGE_JSON, TSCONFIG, VITE_CONFIG)
     slug_re = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
     iso_date_re = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -42,7 +39,6 @@ class Preflight:
         self.check_invariants()
         self.check_project_structure()
         self.check_sections()
-        self.check_binaries()
 
         logger.info("Preflight checks passed.")
 
@@ -73,14 +69,6 @@ class Preflight:
             or content.item_type({"type": FileType.PROJECT.value}) != FileType.PROJECT
         ):
             raise RuntimeError("Project type invariant failed")
-
-    def check_binaries(self) -> None:
-        if missing := [binary for binary in self.required_binaries if shutil.which(binary) is None]:
-            raise RuntimeError(
-                "Missing required build tools:\n"
-                + "\n".join(f"- {binary}" for binary in missing)
-                + "\nInstall them before running the full content pipeline."
-            )
 
     def check_project_structure(self) -> None:
         if missing := [path for path in self.required_paths if not path.exists()]:

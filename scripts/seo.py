@@ -14,7 +14,6 @@ from . import generated, routes
 from .config import (
     DEFAULT_LANG,
     DIST_DIR,
-    FEED_ITEM_LIMIT,
     GENERATED_FILES_DIR,
     GENERATED_SITE_META_PATH,
     MEDIA_MANIFEST_PATH,
@@ -259,13 +258,18 @@ class Seo:
 """
 
     def render_feed(
-        self, lang: str, articles: list[dict[str, Any]], site_meta: dict[str, Any], article_section: str | None
+        self,
+        lang: str,
+        articles: list[dict[str, Any]],
+        site_meta: dict[str, Any],
+        article_section: str | None,
+        feed_limit: int = 20,
     ) -> str:
         lang_articles = [article for article in articles if lang in article["languages"]]
         lang_articles.sort(key=lambda article: article["date"], reverse=True)
         items = []
 
-        for article in lang_articles[:FEED_ITEM_LIMIT]:
+        for article in lang_articles[:feed_limit]:
             url = routes.absolute_url(routes.generated_item_route(article, lang))
             items.append(
                 "\n".join(

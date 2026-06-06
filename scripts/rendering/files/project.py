@@ -86,6 +86,24 @@ class ProjectFileRenderer(FileRenderer):
         return label if label and label != title else context.item_slug
 
     @override
+    def process_html(self, context: FilePageContext, display_name: str) -> str:
+        cwd = context.service.cwd_for_section(context.section_slug)
+        file_path = self.display_file_path(context.section_slug, display_name)
+        stack = ", ".join(context.item.get("stack", []))
+
+        return "".join(
+            [
+                context.service.shell_command_markup(f"stat {display_name}", cwd=cwd),
+                context.service.stat_row("File", file_path),
+                context.service.stat_row("Size", str(context.localized_meta.get("byteSize") or 0)),
+                context.service.stat_row("Stack", stack),
+                context.service.stat_row("lang", context.lang),
+                context.service.stat_row("type", str(context.item.get("type") or FileType.PROJECT)),
+                context.service.stat_row("format", str(context.item.get("format") or "text")),
+            ]
+        )
+
+    @override
     def validate_item(self, section: content.Section, item: content.Item) -> None:
         if section.kind != FolderType.PROJECTS:
             raise RuntimeError(
