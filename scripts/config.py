@@ -1,11 +1,10 @@
-"""Shared paths and constants for the build scripts."""
+"""Shared paths and constants for the build scripts"""
 
 from __future__ import annotations
 
 import os
 from enum import StrEnum
 from pathlib import Path
-
 
 # Backend sources
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -20,29 +19,42 @@ VITE_CONFIG = ROOT_DIR / "vite.config.ts"
 
 # Content model
 SYSTEM_SECTION = os.environ.get("SYSTEM_SECTION", "site")
+
+
 class FolderType(StrEnum):
     SYSTEM = "system"
     FILES = "files"
     ARTICLES = "articles"
+    PROJECTS = "projects"
     TAGS = "tags"
 
 
 class FileType(StrEnum):
     PAGE = "page"
     ARTICLE = "article"
+    PROJECT = "project"
+
+
+class ContentFormat(StrEnum):
+    TEX = "tex"
+    MARKDOWN = "markdown"
+    TEXT = "text"
+
+
+class ContentExtension(StrEnum):
+    TEX = "tex"
+    MARKDOWN = "md"
+    META = "meta"
 
 
 FOLDER_TYPES = tuple(FolderType)
 FILE_TYPES = tuple(FileType)
-TEX_FORMAT = "tex"
-MARKDOWN_FORMAT = "markdown"
-TEXT_FORMAT = "text"
-ITEM_META_SUFFIX = "meta"
 ITEM_ASSETS_DIR = "assets"
 HOME_PAGE = "home"
 TAG_PAGE = "tag"
 NOT_FOUND_PAGE = "notFound"
 WORDS_PER_MINUTE = 220
+LIST_PAGE_SIZE = 4
 
 # Generated output
 GENERATED_FILES_NAME = "files"
@@ -66,7 +78,7 @@ DEFAULT_LANG = "en"
 # Site
 DEFAULT_SITE_URL = "https://autophany.space"
 SITE_URL = (os.environ.get("SITE_URL") or DEFAULT_SITE_URL).rstrip("/")
-GITHUB_EDIT_BASE = "https://github.com/jestenough/personal/edit/main/content"
+GITHUB_EDIT_BASE = "https://github.com/jestenough/space/edit/master/content"
 
 # Dates
 DATE_FORMAT = "%Y-%m-%d"

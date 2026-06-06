@@ -29,6 +29,7 @@ class Clean:
             self.remove(target)
 
         self.remove_generated_public_files()
+
         logger.info("Removed generated output, caches, public PDFs and media assets.")
 
     @staticmethod

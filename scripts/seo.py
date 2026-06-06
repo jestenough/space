@@ -1,18 +1,28 @@
-"""SEO generation step."""
+"""SEO generation step"""
 
 from __future__ import annotations
 
-from html.parser import HTMLParser
 import logging
-import re
+import xml.etree.ElementTree as ET
 from datetime import datetime
+from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
-import xml.etree.ElementTree as ET
 from xml.sax.saxutils import escape as xml_escape
 
 from . import generated, routes
-from .config import DEFAULT_LANG, DIST_DIR, FEED_ITEM_LIMIT, FileType, FolderType, GENERATED_FILES_DIR, GENERATED_SITE_META_PATH, MEDIA_MANIFEST_PATH, NOT_FOUND_PAGE, SITE_URL
+from .config import (
+    DEFAULT_LANG,
+    DIST_DIR,
+    FEED_ITEM_LIMIT,
+    GENERATED_FILES_DIR,
+    GENERATED_SITE_META_PATH,
+    MEDIA_MANIFEST_PATH,
+    NOT_FOUND_PAGE,
+    SITE_URL,
+    FileType,
+    FolderType,
+)
 from .jsonio import read_json, read_object, read_text
 
 XML_HEADER = '<?xml version="1.0" encoding="UTF-8"?>'
@@ -35,10 +45,12 @@ class ArticleImageParser(HTMLParser):
     def capture(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         if tag.lower() != "img":
             return
+
         values = {key.lower(): (value or "") for key, value in attrs}
         src = values.get("src", "").strip()
         if not src.startswith("/media/"):
             return
+
         self.images.append({"src": src, "alt": values.get("alt", "").strip()})
 
 
@@ -81,12 +93,21 @@ class Seo:
     def read_media_manifest() -> dict[str, dict[str, Any]]:
         if not MEDIA_MANIFEST_PATH.exists():
             return {}
+
         data = read_json(MEDIA_MANIFEST_PATH)
         if not isinstance(data, dict):
             raise RuntimeError(f"Media manifest must be an object: {MEDIA_MANIFEST_PATH}")
+
         return {str(key): value for key, value in data.items() if isinstance(value, dict)}
 
-    def build_sitemap_entries(self, articles: list[dict[str, Any]], tags_by_lang: dict[str, set[str]], sections: list[dict[str, Any]], files: list[dict[str, Any]], tag_section: str | None) -> list[dict[str, Any]]:
+    def build_sitemap_entries(
+        self,
+        articles: list[dict[str, Any]],
+        tags_by_lang: dict[str, set[str]],
+        sections: list[dict[str, Any]],
+        files: list[dict[str, Any]],
+        tag_section: str | None,
+    ) -> list[dict[str, Any]]:
         languages = generated.item_languages(files)
         latest = self.latest_date(articles)
         entries: list[dict[str, Any]] = []
@@ -94,7 +115,16 @@ class Seo:
         for section in sections:
             section_languages = generated.section_languages(section)
             for lang in section_languages:
-                entries.append({"path": routes.generated_section_route(section, lang), "lastmod": latest, "alternates": routes.alternates(section_languages, lambda item_lang, section=section: routes.generated_section_route(section, item_lang))})
+                entries.append(
+                    {
+                        "path": routes.generated_section_route(section, lang),
+                        "lastmod": latest,
+                        "alternates": routes.alternates(
+                            section_languages,
+                            lambda item_lang, section=section: routes.generated_section_route(section, item_lang),
+                        ),
+                    }
+                )
 
         for lang in languages:
             for tag in sorted(tags_by_lang.get(lang, set())):
@@ -121,12 +151,20 @@ class Seo:
             if item.get("type") == FileType.ARTICLE:
                 continue
             for lang in item.get("languages", []):
-                entries.append({"path": routes.generated_item_route(item, lang), "lastmod": item.get("date") or latest, "alternates": self.item_alternates(item)})
+                entries.append(
+                    {
+                        "path": routes.generated_item_route(item, lang),
+                        "lastmod": item.get("date") or latest,
+                        "alternates": self.item_alternates(item),
+                    }
+                )
 
         return entries
 
     def render_sitemap(self, entries: list[dict[str, Any]]) -> str:
-        return "\n".join([XML_HEADER, SITEMAP_ROOT, *(self.render_sitemap_entry(entry) for entry in entries), "</urlset>", ""])
+        return "\n".join(
+            [XML_HEADER, SITEMAP_ROOT, *(self.render_sitemap_entry(entry) for entry in entries), "</urlset>", ""]
+        )
 
     @staticmethod
     def validate_xml(value: str, label: str) -> None:
@@ -136,10 +174,16 @@ class Seo:
             raise RuntimeError(f"{label} is not valid XML: {exc}") from exc
 
     def render_sitemap_entry(self, entry: dict[str, Any]) -> str:
-        lines = ["  <url>", f"    <loc>{self.xml(routes.absolute_url(entry['path']))}</loc>", f"    <lastmod>{self.xml(entry['lastmod'])}</lastmod>"]
+        lines = [
+            "  <url>",
+            f"    <loc>{self.xml(routes.absolute_url(entry['path']))}</loc>",
+            f"    <lastmod>{self.xml(entry['lastmod'])}</lastmod>",
+        ]
         for hreflang, path in entry.get("alternates", {}).items():
             if path:
-                lines.append(f"    <xhtml:link rel=\"alternate\" hreflang=\"{self.xml(hreflang)}\" href=\"{self.xml(routes.absolute_url(path))}\" />")
+                lines.append(
+                    f'    <xhtml:link rel="alternate" hreflang="{self.xml(hreflang)}" href="{self.xml(routes.absolute_url(path))}" />'
+                )
         for image in entry.get("images", []):
             lines.append("    <image:image>")
             lines.append(f"      <image:loc>{self.xml(routes.absolute_url(image['src']))}</image:loc>")
@@ -181,13 +225,15 @@ class Seo:
         for article in articles:
             for lang in article["languages"]:
                 article_path = routes.generated_item_route(article, lang)
-                lines.extend([
-                    self.article_pdf_path(article, lang),
-                    f"  Link: <{routes.absolute_url(article_path)}>; rel=\"canonical\"",
-                    "  X-Robots-Tag: index, follow",
-                    "  Cache-Control: no-cache, must-revalidate",
-                    "",
-                ])
+                lines.extend(
+                    [
+                        self.article_pdf_path(article, lang),
+                        f'  Link: <{routes.absolute_url(article_path)}>; rel="canonical"',
+                        "  X-Robots-Tag: index, follow",
+                        "  Cache-Control: no-cache, must-revalidate",
+                        "",
+                    ]
+                )
 
         return "\n".join(lines)
 
@@ -212,39 +258,47 @@ class Seo:
 </html>
 """
 
-    def render_feed(self, lang: str, articles: list[dict[str, Any]], site_meta: dict[str, Any], article_section: str | None) -> str:
+    def render_feed(
+        self, lang: str, articles: list[dict[str, Any]], site_meta: dict[str, Any], article_section: str | None
+    ) -> str:
         lang_articles = [article for article in articles if lang in article["languages"]]
         lang_articles.sort(key=lambda article: article["date"], reverse=True)
         items = []
 
         for article in lang_articles[:FEED_ITEM_LIMIT]:
             url = routes.absolute_url(routes.generated_item_route(article, lang))
-            items.append("\n".join([
-                "    <item>",
-                f"      <title>{self.xml(self.localized(article['title'], lang))}</title>",
-                f"      <link>{self.xml(url)}</link>",
-                f"      <guid>{self.xml(url)}</guid>",
-                f"      <pubDate>{self.rfc2822_date(article['date'])}</pubDate>",
-                f"      <description>{self.xml(self.localized(article['description'], lang))}</description>",
-                "    </item>",
-            ]))
+            items.append(
+                "\n".join(
+                    [
+                        "    <item>",
+                        f"      <title>{self.xml(self.localized(article['title'], lang))}</title>",
+                        f"      <link>{self.xml(url)}</link>",
+                        f"      <guid>{self.xml(url)}</guid>",
+                        f"      <pubDate>{self.rfc2822_date(article['date'])}</pubDate>",
+                        f"      <description>{self.xml(self.localized(article['description'], lang))}</description>",
+                        "    </item>",
+                    ]
+                )
+            )
 
         page_key = article_section or "articles"
         title = self.page_value(site_meta, page_key, "title", lang)
         description = self.page_value(site_meta, page_key, "description", lang)
-        return "\n".join([
-            XML_HEADER,
-            '<rss version="2.0">',
-            "  <channel>",
-            f"    <title>{self.xml(title)}</title>",
-            f"    <link>{self.xml(routes.absolute_url(routes.section_route(page_key, lang)))}</link>",
-            f"    <description>{self.xml(description)}</description>",
-            f"    <language>{self.xml(lang)}</language>",
-            *items,
-            "  </channel>",
-            "</rss>",
-            "",
-        ])
+        return "\n".join(
+            [
+                XML_HEADER,
+                '<rss version="2.0">',
+                "  <channel>",
+                f"    <title>{self.xml(title)}</title>",
+                f"    <link>{self.xml(routes.absolute_url(routes.section_route(page_key, lang)))}</link>",
+                f"    <description>{self.xml(description)}</description>",
+                f"    <language>{self.xml(lang)}</language>",
+                *items,
+                "  </channel>",
+                "</rss>",
+                "",
+            ]
+        )
 
     @staticmethod
     def page_value(site_meta: dict[str, Any], page: str, field: str, lang: str) -> str:
@@ -291,6 +345,7 @@ class Seo:
         fragment_path = GENERATED_FILES_DIR / str(article["section"]) / f"{article['slug']}.{lang}.html"
         if not fragment_path.is_file():
             return []
+
         parser = ArticleImageParser()
         parser.feed(read_text(fragment_path, f"Missing generated article fragment: {fragment_path}"))
         images: list[dict[str, str]] = []
@@ -302,15 +357,18 @@ class Seo:
                 continue
             images.append({"src": resolved, "alt": self.meaningful_image_text(image.get("alt"))})
             seen.add(resolved)
+
         return images
 
     @staticmethod
     def meaningful_image_text(value: Any) -> str:
         if not isinstance(value, str):
             return ""
+
         text = value.strip()
         if text.lower() in {"image", "img", "figure", "photo", "picture"}:
             return ""
+
         return text
 
     @staticmethod

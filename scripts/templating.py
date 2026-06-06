@@ -1,10 +1,9 @@
-"""Small file-based HTML template renderer."""
+"""Small file-based HTML template renderer"""
 
 from __future__ import annotations
 
 import re
 from pathlib import Path
-
 
 PLACEHOLDER_RE = re.compile(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}")
 

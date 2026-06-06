@@ -1,13 +1,13 @@
-"""Section-based content scanner."""
+"""Section-based content scanner"""
 
 from __future__ import annotations
 
-from functools import lru_cache
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from .config import CONTENT_DIR, DEFAULT_LANG, FileType, FolderType, ITEM_ASSETS_DIR, ITEM_META_SUFFIX, SYSTEM_SECTION
+from .config import CONTENT_DIR, DEFAULT_LANG, ITEM_ASSETS_DIR, SYSTEM_SECTION, ContentExtension, FileType, FolderType
 from .jsonio import read_object
 from .localization import norm_lang
 
@@ -50,10 +50,12 @@ def sections() -> list[Section]:
     for path in sorted(CONTENT_DIR.iterdir()):
         if not path.is_dir() or path.name.startswith("."):
             continue
+
         slug = path.name
-        meta = read_object(path / f"{slug}.{ITEM_META_SUFFIX}", "Meta")
+        meta = read_object(path / f"{slug}.{ContentExtension.META}", "Meta")
         result.append(Section(slug=slug, path=path, meta=meta, items=tuple(items(slug, path))))
-    return sorted(result, key=lambda section: (section.slug != SYSTEM_SECTION, section.slug))
+    else:
+        return sorted(result, key=lambda section: (section.slug != SYSTEM_SECTION, section.slug))
 
 
 def items(section: str, path: Path) -> list[Item]:
@@ -61,24 +63,35 @@ def items(section: str, path: Path) -> list[Item]:
     for item_dir in sorted(path.iterdir()):
         if not item_dir.is_dir() or item_dir.name == ITEM_ASSETS_DIR or item_dir.name.startswith("."):
             continue
+
         slug = item_dir.name
-        meta = read_object(item_dir / f"{slug}.{ITEM_META_SUFFIX}", "Meta")
-        result.append(Item(section=section, slug=slug, path=item_dir, meta=meta, sources=tuple(sources(item_dir, slug))))
-    return result
+        meta = read_object(item_dir / f"{slug}.{ContentExtension.META}", "Meta")
+        result.append(
+            Item(section=section, slug=slug, path=item_dir, meta=meta, sources=tuple(sources(item_dir, slug)))
+        )
+    else:
+        return result
 
 
 def sources(path: Path, slug: str) -> list[Source]:
     result: list[Source] = []
     prefix = f"{slug}."
     for source in sorted(path.iterdir()):
-        if not source.is_file() or not source.name.startswith(prefix) or source.name == f"{slug}.{ITEM_META_SUFFIX}":
+        if (
+            not source.is_file()
+            or not source.name.startswith(prefix)
+            or source.name == f"{slug}.{ContentExtension.META}"
+        ):
             continue
-        rest = source.name[len(prefix):]
+
+        rest = source.name[len(prefix) :]
         if "." not in rest:
             continue
+
         raw_lang, ext = rest.split(".", 1)
         result.append(Source(lang=norm_lang(raw_lang), ext=ext, path=source))
-    return result
+    else:
+        return result
 
 
 def langs(sources: tuple[Source, ...]) -> list[str]:
@@ -95,7 +108,8 @@ def section_kind(section: Section | dict[str, Any]) -> FolderType:
     meta = section.meta if isinstance(section, Section) else section
     if meta.get("system") is True:
         return FolderType.SYSTEM
-    return FolderType(str(meta.get("kind") or FolderType.FILES.value))
+    else:
+        return FolderType(str(meta.get("kind") or FolderType.FILES.value))
 
 
 def first_section_slug(sections_index: list[Section], kind: FolderType) -> str | None:

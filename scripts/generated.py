@@ -1,15 +1,15 @@
-"""Readers and typed helpers for generated indexes."""
+"""Readers and typed helpers for generated indexes"""
 
 from __future__ import annotations
 
 from typing import Any, TypedDict
 
 from .config import (
-    DEFAULT_LANG, 
-    GENERATED_DIR, 
+    DEFAULT_LANG,
+    GENERATED_DIR,
     GENERATED_FILE_META_DIR,
-    GENERATED_SECTIONS_DIR, 
-    GENERATED_SECTIONS_INDEX_FILE, 
+    GENERATED_SECTIONS_DIR,
+    GENERATED_SECTIONS_INDEX_FILE,
     GENERATED_SECTIONS_NAME,
     FileType,
     FolderType,
@@ -43,6 +43,10 @@ class GeneratedItem(TypedDict, total=False):
     translations: dict[str, str]
     canonicalPath: str
     downloadPath: str | None
+    projectUrl: str
+    sourceUrl: str
+    stack: list[str]
+    status: dict[str, str] | str
     tags: list[str]
     pdfPath: str
 
@@ -69,7 +73,13 @@ def sections() -> list[GeneratedSection]:
 
 
 def section_items(section: str) -> list[GeneratedItem]:
-    return [item for item in read_list(GENERATED_SECTIONS_DIR / f"{section}.json", f"generated/{GENERATED_SECTIONS_NAME}/{section}.json") if isinstance(item, dict)]
+    return [
+        item
+        for item in read_list(
+            GENERATED_SECTIONS_DIR / f"{section}.json", f"generated/{GENERATED_SECTIONS_NAME}/{section}.json"
+        )
+        if isinstance(item, dict)
+    ]
 
 
 def items(sections_index: list[GeneratedSection] | None = None) -> list[GeneratedItem]:
@@ -78,7 +88,8 @@ def items(sections_index: list[GeneratedSection] | None = None) -> list[Generate
         slug = section.get("slug")
         if isinstance(slug, str):
             result.extend(section_items(slug))
-    return result
+    else:
+        return result
 
 
 def articles(sections_index: list[GeneratedSection] | None = None) -> list[GeneratedItem]:
@@ -96,7 +107,8 @@ def section_languages(section: dict[str, Any]) -> list[str]:
         value = section.get(field)
         if isinstance(value, dict):
             values.update(lang for lang in value if isinstance(lang, str))
-    return language_list(values)
+    else:
+        return language_list(values)
 
 
 def collect_tags_by_lang(articles: list[GeneratedItem]) -> dict[str, set[str]]:
@@ -106,7 +118,8 @@ def collect_tags_by_lang(articles: list[GeneratedItem]) -> dict[str, set[str]]:
         for lang in article.get("languages", []):
             if isinstance(lang, str):
                 result.setdefault(lang, set()).update(tags)
-    return result
+    else:
+        return result
 
 
 def first_section_slug(sections_index: list[GeneratedSection], kind: FolderType) -> str | None:
@@ -116,7 +129,8 @@ def first_section_slug(sections_index: list[GeneratedSection], kind: FolderType)
             slug = section.get("slug")
             if isinstance(slug, str):
                 return slug
-    return None
+    else:
+        return None
 
 
 def localized_item(section: str, slug: str, lang: str) -> GeneratedLocalizedItem:

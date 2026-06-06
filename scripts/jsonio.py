@@ -1,4 +1,4 @@
-"""JSON file IO with consistent build errors."""
+"""JSON file IO with consistent build errors"""
 
 from __future__ import annotations
 
@@ -20,6 +20,7 @@ def read_object(path: Path, label: str = "JSON") -> dict[str, Any]:
     data = read_json(path)
     if not isinstance(data, dict):
         raise RuntimeError(f"{label} must be an object: {path}")
+
     return data
 
 
@@ -27,6 +28,7 @@ def read_list(path: Path, label: str = "JSON") -> list[Any]:
     data = read_json(path)
     if not isinstance(data, list):
         raise RuntimeError(f"{label} must be a list: {path}")
+
     return data
 
 

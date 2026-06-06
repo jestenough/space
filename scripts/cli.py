@@ -10,7 +10,6 @@ import sys
 from collections.abc import Callable, Sequence
 from types import ModuleType
 
-
 logger = logging.getLogger(__name__)
 
 Handler = Callable[[argparse.Namespace], None]
@@ -47,6 +46,7 @@ class AutophanyCLI:
             return 1
 
         logger.info("Done.")
+
         return 0
 
     def build_parser(self) -> argparse.ArgumentParser:
@@ -85,10 +85,10 @@ class AutophanyCLI:
         for step in ("preflight", "html", "pdf"):
             logger.info("Running step: %s", step)
             self.load_module(step).run()
-        
+
         logger.info("Running step: typecheck")
         subprocess.run(["npm", "run", "typecheck"], check=True)
-        
+
         logger.info("Running step: frontend")
         subprocess.run(["npm", "run", "build"], check=True)
 
@@ -103,7 +103,7 @@ class AutophanyCLI:
 
 def main(args: Sequence[str] | None = None) -> int:
     argv = list(args) if args is not None else sys.argv[1:]
-    
+
     verbose = "-v" in argv or "--verbose" in argv
     logging.basicConfig(level=logging.DEBUG if verbose else logging.INFO, format="%(levelname)s: %(message)s")
 

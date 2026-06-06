@@ -1,37 +1,42 @@
-"""Post-build output verification."""
+"""Post-build output verification"""
 
 from __future__ import annotations
 
 import logging
 import os
 import re
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
-import xml.etree.ElementTree as ET
 
 from . import content, generated, routes
 from .config import (
+    DIST_DIR,
+    GENERATED_DIR,
+    GENERATED_FILE_META_DIR,
+    GENERATED_FILES_DIR,
+    GENERATED_SECTIONS_DIR,
+    GENERATED_SECTIONS_INDEX_FILE,
+    GENERATED_SITE_META_FILE,
     MEDIA_MANIFEST_PATH,
+    SITE_URL,
     FileType,
-    DIST_DIR, 
-    GENERATED_DIR, 
-    GENERATED_FILE_META_DIR, 
-    GENERATED_FILES_DIR, 
-    GENERATED_SECTIONS_DIR, 
-    GENERATED_SECTIONS_INDEX_FILE, 
-    GENERATED_SITE_META_FILE, 
-    SITE_URL
 )
 from .jsonio import read_json, read_text
-
 
 logger = logging.getLogger(__name__)
 
 
 class Verify:
     strict_pdf = os.environ.get("STRICT_PDF") == "1"
-    required_dirs = (GENERATED_DIR, GENERATED_FILES_DIR, GENERATED_FILE_META_DIR, GENERATED_SECTIONS_DIR, DIST_DIR)
+    required_dirs = (
+        GENERATED_DIR,
+        GENERATED_FILES_DIR,
+        GENERATED_FILE_META_DIR,
+        GENERATED_SECTIONS_DIR,
+        DIST_DIR,
+    )
     required_files = (
         GENERATED_DIR / GENERATED_SITE_META_FILE,
         GENERATED_DIR / GENERATED_SECTIONS_INDEX_FILE,
@@ -49,6 +54,7 @@ class Verify:
 
     def run(self) -> None:
         index = self.read_articles()
+
         self.check_generated_structure()
         self.check_no_generated_artifacts()
         self.check_no_dist_artifacts()
@@ -56,17 +62,25 @@ class Verify:
         self.check_content_index(index)
         self.check_articles(index)
         self.check_seo(index)
+
         for warning in self.warnings:
             logger.warning(warning)
-        logger.info("Verified production build for %s article(s)%s.", len(index), f" with {len(self.warnings)} warning(s)" if self.warnings else "")
+
+        logger.info(
+            "Verified production build for %s article(s)%s.",
+            len(index),
+            f" with {len(self.warnings)} warning(s)" if self.warnings else "",
+        )
 
     @staticmethod
     def read_media_manifest() -> dict[str, dict[str, Any]]:
         if not MEDIA_MANIFEST_PATH.exists():
             return {}
+
         data = read_json(MEDIA_MANIFEST_PATH)
         if not isinstance(data, dict):
             raise RuntimeError(f"Media manifest must be an object: {MEDIA_MANIFEST_PATH}")
+
         return {str(key): value for key, value in data.items() if isinstance(value, dict)}
 
     def read_articles(self) -> list[dict[str, Any]]:
@@ -116,10 +130,13 @@ class Verify:
         for field in ("section", "slug", "lang", "canonicalPath"):
             if not isinstance(meta.get(field), str) or not meta[field]:
                 raise RuntimeError(f"Invalid `{field}` in {path}")
+
         if meta["section"] != item.get("section") or meta["slug"] != item.get("slug") or meta["lang"] != lang:
             raise RuntimeError(f"Generated metadata mismatch: {path}")
+
         if meta["canonicalPath"] != routes.generated_item_route(item, lang):
             raise RuntimeError(f"Invalid canonicalPath in {path}")
+
         for field in ("label", "title", "description"):
             value = meta.get(field)
             if not isinstance(value, dict) or lang not in value:
@@ -130,13 +147,21 @@ class Verify:
         source_item = self.content_item(str(item.get("section") or ""), str(item.get("slug") or ""))
         downloadable = source_item is not None and source_item.meta.get("download") is True
         for lang in languages:
-            path = read_json(GENERATED_FILE_META_DIR / str(item["section"]) / f"{item['slug']}.{lang}.json").get("downloadPath")
+            path = read_json(GENERATED_FILE_META_DIR / str(item["section"]) / f"{item['slug']}.{lang}.json").get(
+                "downloadPath"
+            )
             if path is None:
                 continue
+
             if not downloadable:
-                raise RuntimeError(f"Unexpected downloadPath for {item.get('section')}/{item.get('slug')}.{lang}: add `\"download\": true` to item meta or regenerate output.")
+                raise RuntimeError(
+                    f'Unexpected downloadPath for {item.get("section")}/{item.get("slug")}.{lang}: add `"download": true` to item meta or regenerate output.'
+                )
+
             if not isinstance(path, str) or not path.startswith(f"/{lang}/"):
-                raise RuntimeError(f"Invalid downloadPath for {item.get('section')}/{item.get('slug')}.{lang}: {path!r}")
+                raise RuntimeError(
+                    f"Invalid downloadPath for {item.get('section')}/{item.get('slug')}.{lang}: {path!r}"
+                )
 
     @staticmethod
     def content_item(section_slug: str, item_slug: str) -> content.Item | None:
@@ -154,7 +179,12 @@ class Verify:
         return value.strip()
 
     def check_content_index(self, index: list[dict[str, Any]]) -> None:
-        source_slugs = {item.slug for section in content.sections() for item in section.items if content.item_type(item) == FileType.ARTICLE}
+        source_slugs = {
+            item.slug
+            for section in content.sections()
+            for item in section.items
+            if content.item_type(item) == FileType.ARTICLE
+        }
         indexed_slugs = {article.get("slug") for article in index if isinstance(article.get("slug"), str)}
 
         missing = sorted(source_slugs - indexed_slugs)
@@ -162,6 +192,7 @@ class Verify:
 
         if missing:
             raise RuntimeError("Articles missing from generated sections: " + ", ".join(missing))
+
         if stale:
             raise RuntimeError("Stale articles left in generated sections: " + ", ".join(stale))
 
@@ -173,18 +204,28 @@ class Verify:
             slug = article.get("slug")
             if not isinstance(slug, str) or not slug.strip():
                 raise RuntimeError(f"Missing article slug: {article}")
+
             slug = slug.strip()
             if slug in slugs:
                 raise RuntimeError(f"Duplicate article slug: {slug}")
+
             slugs.add(slug)
             for lang in self.get_languages(article, slug):
                 self.check_article_language(article, slug, lang, titles, descriptions)
 
-    def check_article_language(self, article: dict[str, Any], slug: str, lang: str, titles: dict[str, str], descriptions: dict[str, str]) -> None:
+    def check_article_language(
+        self,
+        article: dict[str, Any],
+        slug: str,
+        lang: str,
+        titles: dict[str, str],
+        descriptions: dict[str, str],
+    ) -> None:
         title = self.get_localized_value(article, "title", lang)
         description = self.get_localized_value(article, "description", lang)
         self.push_unique(titles, title, f"{slug}.{lang}", "Duplicate title")
         self.push_unique(descriptions, description, f"{slug}.{lang}", "Duplicate description")
+
         section = str(article.get("section") or "")
         self.check_html(GENERATED_FILES_DIR / section / f"{slug}.{lang}.html", slug, lang)
         self.check_meta(GENERATED_FILE_META_DIR / section / f"{slug}.{lang}.json", slug, lang)
@@ -195,13 +236,16 @@ class Verify:
         languages = article.get("languages")
         if not isinstance(languages, list) or not languages:
             raise RuntimeError(f"Invalid or missing languages for article: {slug}")
+
         result = []
         for lang in languages:
             if not isinstance(lang, str) or not lang.strip():
                 raise RuntimeError(f"Invalid language for article: {slug}")
             result.append(lang.strip())
+
         if len(result) != len(set(result)):
             raise RuntimeError(f"Duplicate languages for article: {slug}")
+
         return tuple(result)
 
     @staticmethod
@@ -209,9 +253,11 @@ class Verify:
         value = article.get(field)
         if not isinstance(value, dict):
             raise RuntimeError(f"Missing `{field}` object for article: {article.get('slug')}")
+
         localized = value.get(lang)
         if not isinstance(localized, str) or not localized.strip():
             raise RuntimeError(f"Missing `{field}.{lang}` for article: {article.get('slug')}")
+
         return localized.strip()
 
     @staticmethod
@@ -232,8 +278,7 @@ class Verify:
 
         if re.search(r"<h1\b", html, re.IGNORECASE):
             raise RuntimeError(
-                f"Generated article fragment must not contain h1; "
-                f"page h1 is rendered from metadata: {slug}.{lang}"
+                f"Generated article fragment must not contain h1; page h1 is rendered from metadata: {slug}.{lang}"
             )
 
         self.check_math_markers(html, slug, lang)
@@ -249,10 +294,7 @@ class Verify:
         if 'class="math' in html or "class='math" in html:
             return
 
-        raise RuntimeError(
-            f"Generated article contains raw math markers outside Pandoc math spans: "
-            f"{slug}.{lang}"
-        )
+        raise RuntimeError(f"Generated article contains raw math markers outside Pandoc math spans: {slug}.{lang}")
 
     def check_article_media_links(self, html: str, slug: str, lang: str) -> None:
         paths = re.findall(r"(?:src|href)=[\"'](/media/[^\"']+)", html)
@@ -274,15 +316,20 @@ class Verify:
         meta = read_json(path)
         if meta.get("slug") != slug:
             raise RuntimeError(f"Metadata slug mismatch: {path}")
+
         if meta.get("lang") and meta.get("lang") != lang:
             raise RuntimeError(f"Metadata lang mismatch: {path}")
+
         if not isinstance(meta.get("canonicalPath"), str) or not meta["canonicalPath"].endswith(f"/{slug}"):
             raise RuntimeError(f"Invalid canonicalPath in {path}")
+
         if not isinstance(meta.get("pdfPath"), str) or not meta["pdfPath"].endswith(f"/{slug}.pdf"):
             raise RuntimeError(f"Invalid pdfPath in {path}")
+
         for field in ("title", "description"):
             if not isinstance(meta.get(field), dict) or lang not in meta[field]:
                 raise RuntimeError(f"Invalid `{field}` object in {path}")
+
         if re.search(r"<(p|h1|article|section)\b", meta_text, re.I):
             raise RuntimeError(f"Article metadata must not contain HTML content: {path}")
 
@@ -292,29 +339,44 @@ class Verify:
 
     def check_seo(self, index: list[dict[str, Any]]) -> None:
         sitemap = read_text(DIST_DIR / "sitemap.xml", "Missing dist/sitemap.xml")
-        robots = read_text(DIST_DIR / "robots.txt", "Missing dist/robots.txt")
-        headers = read_text(DIST_DIR / "_headers", "Missing dist/_headers")
-        four_oh_four = read_text(DIST_DIR / "404.html", "Missing dist/404.html")
         self.validate_xml(sitemap, "sitemap.xml")
-        self.check_cache_headers(headers)
-        if "Sitemap:" not in robots or SITE_URL not in robots:
-            raise RuntimeError("robots.txt must reference sitemap.xml and SITE_URL")
-        if "Disallow: /generated/" not in robots:
-            raise RuntimeError("robots.txt should keep generated fragments out of the index")
+
+        if "xmlns:xhtml=" not in sitemap:
+            raise RuntimeError("Sitemap must declare xhtml hreflang namespace")
         if "xmlns:xhtml=" not in sitemap:
             raise RuntimeError("Sitemap must declare xhtml hreflang namespace")
         if "xmlns:image=" not in sitemap:
             raise RuntimeError("Sitemap must declare image namespace")
+
+        headers = read_text(DIST_DIR / "_headers", "Missing dist/_headers")
+        self.check_cache_headers(headers)
+
+        robots = read_text(DIST_DIR / "robots.txt", "Missing dist/robots.txt")
+        if "Sitemap:" not in robots or SITE_URL not in robots:
+            raise RuntimeError("robots.txt must reference sitemap.xml and SITE_URL")
+        if "Disallow: /generated/" not in robots:
+            raise RuntimeError("robots.txt should keep generated fragments out of the index")
+
         for part in ("#/", "404", "/generated/"):
             if part in sitemap:
                 raise RuntimeError(f"Sitemap must not contain: {part}")
+
+        four_oh_four = read_text(DIST_DIR / "404.html", "Missing dist/404.html")
         if not re.search(r"noindex", four_oh_four, re.I):
             raise RuntimeError("404.html must include noindex")
-        sitemap_paths = self.extract_sitemap_paths(sitemap)
-        headers_paths = self.extract_headers_paths(headers)
+
         files = generated.items(generated.sections())
         for lang in generated.item_languages(files):
-            self.validate_xml(read_text(DIST_DIR / lang / "feed.xml", f"Missing feed: {DIST_DIR / lang / 'feed.xml'}"), f"{lang}/feed.xml")
+            self.validate_xml(
+                read_text(
+                    DIST_DIR / lang / "feed.xml",
+                    f"Missing feed: {DIST_DIR / lang / 'feed.xml'}",
+                ),
+                f"{lang}/feed.xml",
+            )
+
+        headers_paths = self.extract_headers_paths(headers)
+        sitemap_paths = self.extract_sitemap_paths(sitemap)
         self.check_section_routes(sitemap_paths)
         for article in index:
             slug = article["slug"]
@@ -333,9 +395,11 @@ class Verify:
             slug = section.get("slug")
             if not isinstance(slug, str):
                 raise RuntimeError("Section entry is missing slug")
+
             section_index_path = GENERATED_SECTIONS_DIR / f"{slug}.json"
             if not section_index_path.is_file():
                 raise RuntimeError(f"Missing section index: {section_index_path}")
+
             for lang in generated.section_languages(section):
                 route = routes.generated_section_route(section, lang)
                 if route.rstrip("/") not in sitemap_paths:
@@ -376,10 +440,14 @@ class Verify:
         if not path.is_file():
             if self.strict_pdf:
                 raise RuntimeError(f"Missing PDF: {path}")
+
             self.warnings.append(f"Missing PDF: {path}")
+
             return
+
         if path.stat().st_size == 0:
             raise RuntimeError(f"Empty PDF: {path}")
+
 
 def run() -> None:
     Verify().run()

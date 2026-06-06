@@ -1,4 +1,4 @@
-"""Canonical public route builders."""
+"""Canonical public route builders"""
 
 from __future__ import annotations
 
@@ -45,9 +45,14 @@ def generated_item_route(item: dict[str, Any], lang: str) -> str:
     path = translations.get(lang) if isinstance(translations, dict) else None
     if isinstance(path, str):
         return path
+
     section = str(item["section"])
     slug = quote(str(item["slug"]), safe="")
-    return f"/{lang}/{slug}" if section == SYSTEM_SECTION else f"/{lang}/{quote(section, safe='')}/{slug}"
+
+    if section == SYSTEM_SECTION:
+        return f"/{lang}/{slug}"
+
+    return f"/{lang}/{quote(section, safe='')}/{slug}"
 
 
 def generated_pdf_route(item: dict[str, Any], lang: str) -> str:
@@ -63,7 +68,6 @@ def absolute_url(path: str) -> str:
 
 
 def alternates(languages: Sequence[str], build_path: Callable[[str], str]) -> dict[str, str]:
-    result = {lang: build_path(lang) for lang in languages}
-    if result:
+    if result := {lang: build_path(lang) for lang in languages}:
         result["x-default"] = result.get(DEFAULT_LANG) or next(iter(result.values()))
     return result
