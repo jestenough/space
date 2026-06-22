@@ -83,16 +83,11 @@
     text-decoration: none;
     opacity: 0;
     font-size: 0.82em;
-    transition: opacity var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
   }
 
   .anchored-heading:hover .heading-anchor,
   .heading-anchor:focus-visible {
     opacity: 1;
-  }
-
-  .heading-anchor:hover {
-    color: var(--color-accent);
   }
 
   .error-stage,

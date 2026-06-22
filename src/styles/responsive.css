@@ -1,13 +1,15 @@
 @layer responsive {
   @media (max-width: 1180px) {
-    .tty { grid-template-columns: 290px minmax(0, 1fr); }
-    .statpane { grid-column: 1 / -1; position: static; max-height: none; }
+    .tty { grid-template-columns: 280px minmax(0, 1fr); }
+    .rightpane { grid-column: 1 / -1; position: static; max-height: none; }
   }
 
   @media (max-width: 880px) {
     .tty { grid-template-columns: 1fr; padding-bottom: 5.2rem; }
     .userpane,
-    .statpane { position: static; max-height: none; }
+    .rightpane { position: static; max-height: none; }
+    .userpane,
+    .rightpane { margin-block-start: 0; transform: none; }
     .sessbar { align-items: flex-start; flex-direction: column; }
     .sessctl { width: 100%; margin-left: 0; flex-wrap: wrap; }
     .ascii-logo { font-size: clamp(0.18rem, 0.9vw, 0.32rem); overflow-x: auto; }

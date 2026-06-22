@@ -1,2 +1,17 @@
+23.06.2026: 
+
+Released v1.2.0;
+- Refined the desktop terminal workstation layout; 
+- Switched the navigation command to `tree -d -L 1 .`; 
+- Localized window titles and the `!ls` back tooltip; 
+- Preserved desktop panel state in localStorage only on desktop; 
+- Redesigned the mobile experience around the reader-first content flow, compact file actions, and overlay panels; 
+- Improved mobile overlay spacing; 
+- Enabled zen mode for readable files only; 
+- Added Escape and empty-area exit behavior for zen mode; 
+- Made the zen exit control square and more visible; 
+- Kept raw/non-readable files from showing zen actions;
+
 06.06.2026: Split Docker build into frontend, content, and pdf containers; separated source preflight from toolchain checks
+
 05.06.2026: Init v1 of site

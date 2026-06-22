@@ -19,11 +19,13 @@
     padding: 0;
     border: 1px solid var(--color-border);
     border-left: 3px solid var(--color-accent);
-    background: color-mix(in srgb, var(--color-surface) 90%, transparent);
-    transition: border-color var(--duration-fast) var(--ease-standard), background-color var(--duration-fast) var(--ease-standard);
+    background:
+      linear-gradient(90deg, color-mix(in srgb, var(--color-accent-soft) 42%, transparent), transparent 36%),
+      color-mix(in srgb, var(--color-surface) 90%, transparent);
   }
 
-  .article-card:hover {
+  .article-card:hover,
+  .article-card:focus-within {
     border-color: var(--color-border-strong);
     background: color-mix(in srgb, var(--color-surface-2) 80%, transparent);
   }
@@ -42,5 +44,11 @@
   .back-link {
     color: var(--color-accent);
     text-decoration: none;
+  }
+
+  .back-link {
+    padding: 0.08rem 0.28rem;
+    border-bottom: 1px solid var(--color-accent);
+    background: var(--color-accent-soft);
   }
 }

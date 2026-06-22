@@ -12,8 +12,3 @@ The interface is intentionally terminal-like: quiet, text-first, and built aroun
 **projects** — project-related materials;  
 **tags** — search and navigation by topics;
 
-## Status
-
-**version** — 1.0.0;  
-**content** — section-based, localized, and generated at build time;  
-**output** — static pages ready to be served without client-side content rendering;

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import html
+from pathlib import Path
 from typing import Any
 
 from ... import content, routes
@@ -67,6 +68,7 @@ class FileRenderer:
                 back_href=routes.generated_section_route(context.section, context.lang),
                 download_text="download",
                 download_href=context.item.get("downloadPath") if context.item.get("downloadPath") else None,
+                show_zen=self.is_readable_source(context),
                 template_context=self.template_context(context),
             )
         )
@@ -90,6 +92,11 @@ class FileRenderer:
 
     def display_name(self, context: FilePageContext) -> str:
         return exact_text(context.item.get("label"), context.lang) or context.item_slug
+
+    def is_readable_source(self, context: FilePageContext) -> bool:
+        source_path = str(context.localized_meta.get("sourcePath") or "")
+        ext = Path(source_path).suffix.lower().lstrip(".")
+        return ext in {"txt", "md", "tex"}
 
     def process_html(self, context: FilePageContext, display_name: str) -> str:
         stamp = f"{context.item.get('date') or '1970-01-01'} 00:00:00 +0000"

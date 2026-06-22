@@ -16,8 +16,25 @@
     font-family: var(--font-mono);
     color: var(--color-text);
     background:
-      radial-gradient(circle at 90% 8%, color-mix(in srgb, var(--color-accent) 16%, transparent), transparent 27%),
+      radial-gradient(circle at 78% 12%, color-mix(in srgb, var(--color-accent-2) 16%, transparent), transparent 28%),
+      radial-gradient(circle at 12% 18%, color-mix(in srgb, var(--color-accent) 12%, transparent), transparent 24%),
+      repeating-linear-gradient(0deg, color-mix(in srgb, var(--color-text) 2.8%, transparent) 0 1px, transparent 1px 4px),
+      repeating-linear-gradient(90deg, color-mix(in srgb, var(--color-text) 1.8%, transparent) 0 1px, transparent 1px 5px),
       linear-gradient(180deg, var(--color-bg-2), var(--color-bg));
+  }
+
+  body.terminal-only::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0.42;
+    background-image:
+      radial-gradient(circle at 20% 30%, color-mix(in srgb, var(--color-text) 10%, transparent) 0 0.7px, transparent 0.8px),
+      radial-gradient(circle at 75% 58%, color-mix(in srgb, var(--color-accent) 9%, transparent) 0 0.8px, transparent 0.9px);
+    background-size: 19px 23px, 29px 31px;
+    mix-blend-mode: multiply;
   }
 
   ::selection {

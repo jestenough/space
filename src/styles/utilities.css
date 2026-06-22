@@ -24,7 +24,7 @@
 
   body.zen-mode .sessbar,
   body.zen-mode .userpane,
-  body.zen-mode .statpane,
+  body.zen-mode .rightpane,
   body.zen-mode .footbar,
   body.zen-mode #render-indicator,
   body.zen-mode .file-bar {
@@ -62,12 +62,19 @@
     z-index: 100;
     width: 2.2rem;
     height: 2.2rem;
-    border-radius: var(--radius-pill);
+    border: 1px solid var(--color-border-strong);
+    border-radius: 0;
+    background: color-mix(in srgb, var(--color-surface) 92%, var(--color-accent) 8%);
+    color: var(--color-accent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-accent) 18%, transparent), var(--shadow-panel-soft);
     display: none;
     align-items: center;
     justify-content: center;
-    opacity: 0.08;
-    transition: opacity var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard);
+    font-size: 1.45rem;
+    font-weight: 800;
+    line-height: 1;
+    opacity: 0.42;
+    transition: opacity var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard), background var(--duration-fast) var(--ease-standard);
   }
 
   body.zen-mode .zen-exit-btn { display: flex; }
@@ -76,6 +83,7 @@
   body.zen-mode .zen-exit-btn:focus-visible {
     opacity: 1;
     border-color: var(--color-accent);
+    background: color-mix(in srgb, var(--color-surface) 78%, var(--color-accent) 22%);
   }
 
   body:not(.zen-mode) .zen-exit-btn { display: none !important; }

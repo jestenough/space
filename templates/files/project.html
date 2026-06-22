@@ -1,7 +1,12 @@
 <div class="file-bar project-file-bar">
-  <a id="back-link" href="{{back_href}}" class="back-link">{{back_label}}</a>
+  <a id="back-link" href="{{back_href}}" class="back-link" title="{{back_title}}">{{back_label}}</a>
   <div class="file-act">
-    <button id="download-pdf-btn" class="{{download_class}}" type="button" data-action-href="{{download_href}}" data-action-target="_blank">{{download_text}}</button>
+    <div class="action-group" aria-label="Project file actions">
+      <button id="download-pdf-btn" class="{{download_class}}" type="button" data-action-href="{{download_href}}" data-action-target="_blank">{{download_text}}</button>
+    </div>
+    <div class="action-group" aria-label="Reading actions">
+      <button id="zen-mode-btn" class="{{zen_class}}" type="button" data-zen-toggle>{{zen_text}}</button>
+    </div>
   </div>
 </div>
 <article id="file-content" class="project-detail" data-file-content>

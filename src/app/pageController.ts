@@ -12,6 +12,8 @@ import { themeService } from "@/services/themeService";
 const sameDocumentHash = (url: URL): boolean => url.pathname === window.location.pathname && url.search === window.location.search && Boolean(url.hash);
 const visibleSearchInput = (): HTMLInputElement | null => Array.from(document.querySelectorAll<HTMLInputElement>("[data-list-search]"))
   .find((input) => !input.closest(".hidden")) ?? null;
+const desktopPanels = (): boolean => window.matchMedia("(min-width: 761px)").matches;
+const panelStorageKey = (key: string): string => `panel:${key}:open`;
 
 export class PageController {
   private toastTimer: number | null = null;
@@ -25,8 +27,83 @@ export class PageController {
     this.initCopy();
     this.initImageViewer();
     this.initZenMode();
+    this.initCollapsiblePanels();
     this.initDocumentNavigation();
     this.initKeyboard();
+  }
+
+  private initCollapsiblePanels(): void {
+    this.initMobileOverlays();
+
+    document.querySelectorAll<HTMLDetailsElement>("details[data-panel-key]").forEach((panel) => {
+      const key = panel.dataset.panelKey;
+      if (!key) return;
+
+      if (desktopPanels()) {
+        const saved = this.getPanelState(key);
+        if (saved !== null) panel.open = saved;
+      } else {
+        panel.open = key !== "systemnote";
+      }
+
+      panel.addEventListener("toggle", () => {
+        if (!desktopPanels()) return;
+        this.setPanelState(key, panel.open);
+      });
+    });
+  }
+
+  private initMobileOverlays(): void {
+    if (desktopPanels()) return;
+
+    const sectionsBody = document.querySelector<HTMLElement>("[data-mobile-sections-body]");
+    const optionsBody = document.querySelector<HTMLElement>("[data-mobile-options-body]");
+    const contentsBody = document.querySelector<HTMLElement>("[data-mobile-contents-body]");
+    const nav = document.querySelector<HTMLElement>(".nav-window");
+    const session = document.querySelector<HTMLElement>(".session-window");
+    const toc = document.getElementById("toc-panel");
+
+    if (sectionsBody && nav) sectionsBody.append(nav);
+    if (optionsBody && session) optionsBody.append(session);
+    if (contentsBody && toc && !toc.classList.contains("hidden")) contentsBody.append(toc);
+    else document.querySelector<HTMLElement>('[data-mobile-overlay-open="contents"]')?.classList.add("hidden");
+
+    document.querySelectorAll<HTMLButtonElement>("[data-mobile-overlay-open]").forEach((button) => {
+      button.addEventListener("click", () => this.openMobileOverlay(button.dataset.mobileOverlayOpen || ""));
+    });
+    document.querySelectorAll<HTMLElement>("[data-mobile-overlay-close]").forEach((control) => {
+      control.addEventListener("click", () => this.closeMobileOverlays());
+    });
+    document.body.dataset.mobileOverlays = "ready";
+  }
+
+  private openMobileOverlay(name: string): void {
+    if (!name) return;
+    this.closeMobileOverlays();
+    document.getElementById("mobile-overlay-backdrop")?.classList.remove("hidden");
+    document.querySelector<HTMLElement>(`[data-mobile-overlay="${name}"]`)?.classList.remove("hidden");
+  }
+
+  private closeMobileOverlays(): void {
+    document.getElementById("mobile-overlay-backdrop")?.classList.add("hidden");
+    document.querySelectorAll<HTMLElement>("[data-mobile-overlay]").forEach((overlay) => overlay.classList.add("hidden"));
+  }
+
+  private getPanelState(key: string): boolean | null {
+    try {
+      const value = window.localStorage.getItem(panelStorageKey(key));
+      if (value === "true") return true;
+      if (value === "false") return false;
+    } catch {
+    }
+    return null;
+  }
+
+  private setPanelState(key: string, open: boolean): void {
+    try {
+      window.localStorage.setItem(panelStorageKey(key), String(open));
+    } catch {
+    }
   }
 
   private initTheme(): void {
@@ -91,6 +168,7 @@ export class PageController {
         }, 1200);
       });
     });
+
   }
 
   private async copyText(value: string): Promise<boolean> {
@@ -154,6 +232,7 @@ export class PageController {
     if (!contentRoot) return;
     enterButton?.addEventListener("click", () => zenModeController.enter(contentRoot, true));
     exitButton?.addEventListener("click", () => zenModeController.exit());
+    zenModeController.bindEmptyAreaExit(contentRoot);
     zenModeController.bindTopHover();
   }
 
@@ -181,6 +260,7 @@ export class PageController {
       }
       if (event.key === "Escape") {
         zenModeController.exit();
+        this.closeMobileOverlays();
         if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
       }
     });

@@ -4,7 +4,7 @@
     padding: 0.75rem;
     border: 1px dashed var(--color-border);
     background: color-mix(in srgb, var(--color-surface) 86%, transparent);
-    overflow-x: auto;
+    overflow-x: hidden;
   }
 
   .main-stage-shell .info-file-tree {
@@ -12,18 +12,30 @@
     padding: 0;
     border: 0;
     background: transparent;
+    overflow-x: hidden;
   }
 
   .info-file-link {
-    display: block;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 0.65rem;
+    max-width: 100%;
     color: var(--color-ok);
     text-decoration: none;
-    white-space: pre;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   .info-file-link:hover,
   .info-file-link:focus-visible {
+    color: var(--color-ok);
+    background: transparent;
+  }
+
+  .info-file-link:hover .info-file-name,
+  .info-file-link:focus-visible .info-file-name {
     color: var(--color-accent);
+    background: transparent;
   }
 
   .info-file-perms {

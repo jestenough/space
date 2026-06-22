@@ -12,6 +12,14 @@
     gap: 0.8rem;
   }
 
+  .session-window {
+    margin-left: auto;
+  }
+
+  .session-window > .session-title {
+    display: none;
+  }
+
   .brandbox {
     min-width: 0;
     flex: 1 1 auto;
@@ -47,7 +55,6 @@
   }
 
   .sessctl {
-    margin-left: auto;
     display: flex;
     align-items: stretch;
     gap: 0.55rem;

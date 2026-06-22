@@ -1,8 +1,7 @@
 @layer layout {
   .sessbar,
-  .userpane,
+  .side-window,
   .main-stage-shell,
-  .statpane,
   .footbar {
     border: 1px solid var(--color-border);
     background: linear-gradient(180deg, var(--color-surface-2), var(--color-surface));
@@ -20,28 +19,53 @@
     padding-bottom: 4.5rem;
     flex: 1;
     display: grid;
-    grid-template-columns: 320px minmax(0, 1fr) 330px;
+    grid-template-columns: 300px minmax(0, 1fr) 300px;
     align-items: start;
-    gap: 0.8rem;
+    gap: clamp(0.75rem, 1.4vw, 1.25rem);
+  }
+
+  .mobile-panels {
+    display: none;
+  }
+
+  .mobile-drawer {
+    display: none;
+  }
+
+  .mobile-header-actions,
+  .mobile-overlay,
+  .mobile-overlay-backdrop {
+    display: none;
   }
 
   .userpane,
   .statpane {
-    padding: 0.82rem;
+    padding: 0;
   }
 
-  .userpane,
-  .statpane {
+  .userpane {
+    transform: translateX(0.18rem);
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .userpane {
     position: sticky;
     top: var(--sticky-top);
     align-self: start;
   }
 
-  .statpane {
+  .rightpane {
     min-width: 0;
     max-width: 100%;
     max-height: none;
     overflow: visible;
+    transform: translateX(-0.12rem);
+    display: grid;
+    gap: 0.75rem;
+    position: sticky;
+    top: var(--sticky-top);
+    align-self: start;
   }
 
   .mainpane {
@@ -52,12 +76,19 @@
   .main-stage-shell {
     min-width: 0;
     overflow: hidden;
+    border-color: var(--color-border-strong);
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--color-surface-2) 96%, var(--color-accent) 4%), var(--color-surface));
+    box-shadow: var(--shadow-stage);
   }
   .userpane,
   .mainpane,
-  .statpane {
+  .rightpane {
     margin-block-start: 0;
   }
+
+  .userpane { margin-block-start: 1.15rem; }
+  .rightpane { margin-block-start: 1.15rem; }
 
   .mainpane > .cmdrun {
     margin-block-start: 0;

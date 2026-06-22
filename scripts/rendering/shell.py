@@ -38,7 +38,17 @@ DEFAULT_UI = {
     "page_prev": "[PREV]",
     "page_next": "[NEXT]",
     "toc_title": "headings",
+    "window_session": "Settings",
+    "window_navigation": "Navigation",
+    "window_metainfo": "Info",
+    "window_headings": "Headings",
+    "window_systemnote": "System Note",
+    "window_drawer": "Menu",
+    "mobile_sections": "Navigation",
+    "mobile_options": "Options",
+    "mobile_contents": "Headings",
     "back_label": "!ls",
+    "back_title": "Back to list",
     "cite_text": "cite",
     "copied_text": "copied",
     "copy_toast_success": "citation copied to clipboard",
@@ -62,6 +72,17 @@ UI_BY_LANG = {
         "theme_system": "system/система",
         "theme_dark": "night/ночь",
         "footer_motto": "Следуй любопытству. Веди человечество вперёд",
+        "window_session": "Настройки",
+        "window_navigation": "Навигация",
+        "window_metainfo": "Информация",
+        "window_headings": "Заголовки",
+        "window_systemnote": "Система",
+        "window_drawer": "Меню",
+        "mobile_sections": "Навигация",
+        "mobile_options": "Опции",
+        "mobile_contents": "Заголовки",
+        "toc_title": "заголовки",
+        "back_title": "Вернуться к списку",
         "copy_toast_success": "цитата скопирована в буфер обмена",
         "copy_toast_failure": "не удалось скопировать",
     },
@@ -90,9 +111,20 @@ class Shell:
         cwd = str(shell.get("cwd") or "~")
         page = dom.set_html_lang(page, lang)
         page = dom.replace_inner(page, "ascii-logo", html.escape(ASCII_LOGO), tag="pre")
-        page = dom.replace_inner(page, "pwd-line", self.command("ls -d */", cwd="~"), tag="p")
+        page = dom.replace_inner(page, "pwd-line", self.command("tree -d -L 1 .", cwd="~"), tag="p")
         page = dom.replace_inner(page, "theme-label", html.escape(ui["theme_label"]), tag="span")
         page = dom.replace_inner(page, "lang-label", html.escape(ui["lang_label"]), tag="span")
+        page = dom.replace_inner(page, "session-title", html.escape(ui["window_session"]), tag="summary")
+        page = dom.replace_inner(page, "navigation-title", html.escape(ui["window_navigation"]), tag="summary")
+        page = dom.replace_inner(page, "metainfo-title", html.escape(ui["window_metainfo"]), tag="summary")
+        page = dom.replace_inner(page, "systemnote-title", html.escape(ui["window_systemnote"]), tag="summary")
+        page = dom.replace_inner(page, "drawer-title", html.escape(ui["window_drawer"]), tag="summary")
+        page = dom.replace_inner(page, "mobile-sections-btn", html.escape(ui["mobile_sections"]), tag="button")
+        page = dom.replace_inner(page, "mobile-options-btn", html.escape(ui["mobile_options"]), tag="button")
+        page = dom.replace_inner(page, "mobile-contents-btn", html.escape(ui["mobile_contents"]), tag="button")
+        page = dom.replace_inner(page, "mobile-sections-title", html.escape(ui["mobile_sections"]), tag="h2")
+        page = dom.replace_inner(page, "mobile-options-title", html.escape(ui["mobile_options"]), tag="h2")
+        page = dom.replace_inner(page, "mobile-contents-title", html.escape(ui["mobile_contents"]), tag="h2")
         page = dom.replace_option(page, "reading", ui["theme_reading"])
         page = dom.replace_option(page, "light", ui["theme_light"])
         page = dom.replace_option(page, "system", ui["theme_system"])
@@ -109,8 +141,8 @@ class Shell:
         page = dom.replace_inner(
             page,
             "toc-panel",
-            f'<h3 class="toc-title">{html.escape(ui["toc_title"])}</h3><ul id="toc-list" class="toc-list">{shell.get("toc_html") or ""}</ul>',
-            tag="section",
+            f'<summary class="window-title">{html.escape(ui["window_headings"])}</summary><div class="side-window-body"><h3 class="toc-title">{html.escape(ui["toc_title"])}</h3><ul id="toc-list" class="toc-list">{shell.get("toc_html") or ""}</ul></div>',
+            tag="details",
         )
         page = dom.replace_inner(page, "footer-motto", html.escape(ui["footer_motto"]), tag="p")
         page = dom.set_attr(page, "brand-link", "href", f"/{shell['lang']}")
@@ -148,7 +180,7 @@ class Shell:
         page = dom.set_attr(page, "file-view", "class", "file-stage" if view == "article" else "file-stage hidden")
         page = dom.set_attr(page, "error-view", "class", "file-stage" if view == "error" else "file-stage hidden")
 
-        return dom.set_attr(page, "toc-panel", "class", "toc-panel" if shell.get("show_toc") else "toc-panel hidden")
+        return dom.set_attr(page, "toc-panel", "class", "side-window toc-panel" if shell.get("show_toc") else "side-window toc-panel hidden")
 
     def list(self, context: ListShellContext) -> dict[str, Any]:
         return {
@@ -191,6 +223,7 @@ class Shell:
         context = {
             "back_href": html.escape(shell.back_href, quote=True),
             "back_label": html.escape(ui["back_label"]),
+            "back_title": html.escape(ui["back_title"], quote=True),
             "download_class": "download-btn action-chip" if shell.download_href else "download-btn action-chip hidden",
             "download_href": html.escape(shell.download_href or "", quote=True),
             "download_text": html.escape(shell.download_text),

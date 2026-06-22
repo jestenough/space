@@ -1,10 +1,7 @@
 @layer components {
   .toc-panel {
-    margin-top: 0.6rem;
-    padding: 0.5rem;
     max-height: none;
     overflow: visible;
-    border: 1px dashed var(--color-border);
   }
 
   .toc-title {

@@ -42,26 +42,34 @@
         <a id="brand-link" class="brand-link" href="/" aria-label="Open root">
           <pre id="ascii-logo" class="ascii-logo" aria-label="autophany.space"></pre>
         </a>
+        <nav class="mobile-header-actions" aria-label="Mobile tools">
+          <button id="mobile-sections-btn" type="button" data-mobile-overlay-open="sections">sections</button>
+          <button id="mobile-options-btn" type="button" data-mobile-overlay-open="options">options</button>
+          <button id="mobile-contents-btn" type="button" data-mobile-overlay-open="contents">contents</button>
+        </nav>
       </div>
 
-      <div class="sessctl">
-        <label class="control-box">
-          <span id="theme-label">$ export THEME</span>
-          <select id="theme-switcher" aria-label="Theme switcher" data-theme-switcher>
-            <option value="reading">paper</option>
-            <option value="light">day</option>
-            <option value="system">system</option>
-            <option value="dark">night</option>
-          </select>
-        </label>
-        <label class="control-box">
-          <span id="lang-label">$ locale | grep LANG</span>
-          <select id="lang-switcher" aria-label="Language switcher" data-lang-switcher>
-            <option value="en">en_US.UTF-8</option>
-            <option value="ru">ru_RU.UTF-8</option>
-          </select>
-        </label>
-      </div>
+      <details class="session-window" open data-mobile-collapsible data-panel-key="session">
+        <summary id="session-title" class="window-title session-title">Session</summary>
+        <div class="sessctl">
+          <label class="control-box">
+            <span id="theme-label">$ export THEME</span>
+            <select id="theme-switcher" aria-label="Theme switcher" data-theme-switcher>
+              <option value="reading">paper</option>
+              <option value="light">day</option>
+              <option value="system">system</option>
+              <option value="dark">night</option>
+            </select>
+          </label>
+          <label class="control-box">
+            <span id="lang-label">$ locale | grep LANG</span>
+            <select id="lang-switcher" aria-label="Language switcher" data-lang-switcher>
+              <option value="en">en_US.UTF-8</option>
+              <option value="ru">ru_RU.UTF-8</option>
+            </select>
+          </label>
+        </div>
+      </details>
       <script>
         (() => {
           const langSelect = document.getElementById("lang-switcher");
@@ -72,23 +80,43 @@
       </script>
     </header>
 
+    <div id="mobile-overlay-backdrop" class="mobile-overlay-backdrop hidden" data-mobile-overlay-close></div>
+    <section id="mobile-sections-panel" class="mobile-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="mobile-sections-title" data-mobile-overlay="sections">
+      <button class="mobile-overlay-close" type="button" aria-label="Close" data-mobile-overlay-close>×</button>
+      <h2 id="mobile-sections-title" class="mobile-overlay-title">Sections</h2>
+      <div class="mobile-overlay-body" data-mobile-sections-body></div>
+    </section>
+    <section id="mobile-options-panel" class="mobile-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="mobile-options-title" data-mobile-overlay="options">
+      <button class="mobile-overlay-close" type="button" aria-label="Close" data-mobile-overlay-close>×</button>
+      <h2 id="mobile-options-title" class="mobile-overlay-title">Options</h2>
+      <div class="mobile-overlay-body" data-mobile-options-body></div>
+    </section>
+    <section id="mobile-contents-panel" class="mobile-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="mobile-contents-title" data-mobile-overlay="contents">
+      <button class="mobile-overlay-close" type="button" aria-label="Close" data-mobile-overlay-close>×</button>
+      <h2 id="mobile-contents-title" class="mobile-overlay-title">Contents</h2>
+      <div class="mobile-overlay-body" data-mobile-contents-body></div>
+    </section>
+
     <main class="tty">
-      <section class="userpane" aria-live="polite">
-        <p id="pwd-line" class="cmdline"><span class="stat-command"><span class="shell-prompt"><span class="shell-prompt-text">guest@cray-1:~</span><span class="shell-prompt-sign">$</span></span><span class="shell-gap"> </span><span class="shell-cmd">ls -d */</span></span></p>
+      <section class="userpane" aria-live="polite" data-panel-group="left">
+        <details class="side-window nav-window" open data-mobile-collapsible data-panel-key="navigation">
+          <summary id="navigation-title" class="window-title">Navigation</summary>
+          <div class="side-window-body">
+            <p id="pwd-line" class="cmdline"><span class="stat-command"><span class="shell-prompt"><span class="shell-prompt-text">guest@cray-1:~</span><span class="shell-prompt-sign">$</span></span><span class="shell-gap"> </span><span class="shell-cmd">tree -d -L 1 .</span></span></p>
 
-        <nav class="quick-nav" aria-label="Sections" data-quick-nav></nav>
+            <nav class="quick-nav" aria-label="Sections" data-quick-nav></nav>
+          </div>
+        </details>
 
-        <section id="welcome-panel" class="motd" aria-label="Welcome message">
-          <p id="welcome-command" class="cmdline welcome-command"><span class="stat-command"><span class="shell-prompt"><span class="shell-prompt-text">guest@cray-1:~</span><span class="shell-prompt-sign">$</span></span><span class="shell-gap"> </span><span class="shell-cmd">sed -n '1,2p' .meta</span></span></p>
+        <details id="welcome-panel" class="side-window motd" open data-mobile-collapsible data-panel-key="metainfo" aria-label="Welcome message">
+          <summary id="metainfo-title" class="window-title">MetaInfo</summary>
+          <div class="side-window-body">
+            <p id="welcome-command" class="cmdline welcome-command"><span class="stat-command"><span class="shell-prompt"><span class="shell-prompt-text">guest@cray-1:~</span><span class="shell-prompt-sign">$</span></span><span class="shell-gap"> </span><span class="shell-cmd">sed -n '1,2p' .meta</span></span></p>
           <h1 id="welcome-title" class="welcome-title"></h1>
           <p id="welcome-lead"></p>
           <p id="welcome-body"></p>
-        </section>
-
-        <section id="toc-panel" class="toc-panel hidden" aria-label="Article headings" data-toc-panel>
-          <h3 class="toc-title">headings</h3>
-          <ul id="toc-list" class="toc-list"></ul>
-        </section>
+          </div>
+        </details>
       </section>
 
       <section class="mainpane">
@@ -106,8 +134,19 @@
         </section>
       </section>
 
-      <aside class="statpane" aria-label="Status feed">
-        <pre id="process-log" data-process-log>guest@cray-1:~$ statfs ~
+      <aside class="rightpane" aria-label="Side information" data-panel-group="right">
+        <details id="toc-panel" class="side-window toc-panel hidden" open data-mobile-collapsible data-panel-key="headings" aria-label="Article headings" data-toc-panel>
+          <summary class="window-title">Headings</summary>
+          <div class="side-window-body">
+            <h3 class="toc-title">headings</h3>
+            <ul id="toc-list" class="toc-list"></ul>
+          </div>
+        </details>
+
+        <details class="statpane side-window" open data-mobile-collapsible data-panel-key="systemnote" aria-label="Status feed">
+          <summary id="systemnote-title" class="window-title">SystemNote</summary>
+          <div class="side-window-body">
+            <pre id="process-log" data-process-log>guest@cray-1:~$ statfs ~
 File system: autophanyfs
 Mounted on : /en
 Type       : system-section
@@ -115,6 +154,8 @@ Flags      : ro, localized, indexed
 ──────────────────────────────
 mode       : home
 lang       : en</pre>
+          </div>
+        </details>
       </aside>
     </main>
 

@@ -26,7 +26,7 @@
 
     --content-font-scale: 1;
     --shell-width: 1250px;
-    --sticky-top: 7.75rem;
+    --sticky-top: 8.1rem;
     --header-height-offset: 6.7rem;
 
     --color-bg: #080a0f;
@@ -47,6 +47,7 @@
     --color-gradient-3: #66e3c4;
     --shadow-panel: 0 16px 48px rgba(0, 0, 0, 0.34);
     --shadow-panel-soft: 0 8px 22px rgba(0, 0, 0, 0.22);
+    --shadow-stage: 0 28px 70px rgba(0, 0, 0, 0.42), 0 0 0 1px color-mix(in srgb, var(--color-border-strong) 28%, transparent);
   }
 
   html[data-theme="dark"],
@@ -85,6 +86,7 @@
     --color-ok: #047857;
     --shadow-panel: 0 18px 50px rgba(15, 23, 42, 0.08);
     --shadow-panel-soft: 0 10px 26px rgba(15, 23, 42, 0.06);
+    --shadow-stage: 0 26px 68px rgba(15, 23, 42, 0.14), 0 0 0 1px color-mix(in srgb, var(--color-border-strong) 32%, transparent);
   }
 
   html[data-theme="reading"] {
@@ -103,5 +105,6 @@
     --color-ok: #4f7c55;
     --shadow-panel: 0 18px 50px rgba(71, 48, 24, 0.08);
     --shadow-panel-soft: 0 10px 26px rgba(71, 48, 24, 0.06);
+    --shadow-stage: 0 28px 70px rgba(71, 48, 24, 0.16), 0 0 0 1px color-mix(in srgb, var(--color-border-strong) 35%, transparent);
   }
 }

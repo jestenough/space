@@ -6,27 +6,54 @@
   }
 
   .quick-nav {
-    margin-bottom: 0.7rem;
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.35rem;
+    margin: 0.2rem 0 0.82rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 0.32rem 0 0.36rem 0.38rem;
+    border-block: 1px dashed var(--color-border);
   }
 
   .quick-link {
-    padding: 0.25rem;
-    border: 1px solid var(--color-border);
+    position: relative;
+    isolation: isolate;
+    padding: 0.22rem 0.28rem 0.22rem 1.35rem;
+    border: 0;
+    border-left: 1px solid color-mix(in srgb, var(--color-border) 75%, transparent);
     color: var(--color-text);
-    text-align: center;
+    text-align: left;
     text-decoration: none;
     transition: color var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard), background-color var(--duration-fast) var(--ease-standard);
+  }
+
+  .quick-link::before {
+    content: "├─";
+    position: absolute;
+    inset-inline-start: 0.18rem;
+    color: var(--color-muted);
+  }
+
+  .quick-link:last-child::before { content: "└─"; }
+
+  .quick-link::after {
+    content: "";
+    position: absolute;
+    inset: 0.16rem 0.1rem 0.16rem 1.04rem;
+    z-index: -1;
+    opacity: 0;
+    background: linear-gradient(90deg, var(--color-accent-soft), transparent);
+    transition: opacity var(--duration-fast) var(--ease-standard);
   }
 
   .quick-link:hover,
   .quick-link.is-active {
     color: var(--color-accent);
     border-color: var(--color-border-strong);
-    background: var(--color-accent-soft);
+    background: transparent;
   }
+
+  .quick-link:hover::after,
+  .quick-link.is-active::after { opacity: 1; }
 
   .cmdrun {
     margin: 0 0 0.5rem;
@@ -43,7 +70,9 @@
     margin: 0;
     border: 0;
     border-bottom: 1px dashed var(--color-border);
-    background: transparent;
-    padding: 0.48rem 1rem 0.52rem;
+    background:
+      linear-gradient(90deg, color-mix(in srgb, var(--color-accent-soft) 55%, transparent), transparent 78%);
+    padding: 0.68rem 1.08rem 0.72rem;
   }
+
 }
