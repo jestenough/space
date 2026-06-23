@@ -35,15 +35,10 @@ class FileType(StrEnum):
     PROJECT = "project"
 
 
-class ContentFormat(StrEnum):
-    TEX = "tex"
-    MARKDOWN = "markdown"
-    TEXT = "text"
-
-
 class ContentExtension(StrEnum):
     TEX = "tex"
     MARKDOWN = "md"
+    TXT = "txt"
     META = "meta"
 
 

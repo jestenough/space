@@ -9,7 +9,7 @@ DOCKER_ENV = -e SITE_URL="$${SITE_URL:-https://autophany.space}" -e STRICT_PDF=1
 DOCKER_VOLUMES = -v "$$PWD/public:/app/public" -v "$$PWD/dist:/app/dist" -v "$$PWD/generated:/app/generated" -v "$$PWD/.cache:/app/.cache"
 DOCKER_RUN = docker run --rm $(DOCKER_ENV) $(DOCKER_VOLUMES)
 
-.PHONY: help install dev dev-host preview typecheck preflight toolchain html pdf frontend prerender seo verify build clean docker-build docker-toolchain docker-build-site docker-shell
+.PHONY: help install dev dev-host preview typecheck preflight toolchain create html pdf frontend prerender seo verify build clean docker-build docker-toolchain docker-build-site docker-shell
 
 help:
 	@echo "autophany.space build commands"
@@ -20,6 +20,7 @@ help:
 	@echo "  make typecheck         run TypeScript checks"
 	@echo "  make preflight         validate source content"
 	@echo "  make toolchain         validate required external tools"
+	@echo "  make create            create content sections and items"
 	@echo "  make html              generate content HTML fragments and metadata"
 	@echo "  make pdf               generate PDF files"
 	@echo "  make frontend          build Vite frontend"
@@ -55,6 +56,9 @@ toolchain:
 	@for binary in node npm pandoc latexmk xelatex; do \
 		command -v "$$binary" >/dev/null || { echo "Missing required build tool: $$binary"; exit 1; }; \
 	done
+
+create:
+	python3 -m scripts.cli create $(ARGS)
 
 html:
 	python3 -m scripts.cli html

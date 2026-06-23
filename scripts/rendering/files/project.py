@@ -99,7 +99,6 @@ class ProjectFileRenderer(FileRenderer):
                 context.service.stat_row("Stack", stack),
                 context.service.stat_row("lang", context.lang),
                 context.service.stat_row("type", str(context.item.get("type") or FileType.PROJECT)),
-                context.service.stat_row("format", str(context.item.get("format") or "text")),
             ]
         )
 

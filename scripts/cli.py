@@ -23,6 +23,7 @@ class AutophanyCLI:
         "seo": "scripts.seo",
         "verify": "scripts.verify",
         "clean": "scripts.clean",
+        "create": "scripts.create",
     }
 
     def __init__(self) -> None:
@@ -65,6 +66,7 @@ class AutophanyCLI:
         self.add_command(subparsers, "seo", "Generate SEO files.")
         self.add_command(subparsers, "verify", "Verify generated production output.")
         self.add_command(subparsers, "clean", "Remove generated files and caches.")
+        self.add_create_command(subparsers)
 
         return parser
 
@@ -72,9 +74,18 @@ class AutophanyCLI:
         command_parser = subparsers.add_parser(name, help=description)
         command_parser.set_defaults(handler=self.run_command(name))
 
-    def run_command(self, name: str) -> Handler:
-        def handler(_: argparse.Namespace) -> None:
-            self.load_module(name).run()
+    def add_create_command(self, subparsers: argparse._SubParsersAction) -> None:
+        module = self.load_module("create")
+        command_parser = subparsers.add_parser("create", help="Create content sections and items.")
+        module.configure_parser(command_parser)
+        command_parser.set_defaults(handler=self.run_command("create", pass_args=True))
+
+    def run_command(self, name: str, *, pass_args: bool = False) -> Handler:
+        def handler(args: argparse.Namespace) -> None:
+            if pass_args:
+                self.load_module(name).run(args)
+            else:
+                self.load_module(name).run()
 
         return handler
 

@@ -123,7 +123,6 @@ class FileRenderer:
                 context.service.stat_row("lang", context.lang),
                 context.service.stat_row("langs", ", ".join(context.item.get("languages", []))),
                 context.service.stat_row("type", str(context.item.get("type") or FileType.PAGE)),
-                context.service.stat_row("format", str(context.item.get("format") or "text")),
             ]
         )
 

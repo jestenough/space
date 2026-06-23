@@ -25,7 +25,6 @@ from .config import (
     SYSTEM_SECTION,
     TAG_PAGE,
     ContentExtension,
-    ContentFormat,
     FileType,
     FolderType,
 )
@@ -151,7 +150,6 @@ class Html:
             "type": kind,
             "folderType": section.kind,
             "fileType": kind,
-            "format": item.meta.get("format") or self.format_for(item),
             "date": date,
             "title": title,
             "description": description,
@@ -170,14 +168,9 @@ class Html:
         return meta
 
     @staticmethod
-    def format_for(item: content.Item) -> str:
-        ext = item.sources[0].ext if item.sources else "txt"
-        if ext == ContentExtension.TEX:
-            return ContentFormat.TEX
-        elif ext == ContentExtension.MARKDOWN:
-            return ContentFormat.MARKDOWN
-        else:
-            return ContentFormat.TEXT
+    def format_for(item: content.Item) -> ContentExtension:
+        ext = item.sources[0].ext if item.sources else ContentExtension.TXT
+        return ext
 
     @staticmethod
     def download_path(section: content.Section, item: content.Item, lang: str) -> str | None:

@@ -15,7 +15,7 @@ from .localization import norm_lang
 @dataclass(frozen=True)
 class Source:
     lang: str
-    ext: str
+    ext: ContentExtension
     path: Path
 
 

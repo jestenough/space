@@ -69,8 +69,6 @@ class FolderRenderer:
         items = context.items
         languages = sorted({item_lang for item in items for item_lang in item.get("languages", [])})
         translated = sum(1 for item in items if context.lang in item.get("languages", []))
-        raw_files = sum(1 for item in items if item.get("format") != "tex")
-        tex_files = sum(1 for item in items if item.get("format") == "tex")
         articles = sum(1 for item in items if item.get("type") == FileType.ARTICLE)
         downloads = sum(1 for item in items if item.get("downloadPath"))
 
@@ -88,8 +86,6 @@ class FolderRenderer:
             ("files", str(len(items))),
             ("languages", ", ".join(languages) or context.lang),
             ("translated", f"{translated}/{len(items)}"),
-            ("raw files", str(raw_files)),
-            ("tex files", str(tex_files)),
             ("articles", str(articles)),
             ("downloads", str(downloads)),
         ]
