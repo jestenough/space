@@ -213,11 +213,11 @@ class ProjectPresenter:
         actions = cls.render_actions(project, text)
 
         return (
-            f'<article class="project-card" data-list-item data-search="{html.escape(project.search, quote=True)}" data-sort-title="{html.escape(project.title.lower(), quote=True)}" data-sort-date="{html.escape(project.sort_date, quote=True)}">'
+            f'<article class="project-card" data-list-item data-search="{html.escape(project.search, quote=True)}" data-sort-title="{html.escape(project.label.lower(), quote=True)}" data-sort-date="{html.escape(project.sort_date, quote=True)}">'
             f'<a class="project-card-main" href="{html.escape(project.href, quote=True)}" data-internal="true">'
             f'<span class="project-orbit" aria-hidden="true">{index:02d}</span>'
             f'<span class="project-kicker project-status project-status--{html.escape(project.status_key, quote=True)}">{html.escape(project.kicker)}</span>'
-            f'<strong class="project-title">{html.escape(project.title)}</strong>'
+            f'<strong class="project-title">{html.escape(project.label)}</strong>'
             f'<span class="project-description">{html.escape(project.description)}</span>'
             "</a>"
             f'<div class="project-stack" aria-label="{html.escape(text.stack_label)}">{stack}</div>'
@@ -274,6 +274,7 @@ class Project:
         self.section = str(item["section"])
         self.slug = str(item["slug"])
         self.href = routes.generated_item_route(item, lang)
+        self.label = exact_text(item.get("label"), lang) or self.slug
         self.title = strict_text(item.get("title"), lang, f"{self.section}.{self.slug}.title")
         self.description = strict_text(item.get("description"), lang, f"{self.section}.{self.slug}.description")
         raw_status = self.localized(item.get("status"), lang) or "planned"
@@ -319,5 +320,5 @@ class Project:
 
     @property
     def search(self) -> str:
-        values = [self.slug, self.title, self.description, self.status, *self.stack]
+        values = [self.slug, self.label, self.title, self.description, self.status, *self.stack]
         return " ".join(filter(None, values)).lower()

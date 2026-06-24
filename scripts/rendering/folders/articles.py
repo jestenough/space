@@ -51,7 +51,7 @@ class ArticlesFolderRenderer(FolderRenderer):
             localized_items,
             key=lambda item: (
                 str(item.get("date") or ""),
-                str(item.get("title", {}).get(lang) or item.get("slug") or ""),
+                str(item.get("label", {}).get(lang) or item.get("title", {}).get(lang) or item.get("slug") or ""),
             ),
             reverse=True,
         )
@@ -66,6 +66,7 @@ class ArticlesFolderRenderer(FolderRenderer):
             slug = str(article["slug"])
             href = routes.generated_item_route(article, lang)
             title = str(article.get("title", {}).get(lang) or slug)
+            label = str(article.get("label", {}).get(lang) or title)
             description = str(article.get("description", {}).get(lang) or "")
             tags = " ".join(
                 f'<span class="inline-tag">#{html.escape(str(tag))}</span>' for tag in article.get("tags", [])
@@ -75,6 +76,7 @@ class ArticlesFolderRenderer(FolderRenderer):
                     None,
                     [
                         slug,
+                        label,
                         title,
                         description,
                         str(article.get("date") or ""),
@@ -83,7 +85,7 @@ class ArticlesFolderRenderer(FolderRenderer):
                 )
             ).lower()
             rows.append(
-                f'<li class="article-card" data-list-item data-search="{html.escape(search, quote=True)}" data-sort-title="{html.escape(title.lower(), quote=True)}" data-sort-date="{html.escape(str(article.get("date") or ""), quote=True)}"><a class="article-card-link article-card-full" href="{html.escape(href, quote=True)}" data-internal="true"><strong>{html.escape(title)}</strong><div class="meta">{html.escape(str(article.get("date") or ""))} · {html.escape(description)}</div><div class="meta tag-line">{tags}</div></a></li>'
+                f'<li class="article-card" data-list-item data-search="{html.escape(search, quote=True)}" data-sort-title="{html.escape(label.lower(), quote=True)}" data-sort-date="{html.escape(str(article.get("date") or ""), quote=True)}"><a class="article-card-link article-card-full" href="{html.escape(href, quote=True)}" data-internal="true"><strong>{html.escape(label)}</strong><div class="meta">{html.escape(str(article.get("date") or ""))} · {html.escape(description)}</div><div class="meta tag-line">{tags}</div></a></li>'
             )
         else:
             return "".join(rows)

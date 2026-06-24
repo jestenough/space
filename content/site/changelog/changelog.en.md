@@ -1,3 +1,8 @@
+## v1.2.4
+
+Date: **2026.06.25**
+- Fixed `label`/`title` usage so section lists consistently display `label`
+
 ## v1.2.3
 
 Date: **2026.06.24**

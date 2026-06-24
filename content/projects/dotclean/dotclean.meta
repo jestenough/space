@@ -6,8 +6,8 @@
     "ru": "dotclean"
   },
   "title": {
-    "en": "dotclean",
-    "ru": "dotclean"
+    "en": "Dotclean",
+    "ru": "Dotclean"
   },
   "description": {
     "en": " CLI tool to remove temporary files and caches from project directories",

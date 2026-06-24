@@ -2,12 +2,12 @@
   "slug": "lenta-ru-extractor",
   "type": "project",
   "label": {
-    "en": "lenta",
-    "ru": "lenta"
-  },
-  "title": {
     "en": "lenta-ru-extractor",
     "ru": "lenta-ru-extractor"
+  },
+  "title": {
+    "en": "Lenta.ru extractor",
+    "ru": "Lenta.ru extractor"
   },
   "description": {
     "en": "A CLI utility for extracting structured content from Lenta.ru pages.",
