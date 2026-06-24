@@ -169,6 +169,24 @@ export class PageController {
       });
     });
 
+    document.querySelectorAll<HTMLElement>("[data-copy-value]").forEach((control) => {
+      const copy = async (event: Event) => {
+        const target = event.target as HTMLElement | null;
+        if (target?.closest("a, button, img")) return;
+        const value = control.dataset.copyValue;
+        if (!value) return;
+        const copied = await this.copyText(value);
+        this.showToast(copied ? (control.dataset.copyToastSuccess || "copied") : (control.dataset.copyToastFailure || "copy failed"));
+      };
+
+      control.addEventListener("click", copy);
+      control.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        void copy(event);
+      });
+    });
+
   }
 
   private async copyText(value: string): Promise<boolean> {

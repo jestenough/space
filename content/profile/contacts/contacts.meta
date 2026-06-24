@@ -1,0 +1,18 @@
+{
+  "slug": "contacts",
+  "label": {
+    "en": "CONTACTS.md",
+    "ru": "CONTACTS.md"
+  },
+  "type": "page",
+  "format": "markdown",
+  "date": "2026-06-24",
+  "title": {
+    "en": "CONTACTS.md",
+    "ru": "CONTACTS.md"
+  },
+  "description": {
+    "en": "Public contact links and social profiles of Dmitriev Vyacheslav (autophany)",
+    "ru": "Публичные контакты и социальные профили Дмитриева Вячеслава (autophany)"
+  }
+}

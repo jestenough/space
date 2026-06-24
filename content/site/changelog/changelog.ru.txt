@@ -1,3 +1,8 @@
+24.06.2026: Выпущена v1.2.2:
+- личный раздел переименован с `about/` в `profile/`
+- обновлены текст навигации, метаданные section и примеры route validation
+- в раздел profile добавлены `BIO.md`, `CONTACTS`, GPG-ключ
+
 24.06.2026: Выпущена v1.2.1:
 - добавлена команда `python3 -m scripts.cli create` для создания content sections и items;
 - Удален устаревший ContentFormat enum

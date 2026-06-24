@@ -1,0 +1,18 @@
+{
+  "slug": "bio",
+  "label": {
+    "en": "BIO.md",
+    "ru": "BIO.md"
+  },
+  "type": "page",
+  "format": "markdown",
+  "date": "2026-06-24",
+  "title": {
+    "en": "BIO.md",
+    "ru": "BIO.md"
+  },
+  "description": {
+    "en": "Short biography of Vyacheslav Dmitriev",
+    "ru": "Краткая биография Дмитриева Вячеслава"
+  }
+}

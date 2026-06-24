@@ -6,9 +6,8 @@ The interface is intentionally terminal-like: quiet, text-first, and built aroun
 
 ## Navigation
 
-**about** — information about the website and the author;  
+**profile** — personal profile, CV, resume, public keys, and work experience;  
 **articles** — long-form texts and articles;  
 **notes** — short notes;  
 **projects** — project-related materials;  
 **tags** — search and navigation by topics;
-

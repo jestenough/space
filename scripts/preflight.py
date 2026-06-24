@@ -49,7 +49,7 @@ class Preflight:
 
         for actual, expected in {
             routes.item_route(SYSTEM_SECTION, "en", "readme", system=True): "/en/readme",
-            routes.item_route("about", "ru", "gpg.asc"): "/ru/about/gpg.asc",
+            routes.item_route("profile", "ru", "gpg.asc"): "/ru/profile/gpg.asc",
             routes.section_route(SYSTEM_SECTION, "en", system=True): "/en",
             routes.generated_pdf_route(
                 {"section": "articles", "slug": "hello-world"}, "en"

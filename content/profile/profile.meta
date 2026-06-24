@@ -1,0 +1,16 @@
+{
+  "slug": "profile",
+  "kind": "files",
+  "label": {
+    "en": "profile/",
+    "ru": "profile/"
+  },
+  "title": {
+    "en": "Profile",
+    "ru": "Обо мне"
+  },
+  "description": {
+    "en": "Personal profile, contacts, public keys, CV, resume, and work experience.",
+    "ru": "Личный профиль, контакты, публичные ключи, CV, резюме и опыт работы."
+  }
+}

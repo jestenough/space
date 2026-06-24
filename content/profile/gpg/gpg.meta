@@ -1,0 +1,19 @@
+{
+  "slug": "gpg",
+  "label": {
+    "en": "GPG.asc",
+    "ru": "GPG.asc"
+  },
+  "type": "page",
+  "format": "text",
+  "date": "2026-06-24",
+  "download": true,
+  "title": {
+    "en": "GPG.asc",
+    "ru": "GPG.asc"
+  },
+  "description": {
+    "en": "My public GPG key",
+    "ru": "Мой публичный GPG-ключ"
+  }
+}

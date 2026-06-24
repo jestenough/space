@@ -94,10 +94,10 @@ The browser should receive already assembled pages.
 
 Examples:
 - dist/en/index.html
-- dist/en/about/index.html
+- dist/en/profile/index.html
 - dist/en/articles/index.html
 - dist/en/articles/hello-world/index.html
-- dist/ru/about/index.html
+- dist/ru/profile/index.html
 
 Each page already includes:
 - navigation

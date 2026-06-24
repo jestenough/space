@@ -1,3 +1,8 @@
+24.06.2026: Released v1.2.2:
+- Renamed the personal section from `about/` to `profile/`
+- Updated profile navigation text, section metadata, and route validation examples
+- Added `BIO.md`, `CONTACTS`, public GPG key
+
 24.06.2026: Released v1.2.1:
 - Added scripts.cli create for creating content sections and items;
 - Delete deprecated ContentFormat enum
