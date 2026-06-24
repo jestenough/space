@@ -127,9 +127,7 @@ class ArticleFileRenderer(FileRenderer):
                 context.service.stat_row("Size", str(context.localized_meta.get("byteSize") or 0)),
                 context.service.stat_row("Blocks", "8"),
                 context.service.stat_row("IO", "4096 regular file"),
-                context.service.stat_row("Device", "autophanyfs"),
                 context.service.stat_row("Inode", "042"),
-                context.service.stat_row("Links", "1"),
                 context.service.stat_row("Access", "(0664/-rw-rw-r--)"),
                 context.service.stat_row("Uid", "(0/root)"),
                 context.service.stat_row("Gid", "(42/operators)"),
@@ -159,21 +157,6 @@ class ArticleFileRenderer(FileRenderer):
                 )
 
         self.check_tags(item.meta.get("tags"), item.path / f"{item.slug}.meta")
-
-    @staticmethod
-    def render_toc(article_html: str) -> str:
-        items = []
-        for level, heading_id, _content in re.findall(
-            r'<h([1-6])\b[^>]*\bid=["\']([^"\']+)["\'][^>]*>([\s\S]*?)</h\1>', article_html, re.IGNORECASE
-        ):
-            text = html.unescape(re.sub(r"<[^>]+>", "", _content)).replace("#", "").strip()
-            if text:
-                depth = min(max(int(level), 1), 6)
-                items.append(
-                    f'<li class="toc-item toc-level-{depth}"><a href="#{html.escape(heading_id, quote=True)}" data-heading-id="{html.escape(heading_id, quote=True)}">{html.escape(text)}</a></li>'
-                )
-        else:
-            return "".join(items)
 
     def head_extras(self, article: dict[str, Any], lang: str, images: list[dict[str, str]]) -> str:
         lines: list[str] = []

@@ -2,14 +2,14 @@
   "slug": "changelog",
   "label": {
     "en": "CHANGELOG.md",
-    "ru": "CHANGELOG.txt"
+    "ru": "CHANGELOG.md"
   },
   "type": "page",
-  "format": "text",
+  "format": "markdown",
   "date": "2026-05-02",
   "title": {
-    "en": "CHANGELOG.txt",
-    "ru": "CHANGELOG.txt"
+    "en": "CHANGELOG.md",
+    "ru": "CHANGELOG.md"
   },
   "description": {
     "en": "Change log",

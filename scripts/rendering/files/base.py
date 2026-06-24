@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import html
+import re
 from pathlib import Path
 from typing import Any
 
@@ -53,6 +54,7 @@ class FileRenderer:
             context.item.get("description"), context.lang, f"{context.section_slug}.{context.item_slug}.description"
         )
         display_name = self.display_name(context)
+        toc_html = self.render_toc(context.content_html) if self.show_toc_for(context) else ""
         shell = context.service.file_shell(
             FileShellContext(
                 lang=context.lang,
@@ -69,6 +71,8 @@ class FileRenderer:
                 download_text="download",
                 download_href=context.item.get("downloadPath") if context.item.get("downloadPath") else None,
                 show_zen=self.is_readable_source(context),
+                toc_html=toc_html,
+                show_toc=bool(toc_html),
                 template_context=self.template_context(context),
             )
         )
@@ -98,6 +102,25 @@ class FileRenderer:
         ext = Path(source_path).suffix.lower().lstrip(".")
         return ext in {"txt", "md", "tex"}
 
+    def show_toc_for(self, context: FilePageContext) -> bool:
+        source_path = str(context.localized_meta.get("sourcePath") or "")
+        return Path(source_path).suffix.lower() == ".md"
+
+    @staticmethod
+    def render_toc(content_html: str) -> str:
+        items = []
+        for level, heading_id, _content in re.findall(
+            r'<h([1-6])\b[^>]*\bid=["\']([^"\']+)["\'][^>]*>([\s\S]*?)</h\1>', content_html, re.IGNORECASE
+        ):
+            text = html.unescape(re.sub(r"<[^>]+>", "", _content)).replace("#", "").strip()
+            if text:
+                depth = min(max(int(level), 1), 6)
+                items.append(
+                    f'<li class="toc-item toc-level-{depth}"><a href="#{html.escape(heading_id, quote=True)}" data-heading-id="{html.escape(heading_id, quote=True)}">{html.escape(text)}</a></li>'
+                )
+        else:
+            return "".join(items)
+
     def process_html(self, context: FilePageContext, display_name: str) -> str:
         stamp = f"{context.item.get('date') or '1970-01-01'} 00:00:00 +0000"
         cwd = context.service.cwd_for_section(context.section_slug)
@@ -110,9 +133,7 @@ class FileRenderer:
                 context.service.stat_row("Size", str(context.localized_meta.get("byteSize") or 0)),
                 context.service.stat_row("Blocks", "8"),
                 context.service.stat_row("IO", "4096 regular file"),
-                context.service.stat_row("Device", "autophanyfs"),
                 context.service.stat_row("Inode", "021"),
-                context.service.stat_row("Links", "1"),
                 context.service.stat_row("Access", "(0664/-rw-rw-r--)"),
                 context.service.stat_row("Uid", "(0/root)"),
                 context.service.stat_row("Gid", "(42/operators)"),

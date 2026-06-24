@@ -69,11 +69,9 @@ class FolderRenderer:
         items = context.items
         languages = sorted({item_lang for item in items for item_lang in item.get("languages", [])})
         translated = sum(1 for item in items if context.lang in item.get("languages", []))
-        articles = sum(1 for item in items if item.get("type") == FileType.ARTICLE)
-        downloads = sum(1 for item in items if item.get("downloadPath"))
 
         return [
-            ("File system", "autophanyfs"),
+            ("File system", "cray-1"),
             (
                 "Mounted on",
                 f"/{context.lang}" if context.section.get("system") else f"/{context.lang}/{context.section_slug}",
@@ -86,8 +84,6 @@ class FolderRenderer:
             ("files", str(len(items))),
             ("languages", ", ".join(languages) or context.lang),
             ("translated", f"{translated}/{len(items)}"),
-            ("articles", str(articles)),
-            ("downloads", str(downloads)),
         ]
 
     def extra_stats(self, _: FolderContext) -> list[tuple[str, str]]:

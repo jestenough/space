@@ -3,8 +3,8 @@
     min-width: 0;
   }
 
-  .main-stage-shell > .file-stage,
-  .main-stage-shell > #error-view {
+  .main-stage-shell>.file-stage,
+  .main-stage-shell>#error-view {
     border: 0;
     background: transparent;
     box-shadow: none;
@@ -24,7 +24,9 @@
     align-items: center;
   }
 
-  .download-btn { cursor: pointer; }
+  .download-btn {
+    cursor: pointer;
+  }
 
   #file-content {
     font-size: calc(1rem * var(--content-font-scale));
@@ -37,8 +39,8 @@
     max-width: 100%;
   }
 
-  #file-content > h1:first-child,
-  #file-content > h2:first-child {
+  #file-content>h1:first-child,
+  #file-content>h2:first-child {
     display: none;
   }
 
@@ -159,7 +161,7 @@
     padding: 0;
   }
 
-  #file-content .article__content li + li {
+  #file-content .article__content li+li {
     margin-top: 0.35rem;
   }
 

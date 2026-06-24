@@ -97,7 +97,6 @@ class ArticlesFolderRenderer(FolderRenderer):
         return "".join(
             [
                 context.service.shell_command_markup("statfs ~", cwd=cwd),
-                context.service.stat_row("File system", "autophanyfs"),
                 context.service.stat_row("Mounted on", f"/{context.lang}/{context.section_slug}"),
                 context.service.stat_row("Type", "section"),
                 context.service.stat_row("Flags", "ro, localized, indexed"),

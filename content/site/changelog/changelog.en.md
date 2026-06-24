@@ -1,13 +1,28 @@
-24.06.2026: Released v1.2.2:
+## v1.2.3
+
+Date: **2026.06.24**
+- Converted changelog sources to Markdown
+- Added article-style heading navigation for Markdown files
+- Removed `articles` and `downloads` rows from section stats
+
+## v1.2.2
+
+Date: **2026.06.24**
 - Renamed the personal section from `about/` to `profile/`
 - Updated profile navigation text, section metadata, and route validation examples
 - Added `BIO.md`, `CONTACTS`, public GPG key
 
-24.06.2026: Released v1.2.1:
+
+## v1.2.1
+
+Date: **2026.06.24**
 - Added scripts.cli create for creating content sections and items;
 - Delete deprecated ContentFormat enum
 
-23.06.2026: Released v1.2.0:
+
+## v1.2
+
+Date: **2026.06.23**
 - Refined the desktop terminal workstation layout; 
 - Switched the navigation command to `tree -d -L 1 .`; 
 - Localized window titles and the `!ls` back tooltip; 
@@ -19,6 +34,8 @@
 - Made the zen exit control square and more visible; 
 - Kept raw/non-readable files from showing zen actions;
 
-06.06.2026: Split Docker build into frontend, content, and pdf containers; separated source preflight from toolchain checks.
 
-05.06.2026: Init v1 of site.
+## v1
+
+Date: **2026.06.05**
+- Init v1 of site.
