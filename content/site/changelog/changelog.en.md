@@ -1,7 +1,21 @@
+## v1.2.5
+
+Date: **2026.06.26**
+- Added local Inter webfont assets and switched readable file content to Inter
+- Added a public licenses page for source, content, and local font licenses
+- Added a public privacy notice covering cookies, analytics, tracking, profiling, and interface-only localStorage
+- Switched file listing/stat ownership from `root` to `guest`
+- Refined the desktop logo font for steadier rendering
+- Stabilized the sticky header during content scrolling
+- Adjusted the desktop ASCII logo font spacing and weight
+- Changed the desktop header from sticky to fixed to prevent scroll jitter
+- Increased desktop content offset below the fixed header
+
 ## v1.2.4
 
 Date: **2026.06.25**
 - Fixed `label`/`title` usage so section lists consistently display `label`
+- Moved Dockerfiles into per-service Docker directories
 
 ## v1.2.3
 

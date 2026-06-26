@@ -4,6 +4,7 @@
   html {
     min-height: 100%;
     scrollbar-width: auto;
+    scrollbar-gutter: stable both-edges;
     scrollbar-color: color-mix(in srgb, var(--color-accent) 60%, var(--color-ok)) var(--color-surface);
   }
 

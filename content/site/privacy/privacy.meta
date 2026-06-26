@@ -1,0 +1,18 @@
+{
+  "slug": "privacy",
+  "label": {
+    "en": "PRIVACY.md",
+    "ru": "PRIVACY.md"
+  },
+  "type": "page",
+  "format": "markdown",
+  "date": "2026-06-26",
+  "title": {
+    "en": "Privacy Notice",
+    "ru": "Уведомление о приватности"
+  },
+  "description": {
+    "en": "A short notice about cookies, localStorage, analytics, and visitor privacy on this site.",
+    "ru": "Короткое уведомление о cookies, localStorage, аналитике и приватности посетителей на этом сайте."
+  }
+}

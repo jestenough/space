@@ -1,15 +1,19 @@
 @layer components {
   .sessbar {
-    margin: 0.8rem auto;
+    margin: 0;
     padding: 0.55rem 0.75rem;
     min-height: 4.5rem;
-    position: sticky;
-    top: 0.5rem;
+    position: fixed;
+    top: 0.8rem;
+    left: 50%;
     z-index: 50;
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 0.8rem;
+    transform: translate3d(-50%, 0, 0);
+    backface-visibility: hidden;
+    contain: layout paint;
   }
 
   .session-window {
@@ -47,10 +51,11 @@
     margin: 0;
     overflow: hidden;
     white-space: pre;
-    font-family: var(--font-mono);
+    font-family: var(--font-logo);
     font-size: clamp(0.24rem, 0.56vw, 0.48rem);
-    line-height: 0.96;
-    letter-spacing: 0;
+    line-height: 1.08;
+    letter-spacing: 0.035em;
+    font-weight: 500;
     color: var(--color-accent);
   }
 

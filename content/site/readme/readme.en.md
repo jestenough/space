@@ -11,3 +11,9 @@ The interface is intentionally terminal-like: quiet, text-first, and built aroun
 **notes** — short notes;  
 **projects** — project-related materials;  
 **tags** — search and navigation by topics;
+
+## Legal
+
+[LICENSES.md](/en/licenses) lists source, content, font, and third-party tool licenses used by the site.
+
+[PRIVACY.md](/en/privacy) explains cookies, localStorage, analytics, and visitor privacy.

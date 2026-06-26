@@ -84,9 +84,9 @@ clean:
 	python3 -m scripts.cli clean
 
 docker-build:
-	docker build -f docker/frontend.Dockerfile -t $(FRONTEND_IMAGE) .
-	docker build -f docker/content.Dockerfile -t $(CONTENT_IMAGE) .
-	docker build -f docker/pdf.Dockerfile -t $(PDF_IMAGE) .
+	docker build -f docker/frontend/Dockerfile -t $(FRONTEND_IMAGE) .
+	docker build -f docker/content/Dockerfile -t $(CONTENT_IMAGE) .
+	docker build -f docker/pdf/Dockerfile -t $(PDF_IMAGE) .
 
 docker-toolchain: docker-build
 	docker run --rm $(CONTENT_IMAGE) sh -lc 'for binary in python3 pandoc; do command -v "$$binary" >/dev/null || { echo "content image missing: $$binary"; exit 1; }; done'
@@ -107,6 +107,6 @@ docker-build-site: docker-toolchain
 	$(DOCKER_RUN) $(CONTENT_IMAGE) chown -R "$(HOST_UID):$(HOST_GID)" /app/public /app/dist /app/generated /app/.cache
 
 docker-shell:
-	docker build -f docker/content.Dockerfile -t $(CONTENT_IMAGE) .
+	docker build -f docker/content/Dockerfile -t $(CONTENT_IMAGE) .
 	mkdir -p dist public generated .cache
 	docker run --rm -it $(DOCKER_ENV) $(DOCKER_VOLUMES) $(CONTENT_IMAGE) sh

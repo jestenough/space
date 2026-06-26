@@ -32,7 +32,7 @@ class FolderRenderer:
             description = exact_text(item.get("description"), lang)
             date = str(item.get("date") or "----------")
             rows.append(
-                f'<li class="info-file-row"><a class="info-file-link" href="{html.escape(href, quote=True)}" data-info-file-slug="{html.escape(slug, quote=True)}" data-internal="true" aria-label="{html.escape(f"{slug}: {description}", quote=True)}"><span class="info-file-perms">-rw-rw-r--  root  {html.escape(date)}</span>  <span class="info-file-name">{html.escape(label or slug)}</span></a></li>'
+                f'<li class="info-file-row"><a class="info-file-link" href="{html.escape(href, quote=True)}" data-info-file-slug="{html.escape(slug, quote=True)}" data-internal="true" aria-label="{html.escape(f"{slug}: {description}", quote=True)}"><span class="info-file-perms">-rw-rw-r--  guest  {html.escape(date)}</span>  <span class="info-file-name">{html.escape(label or slug)}</span></a></li>'
             )
         return f'<ul class="info-file-tree">{"".join(rows)}</ul>' if rows else ""
 

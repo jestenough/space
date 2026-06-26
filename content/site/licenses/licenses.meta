@@ -1,0 +1,18 @@
+{
+  "slug": "licenses",
+  "label": {
+    "en": "LICENSES.md",
+    "ru": "LICENSES.md"
+  },
+  "type": "page",
+  "format": "markdown",
+  "date": "2026-06-25",
+  "title": {
+    "en": "Licenses",
+    "ru": "Лицензии"
+  },
+  "description": {
+    "en": "Licenses for the site source, content, local fonts",
+    "ru": "Лицензии исходного кода сайта, контента, локальных шрифтов"
+  }
+}

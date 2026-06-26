@@ -16,10 +16,10 @@ ASCII_LOGO = """#
 #       mm            m                  #                                   mmmm                             
 #       ##   m   m  mm#mm   mmm   mmmm   # mm    mmm   m mm   m   m         #\"   \" mmmm    mmm    mmm    mmm 
 #      #  #  #   #    #    #\" \"#  #\" \"#  #\"  #  \"   #  #\"  #  \"m m\"         \"#mmm  #\" \"#  \"   #  #\"  \"  #\"  #
-#      #mm#  #   #    #    #   #  #   #  #   #  m\"\"\"#  #   #   #m#             \"# #   #  m\"\"\"#  #      #\"\"\"\" 
+#      #mm#  #   #    #    #   #  #   #  #   #  m\"\"\"#  #   #   #m#             \"#  #   #  m\"\"\"#  #      #\"\"\"\" 
 #     #    # \"mm\"#    \"mm  \"#m#\"  ##m#\"  #   #  \"mm\"#  #   #   \"#           \"mmm#\" ##m#\"  \"mm\"#  \"#mm\"  \"#mm\"
-#                                 #                            m\"                 #                           
-#                                 \"                           \"\"                  \"                         """
+#                                 #                            m\"                  #                           
+#                                 \"                           \"\"                   \"                         """
 
 DEFAULT_UI = {
     "theme_label": "$ export THEME=",
@@ -180,7 +180,12 @@ class Shell:
         page = dom.set_attr(page, "file-view", "class", "file-stage" if view == "article" else "file-stage hidden")
         page = dom.set_attr(page, "error-view", "class", "file-stage" if view == "error" else "file-stage hidden")
 
-        return dom.set_attr(page, "toc-panel", "class", "side-window toc-panel" if shell.get("show_toc") else "side-window toc-panel hidden")
+        return dom.set_attr(
+            page,
+            "toc-panel",
+            "class",
+            "side-window toc-panel" if shell.get("show_toc") else "side-window toc-panel hidden",
+        )
 
     def list(self, context: ListShellContext) -> dict[str, Any]:
         return {
