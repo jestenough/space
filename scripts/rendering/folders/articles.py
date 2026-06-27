@@ -32,7 +32,7 @@ class ArticlesFolderRenderer(FolderRenderer):
             date_asc_label=html.escape(context.ui["date_asc_label"]),
             title_asc_label=html.escape(context.ui["title_asc_label"]),
             title_desc_label=html.escape(context.ui["title_desc_label"]),
-            items_html=self.render_article_cards(items, context.lang),
+            items_html=self.render_article_cards(items, context.lang, context.page_size),
             pager_class="pager-row hidden" if total_pages <= 1 else "pager-row",
             page_prev=html.escape(context.ui["page_prev"]),
             page_next=html.escape(context.ui["page_next"]),
@@ -60,14 +60,15 @@ class ArticlesFolderRenderer(FolderRenderer):
         return sorted_items, total_pages
 
     @staticmethod
-    def render_article_cards(articles: list[dict[str, Any]], lang: str) -> str:
+    def render_article_cards(articles: list[dict[str, Any]], lang: str, page_size: int | None = None) -> str:
         rows = []
-        for article in articles:
+        for index, article in enumerate(articles):
             slug = str(article["slug"])
             href = routes.generated_item_route(article, lang)
             title = str(article.get("title", {}).get(lang) or slug)
             label = str(article.get("label", {}).get(lang) or title)
             description = str(article.get("description", {}).get(lang) or "")
+            hidden = " hidden" if page_size is not None and index >= page_size else ""
             tags = " ".join(
                 f'<span class="inline-tag">#{html.escape(str(tag))}</span>' for tag in article.get("tags", [])
             )
@@ -85,7 +86,7 @@ class ArticlesFolderRenderer(FolderRenderer):
                 )
             ).lower()
             rows.append(
-                f'<li class="article-card" data-list-item data-search="{html.escape(search, quote=True)}" data-sort-title="{html.escape(label.lower(), quote=True)}" data-sort-date="{html.escape(str(article.get("date") or ""), quote=True)}"><a class="article-card-link article-card-full" href="{html.escape(href, quote=True)}" data-internal="true"><strong>{html.escape(label)}</strong><div class="meta">{html.escape(str(article.get("date") or ""))} · {html.escape(description)}</div><div class="meta tag-line">{tags}</div></a></li>'
+                f'<li class="article-card"{hidden} data-list-item data-search="{html.escape(search, quote=True)}" data-sort-title="{html.escape(label.lower(), quote=True)}" data-sort-date="{html.escape(str(article.get("date") or ""), quote=True)}"><a class="article-card-link article-card-full" href="{html.escape(href, quote=True)}" data-internal="true"><strong>{html.escape(label)}</strong><div class="meta">{html.escape(str(article.get("date") or ""))} · {html.escape(description)}</div><div class="meta tag-line">{tags}</div></a></li>'
             )
         else:
             return "".join(rows)

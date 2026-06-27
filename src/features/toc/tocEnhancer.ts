@@ -48,13 +48,19 @@ export const initTocEnhancer = (): void => {
     return;
   }
 
+  let activeId = "";
+  let scrollLockUntil = 0;
+
   const markActive = (id: string): void => {
+    if (id === activeId) return;
+    activeId = id;
     tocList.querySelectorAll<HTMLAnchorElement>("a[data-heading-id]").forEach((link) => {
       link.classList.toggle("is-active", link.dataset.headingId === id);
     });
   };
 
   const observer = new IntersectionObserver((entries) => {
+    if (performance.now() < scrollLockUntil) return;
     const activeEntry = entries
       .filter((entry) => entry.isIntersecting)
       .sort((left, right) => left.boundingClientRect.top - right.boundingClientRect.top)[0];
@@ -72,7 +78,8 @@ export const initTocEnhancer = (): void => {
     if (!link?.dataset.headingId) return;
     event.preventDefault();
     window.history.replaceState({}, "", `${window.location.pathname}${window.location.search}#${encodeURIComponent(link.dataset.headingId)}`);
-    scrollToHeading(link.dataset.headingId);
+    scrollLockUntil = performance.now() + 720;
     markActive(link.dataset.headingId);
+    scrollToHeading(link.dataset.headingId);
   });
 };

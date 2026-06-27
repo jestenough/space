@@ -31,6 +31,8 @@
   .toc-level-6 { --toc-level: 6; }
 
   .toc-list a {
+    position: relative;
+    isolation: isolate;
     display: block;
     min-height: 1.35rem;
     padding: 0.12rem 0.35rem 0.12rem 0.75rem;
@@ -38,7 +40,32 @@
     color: var(--color-muted);
     text-decoration: none;
     background: transparent;
-    transition: color var(--duration-fast) var(--ease-standard), background-color var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard);
+    transition: color var(--duration-normal) var(--ease-standard);
+  }
+
+  .toc-list a::before,
+  .toc-list a::after {
+    content: "";
+    position: absolute;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--duration-normal) var(--ease-standard), transform var(--duration-normal) var(--ease-standard);
+  }
+
+  .toc-list a::before {
+    inset-block: 0.18rem;
+    inset-inline-start: -2px;
+    width: 2px;
+    background: var(--color-accent);
+    transform: scaleY(0.42);
+    transform-origin: center;
+  }
+
+  .toc-list a::after {
+    inset: 0.08rem 0 0.08rem 0.18rem;
+    z-index: -1;
+    background: linear-gradient(90deg, var(--color-accent-soft), transparent 82%);
+    transform: translateX(-0.28rem);
   }
 
   .toc-list a:hover,
@@ -47,7 +74,12 @@
   }
 
   .toc-list a.is-active {
-    border-left-color: var(--color-accent);
-    background: var(--color-accent-soft);
+    color: var(--color-accent);
+  }
+
+  .toc-list a.is-active::before,
+  .toc-list a.is-active::after {
+    opacity: 1;
+    transform: none;
   }
 }

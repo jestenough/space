@@ -111,7 +111,7 @@ class TagsFolderRenderer(FolderRenderer):
             date_asc_label=html.escape(context.ui["date_asc_label"]),
             title_asc_label=html.escape(context.ui["title_asc_label"]),
             title_desc_label=html.escape(context.ui["title_desc_label"]),
-            articles_html=ArticlesFolderRenderer.render_article_cards(articles, context.lang),
+            articles_html=ArticlesFolderRenderer.render_article_cards(articles, context.lang, context.page_size),
             pager_class="pager-row hidden" if article_total_pages <= 1 else "pager-row",
             page_prev=html.escape(context.ui["page_prev"]),
             page_next=html.escape(context.ui["page_next"]),
@@ -125,7 +125,7 @@ class TagsFolderRenderer(FolderRenderer):
             name_desc_label=html.escape(context.ui["name_desc_label"]),
             count_desc_label=html.escape(context.ui["count_desc_label"]),
             count_asc_label=html.escape(context.ui["count_asc_label"]),
-            tags_html=self.render_tags(tags, context.lang, tag, context.section_slug),
+            tags_html=self.render_tags(tags, context.lang, tag, context.section_slug, context.page_size),
             tag_pager_class="pager-row tag-pager-row hidden" if tag_total_pages <= 1 else "pager-row tag-pager-row",
             tag_page_info=html.escape(f"1/{tag_total_pages}"),
         )
@@ -174,16 +174,21 @@ class TagsFolderRenderer(FolderRenderer):
 
     @staticmethod
     def render_tags(
-        tags: list[dict[str, Any]], lang: str, active_tag: str | None = None, tag_section: str | None = None
+        tags: list[dict[str, Any]],
+        lang: str,
+        active_tag: str | None = None,
+        tag_section: str | None = None,
+        page_size: int | None = None,
     ) -> str:
         rows = []
-        for tag in tags:
+        for index, tag in enumerate(tags):
             name = str(tag["name"])
             count = int(tag["count"])
             active = " is-active" if active_tag == name else ""
+            hidden = " hidden" if page_size is not None and index >= page_size else ""
             href = routes.tag_route(tag_section or "tags", lang, name)
             rows.append(
-                f'<li class="tag-card" data-list-item data-search="{html.escape(name.lower(), quote=True)}" data-sort-name="{html.escape(name.lower(), quote=True)}" data-sort-count="{count}"><a class="tag-row{active}" href="{html.escape(href, quote=True)}" data-tag="{html.escape(name, quote=True)}" data-internal="true"><span class="tag-name">#{html.escape(name)}</span><span class="tag-count">{count} file{"" if count == 1 else "s"}</span></a></li>'
+                f'<li class="tag-card"{hidden} data-list-item data-search="{html.escape(name.lower(), quote=True)}" data-sort-name="{html.escape(name.lower(), quote=True)}" data-sort-count="{count}"><a class="tag-row{active}" href="{html.escape(href, quote=True)}" data-tag="{html.escape(name, quote=True)}" data-internal="true"><span class="tag-name">#{html.escape(name)}</span><span class="tag-count">{count} file{"" if count == 1 else "s"}</span></a></li>'
             )
         else:
             return "".join(rows)

@@ -184,11 +184,11 @@ class ProjectPresenter:
         return PROJECT_TEXT_BY_LANG.get(lang, PROJECT_TEXT_BY_LANG["default"])
 
     @classmethod
-    def render_index(cls, files: list[dict[str, Any]], lang: str) -> str:
+    def render_index(cls, files: list[dict[str, Any]], lang: str, page_size: int) -> str:
         text = cls.labels(lang)
         rows = []
         for index, item in enumerate([item for item in files if lang in item.get("languages", [])], start=1):
-            rows.append(cls.render_card(Project(item, lang), index, text))
+            rows.append(cls.render_card(Project(item, lang), index, text, hidden=index > page_size))
 
         return "".join(rows)
 
@@ -208,12 +208,13 @@ class ProjectPresenter:
         return max(1, (count + page_size - 1) // page_size)
 
     @classmethod
-    def render_card(cls, project: "Project", index: int, text: ProjectText) -> str:
+    def render_card(cls, project: "Project", index: int, text: ProjectText, *, hidden: bool = False) -> str:
         stack = "".join(cls.render_stack_chip(name) for name in project.stack)
         actions = cls.render_actions(project, text)
+        hidden_attr = " hidden" if hidden else ""
 
         return (
-            f'<article class="project-card" data-list-item data-search="{html.escape(project.search, quote=True)}" data-sort-title="{html.escape(project.label.lower(), quote=True)}" data-sort-date="{html.escape(project.sort_date, quote=True)}">'
+            f'<article class="project-card"{hidden_attr} data-list-item data-search="{html.escape(project.search, quote=True)}" data-sort-title="{html.escape(project.label.lower(), quote=True)}" data-sort-date="{html.escape(project.sort_date, quote=True)}">'
             f'<a class="project-card-main" href="{html.escape(project.href, quote=True)}" data-internal="true">'
             f'<span class="project-orbit" aria-hidden="true">{index:02d}</span>'
             f'<span class="project-kicker project-status project-status--{html.escape(project.status_key, quote=True)}">{html.escape(project.kicker)}</span>'

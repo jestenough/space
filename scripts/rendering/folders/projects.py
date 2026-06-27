@@ -27,7 +27,7 @@ class ProjectsFolderRenderer(FolderRenderer):
             date_asc_label=html.escape(context.ui["date_asc_label"]),
             title_asc_label=html.escape(context.ui["title_asc_label"]),
             title_desc_label=html.escape(context.ui["title_desc_label"]),
-            items_html=project_file.ProjectPresenter.render_index(context.items, context.lang),
+            items_html=project_file.ProjectPresenter.render_index(context.items, context.lang, context.page_size),
             pager_class="pager-row hidden" if total_pages <= 1 else "pager-row",
             page_prev=html.escape(context.ui["page_prev"]),
             page_next=html.escape(context.ui["page_next"]),

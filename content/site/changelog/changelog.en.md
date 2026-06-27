@@ -1,3 +1,9 @@
+## v1.2.6
+
+Date: **2026.06.26**
+- Reduced mobile CLS by prerendering overlay visibility, TOC control visibility, and initial list pagination state
+- Smoothed heading/TOC switching by avoiding duplicate scroll handling and animating the active indicator
+
 ## v1.2.5
 
 Date: **2026.06.26**

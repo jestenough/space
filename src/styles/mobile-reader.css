@@ -185,9 +185,9 @@
       padding: 0;
     }
 
-    body[data-mobile-overlays="ready"] .sessbar > .session-window,
-    body[data-mobile-overlays="ready"] .tty .nav-window,
-    body[data-mobile-overlays="ready"] .tty > .rightpane {
+    .sessbar > .session-window,
+    .tty .nav-window,
+    .tty > .rightpane {
       display: none;
     }
 
@@ -375,6 +375,7 @@
     }
 
     .toc-list a {
+      position: relative;
       min-height: var(--tap-target-compact);
       max-width: none;
       padding: 0.24rem 0.5rem 0.24rem 0.68rem;
@@ -385,10 +386,6 @@
       overflow: hidden;
       text-overflow: ellipsis;
       background: transparent;
-    }
-
-    .toc-list a.is-active {
-      border-left-color: var(--color-accent);
     }
 
     .statpane {

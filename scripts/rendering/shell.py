@@ -179,6 +179,7 @@ class Shell:
         page = dom.set_attr(page, "content-list-view", "class", "list-stage hidden" if view != "list" else "list-stage")
         page = dom.set_attr(page, "file-view", "class", "file-stage" if view == "article" else "file-stage hidden")
         page = dom.set_attr(page, "error-view", "class", "file-stage" if view == "error" else "file-stage hidden")
+        page = dom.set_attr(page, "mobile-contents-btn", "class", "" if shell.get("show_toc") else "hidden")
 
         return dom.set_attr(
             page,
