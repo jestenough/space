@@ -70,6 +70,9 @@ class Preflight:
         ):
             raise RuntimeError("Project type invariant failed")
 
+        if content.section_kind({"kind": FolderType.NOTES.value}) != FolderType.NOTES:
+            raise RuntimeError("Notes folder type invariant failed")
+
     def check_project_structure(self) -> None:
         if missing := [path for path in self.required_paths if not path.exists()]:
             raise RuntimeError("Missing required project paths:\n" + "\n".join(f"- {path}" for path in missing))

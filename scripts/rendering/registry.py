@@ -10,6 +10,7 @@ from .files.project import ProjectFileRenderer
 from .folders.articles import ArticlesFolderRenderer
 from .folders.base import FolderRenderer
 from .folders.files import FilesFolderRenderer
+from .folders.notes import NotesFolderRenderer
 from .folders.projects import ProjectsFolderRenderer
 from .folders.system import SystemFolderRenderer
 from .folders.tags import TagsFolderRenderer
@@ -18,6 +19,7 @@ FOLDER_RENDERERS: dict[FolderType, FolderRenderer] = {
     FolderType.SYSTEM: SystemFolderRenderer(),
     FolderType.FILES: FilesFolderRenderer(),
     FolderType.ARTICLES: ArticlesFolderRenderer(),
+    FolderType.NOTES: NotesFolderRenderer(),
     FolderType.PROJECTS: ProjectsFolderRenderer(),
     FolderType.TAGS: TagsFolderRenderer(),
 }

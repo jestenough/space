@@ -7,6 +7,7 @@ import re
 from typing import Any
 
 from .. import routes
+from ..config import DEFAULT_LANG
 from ..localization import strict_text
 from ..templating import TemplateRenderer
 from . import dom
@@ -103,7 +104,15 @@ class Shell:
         self.languages = languages
 
     def ui(self, lang: str) -> dict[str, str]:
-        return {**DEFAULT_UI, **UI_BY_LANG.get(lang, {})}
+        if lang == DEFAULT_LANG:
+            return dict(DEFAULT_UI)
+        if lang in UI_BY_LANG:
+            return {**DEFAULT_UI, **UI_BY_LANG[lang]}
+
+        raise RuntimeError(
+            f"Missing shell UI translations for language `{lang}`. "
+            "Add this language to UI_BY_LANG in scripts/rendering/shell.py."
+        )
 
     def apply(self, page: str, shell: dict[str, Any]) -> str:
         lang = str(shell["lang"])
@@ -288,7 +297,13 @@ class Shell:
 
     @staticmethod
     def locale_name(lang: str) -> str:
+        if lang not in LOCALE_REGIONS and "-" not in lang:
+            raise RuntimeError(
+                f"Missing locale region for language `{lang}`. "
+                "Add this language to LOCALE_REGIONS in scripts/rendering/shell.py or use a regional tag like `pt-BR`."
+            )
+
         if "-" in lang:
             return f"{lang.replace('-', '_')}.UTF-8"
         else:
-            return f"{lang}_{LOCALE_REGIONS.get(lang, lang.upper())}.UTF-8"
+            return f"{lang}_{LOCALE_REGIONS[lang]}.UTF-8"

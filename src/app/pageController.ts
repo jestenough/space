@@ -173,6 +173,7 @@ export class PageController {
       const copy = async (event: Event) => {
         const target = event.target as HTMLElement | null;
         if (target?.closest("a, button, img")) return;
+        if (this.hasTextSelection(control)) return;
         const value = control.dataset.copyValue;
         if (!value) return;
         const copied = await this.copyText(value);
@@ -187,6 +188,14 @@ export class PageController {
       });
     });
 
+  }
+
+  private hasTextSelection(root: HTMLElement): boolean {
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed) return false;
+    const anchor = selection.anchorNode;
+    const focus = selection.focusNode;
+    return Boolean((anchor && root.contains(anchor)) || (focus && root.contains(focus)));
   }
 
   private async copyText(value: string): Promise<boolean> {

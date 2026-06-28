@@ -52,8 +52,16 @@
     background: color-mix(in srgb, var(--color-surface-2) 75%, transparent);
   }
 
+  #file-content pre code {
+    display: block;
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
   #file-content pre,
   .info-file-pre {
+    margin: 0;
     font-family: var(--font-mono);
     overflow-x: auto;
     border: 1px solid var(--color-border);
@@ -62,6 +70,102 @@
     padding: 0.68rem;
     white-space: pre-wrap;
   }
+
+  .code-copy-block {
+    margin: 1rem 0;
+    border: 1px solid var(--color-border);
+    background: color-mix(in srgb, var(--color-surface) 76%, transparent);
+  }
+
+  .code-copy-block pre {
+    border: 0;
+    border-left: 0;
+    background: transparent;
+    padding: 0.32rem 0;
+  }
+
+  .code-copy-bar {
+    min-height: 2rem;
+    padding: 0.32rem 0.45rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border-bottom: 1px dashed var(--color-border);
+    color: var(--color-muted);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+  }
+
+  .code-copy-label::before {
+    content: "./";
+    color: var(--color-ok);
+  }
+
+  .code-copy-btn {
+    border: 1px solid color-mix(in srgb, var(--color-border-strong) 68%, transparent);
+    background: color-mix(in srgb, var(--color-accent-soft) 60%, transparent);
+    color: var(--color-accent);
+  }
+
+  .code-copy-btn:hover,
+  .code-copy-btn:focus-visible {
+    border-color: var(--color-accent);
+    background: color-mix(in srgb, var(--color-accent-soft) 92%, transparent);
+  }
+
+  .code-line {
+    position: relative;
+    min-width: max-content;
+    display: block;
+    padding: 0 0.68rem;
+    cursor: copy;
+    transition: background var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
+  }
+
+  .code-line:hover,
+  .code-line:focus-visible {
+    background: color-mix(in srgb, var(--color-accent-soft) 46%, transparent);
+    color: var(--color-accent);
+  }
+
+  .code-line-text {
+    display: block;
+    min-height: 1.55rem;
+    white-space: pre-wrap;
+  }
+
+  .code-line-empty .code-line-text {
+    color: transparent;
+  }
+
+  #file-content .sourceCode .al { color: var(--color-accent); font-weight: 700; }
+  #file-content .sourceCode .an { color: var(--color-muted); }
+  #file-content .sourceCode .at { color: color-mix(in srgb, var(--color-ok) 82%, var(--color-text)); }
+  #file-content .sourceCode .bn,
+  #file-content .sourceCode .dv,
+  #file-content .sourceCode .fl { color: color-mix(in srgb, var(--color-accent-2) 82%, var(--color-text)); }
+  #file-content .sourceCode .bu,
+  #file-content .sourceCode .dt,
+  #file-content .sourceCode .kw,
+  #file-content .sourceCode .cf { color: var(--color-accent); font-weight: 700; }
+  #file-content .sourceCode .ch,
+  #file-content .sourceCode .sc,
+  #file-content .sourceCode .ss,
+  #file-content .sourceCode .st,
+  #file-content .sourceCode .vs { color: var(--color-ok); }
+  #file-content .sourceCode .co,
+  #file-content .sourceCode .cv,
+  #file-content .sourceCode .do { color: var(--color-muted); font-style: italic; }
+  #file-content .sourceCode .er { color: var(--color-accent); text-decoration: underline; }
+  #file-content .sourceCode .ex,
+  #file-content .sourceCode .fu { color: color-mix(in srgb, var(--color-accent-2) 78%, var(--color-text)); }
+  #file-content .sourceCode .im,
+  #file-content .sourceCode .pp { color: color-mix(in srgb, var(--color-accent) 72%, var(--color-ok)); }
+  #file-content .sourceCode .op { color: color-mix(in srgb, var(--color-text) 82%, var(--color-muted)); }
+  #file-content .sourceCode .ot,
+  #file-content .sourceCode .va { color: color-mix(in srgb, var(--color-text) 78%, var(--color-ok)); }
+  #file-content .sourceCode .wa { color: var(--color-accent); font-weight: 700; }
 
   .file-document {
     border-top: 1px dashed var(--color-border);

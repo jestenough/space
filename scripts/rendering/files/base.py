@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from ... import content, routes
-from ...config import SYSTEM_SECTION, ContentExtension, FileType
+from ...config import DEFAULT_LANG, SYSTEM_SECTION, ContentExtension, FileType
 from ...localization import exact_text, strict_text
 from ..context import (
     FileIndexContext,
@@ -22,6 +22,41 @@ from ..context import (
 
 class FileRenderer:
     file_type = FileType.PAGE
+    code_block_re = re.compile(r"<pre\b[^>]*>[\s\S]*?</pre>", re.IGNORECASE)
+    pre_parts_re = re.compile(r"^(?P<pre_start><pre\b[^>]*>)(?P<body>[\s\S]*?)(?P<pre_end></pre>)$", re.IGNORECASE)
+    code_parts_re = re.compile(r"^(?P<code_start>\s*<code\b[^>]*>)(?P<body>[\s\S]*?)(?P<code_end></code>\s*)$", re.IGNORECASE)
+    class_attr_re = re.compile(r"\bclass=[\"']([^\"']+)[\"']", re.IGNORECASE)
+    tag_re = re.compile(r"<[^>]+>")
+    ignored_language_classes = frozenset({"code", "code-line", "hljs", "info-file-pre", "numbersource", "sourcecode"})
+    language_aliases = {
+        "bash": "shell",
+        "js": "javascript",
+        "jsx": "javascript jsx",
+        "py": "python",
+        "sh": "shell",
+        "ts": "typescript",
+        "tsx": "typescript jsx",
+    }
+    code_copy_ui_by_lang = {
+        DEFAULT_LANG: {
+            "label": "code",
+            "copy": "copy",
+            "copied": "copied",
+            "line_copy": "copy line",
+            "toast_success": "code copied to clipboard",
+            "line_toast_success": "line copied to clipboard",
+            "toast_failure": "copy failed",
+        },
+        "ru": {
+            "label": "код",
+            "copy": "копировать",
+            "copied": "скопировано",
+            "line_copy": "копировать строку",
+            "toast_success": "код скопирован в буфер обмена",
+            "line_toast_success": "строка скопирована в буфер обмена",
+            "toast_failure": "не удалось скопировать",
+        },
+    }
 
     def index_meta(self, _: FileIndexContext) -> dict[str, Any]:
         return {}
@@ -34,17 +69,146 @@ class FileRenderer:
 
     def render_source(self, context: SourceRenderContext) -> str:
         source = context.source
-
         item = context.item
+
         if source.ext == ContentExtension.TEX:
             body = context.convert_tex_to_html(source.path, item.path, item.section, item.slug)
         elif source.ext == ContentExtension.MARKDOWN:
             body = context.convert_markdown_to_html(source.path, item.path, item.section, item.slug)
         else:
             text = source.path.read_text(encoding="utf-8")
-            body = f'<pre class="info-file-pre">{html.escape(text.rstrip())}</pre>'
+            return self.wrap_document(source, f'<pre class="info-file-pre">{html.escape(text.rstrip())}</pre>')
 
+        return self.wrap_document(source, self.decorate_code_blocks(body, source.lang))
+
+    @staticmethod
+    def wrap_document(source: content.Source, body: str) -> str:
         return f'<section class="file-document" data-source="{html.escape(str(source.path))}">{body}</section>\n'
+
+    def decorate_code_blocks(self, value: str, lang: str) -> str:
+        ui = self.code_copy_ui(lang)
+
+        def replace(match: re.Match[str]) -> str:
+            pre_html = match.group(0)
+            if "data-code-copy-block" in pre_html:
+                return pre_html
+
+            copy_text = self.pre_text(pre_html).rstrip("\n")
+            if not copy_text.strip():
+                return pre_html
+            pre_with_lines = self.decorate_code_lines(pre_html, copy_text, ui)
+            language = self.code_language(pre_html) or ui["label"]
+
+            return (
+                '<div class="code-copy-block" data-code-copy-block>'
+                '<div class="code-copy-bar">'
+                f'<span class="code-copy-label">{html.escape(language)}</span>'
+                '<button class="code-copy-btn" type="button" '
+                f'data-copy-text="{self.attribute_value(copy_text)}" '
+                f'data-copy-label="{html.escape(ui["copy"], quote=True)}" '
+                f'data-copy-success="{html.escape(ui["copied"], quote=True)}" '
+                f'data-copy-toast-success="{html.escape(ui["toast_success"], quote=True)}" '
+                f'data-copy-toast-failure="{html.escape(ui["toast_failure"], quote=True)}">'
+                f'{html.escape(ui["copy"])}'
+                "</button>"
+                "</div>"
+                f"{pre_with_lines}"
+                "</div>"
+            )
+
+        return self.code_block_re.sub(replace, value)
+
+    def decorate_code_lines(self, pre_html: str, copy_text: str, ui: dict[str, str]) -> str:
+        pre_match = self.pre_parts_re.match(pre_html)
+        if not pre_match:
+            return pre_html
+
+        body = pre_match.group("body")
+        code_match = self.code_parts_re.match(body)
+        code_start = code_match.group("code_start") if code_match else ""
+        code_body = code_match.group("body") if code_match else body
+        code_end = code_match.group("code_end") if code_match else ""
+        lines_html = self.render_code_lines(copy_text, ui, code_body)
+
+        return "".join(
+            [
+                pre_match.group("pre_start"),
+                code_start,
+                lines_html,
+                code_end,
+                pre_match.group("pre_end"),
+            ]
+        )
+
+    def render_code_lines(self, value: str, ui: dict[str, str], html_value: str | None = None) -> str:
+        lines = value.split("\n")
+        html_lines = html_value.rstrip("\n").split("\n") if html_value is not None else []
+        if len(html_lines) != len(lines):
+            html_lines = [html.escape(line) for line in lines]
+
+        return "".join(self.render_code_line(line, ui, html_lines[index]) for index, line in enumerate(lines))
+
+    def render_code_line(self, line: str, ui: dict[str, str], line_html: str) -> str:
+        if not line.strip():
+            return '<span class="code-line code-line-empty" data-code-line><span class="code-line-text"> </span></span>'
+
+        return (
+            '<span class="code-line" data-code-line role="button" tabindex="0" '
+            f'aria-label="{html.escape(ui["line_copy"], quote=True)}" '
+            f'title="{html.escape(ui["line_copy"], quote=True)}" '
+            f'data-copy-value="{self.attribute_value(line)}" '
+            f'data-copy-toast-success="{html.escape(ui["line_toast_success"], quote=True)}" '
+            f'data-copy-toast-failure="{html.escape(ui["toast_failure"], quote=True)}">'
+            f'<span class="code-line-text">{line_html or " "}</span>'
+            "</span>"
+        )
+
+    def code_language(self, pre_html: str) -> str | None:
+        candidates = self.tag_classes(pre_html, "code") + self.tag_classes(pre_html, "pre")
+        for value in candidates:
+            candidate = self.normalize_language_class(value)
+            if not candidate:
+                continue
+            return self.language_aliases.get(candidate, candidate)
+
+        return None
+
+    def normalize_language_class(self, value: str) -> str | None:
+        candidate = value.strip()
+        for prefix in ("language-", "lang-"):
+            if candidate.startswith(prefix):
+                candidate = candidate.removeprefix(prefix)
+                break
+
+        candidate = candidate.lower()
+        return None if not candidate or candidate in self.ignored_language_classes else candidate
+
+    def tag_classes(self, value: str, tag: str) -> list[str]:
+        classes: list[str] = []
+        for tag_match in re.finditer(rf"<{tag}\b[^>]*>", value, re.IGNORECASE):
+            class_match = self.class_attr_re.search(tag_match.group(0))
+            if class_match:
+                classes.extend(class_match.group(1).split())
+        return classes
+
+    @classmethod
+    def pre_text(cls, value: str) -> str:
+        inner = re.sub(r"^<pre\b[^>]*>|</pre>$", "", value, flags=re.IGNORECASE)
+        return html.unescape(cls.tag_re.sub("", inner))
+
+    @staticmethod
+    def attribute_value(value: str) -> str:
+        return html.escape(value, quote=True).replace("\r", "").replace("\n", "&#10;")
+
+    @staticmethod
+    def code_copy_ui(lang: str) -> dict[str, str]:
+        try:
+            return FileRenderer.code_copy_ui_by_lang[lang]
+        except KeyError as exc:
+            raise RuntimeError(
+                f"Missing code-copy UI translations for language `{lang}`. "
+                "Add this language to FileRenderer.code_copy_ui_by_lang in scripts/rendering/files/base.py."
+            ) from exc
 
     def render_page(self, context: FilePageContext) -> RouteRender:
         title = strict_text(

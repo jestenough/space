@@ -52,7 +52,7 @@ class ArticleFileRenderer(FileRenderer):
     def render_source(self, context: SourceRenderContext) -> str:
         source = context.source
         item = context.item
-        body = context.convert_tex_to_html(source.path, item.path, item.section, item.slug)
+        body = self.decorate_code_blocks(context.convert_tex_to_html(source.path, item.path, item.section, item.slug), source.lang)
         return f"""<article class="article" lang="{html.escape(source.lang)}">
   <div class="article__content">
 {body}

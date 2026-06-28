@@ -1,3 +1,10 @@
+## v1.3.0
+
+Date: **2026.06.28**
+- Added a dedicated notes section renderer for short thoughts, snippets, and gist-like entries
+- Added language labels and one-click copy for whole code blocks and individual hovered/focused code lines
+- Added build-time syntax highlighting styles for Pandoc-generated code tokens
+
 ## v1.2.6
 
 Date: **2026.06.26**

@@ -25,6 +25,7 @@ class FolderType(StrEnum):
     SYSTEM = "system"
     FILES = "files"
     ARTICLES = "articles"
+    NOTES = "notes"
     PROJECTS = "projects"
     TAGS = "tags"
 
