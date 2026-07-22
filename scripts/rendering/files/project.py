@@ -66,7 +66,7 @@ class ProjectFileRenderer(FileRenderer):
 
         source = context.source
         if source.ext == ContentExtension.TEX:
-            body = context.convert_tex_to_html(source.path, item.path, item.section, item.slug)
+            body = context.convert_tex_to_html(source.path, item.path, item.section, item.slug, source.lang)
         elif source.ext == ContentExtension.MARKDOWN:
             body = context.convert_markdown_to_html(source.path, item.path, item.section, item.slug)
         else:

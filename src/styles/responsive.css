@@ -40,6 +40,5 @@
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
     }
-    .footbar .motto { animation: none; }
   }
 }

@@ -8,7 +8,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from . import content, routes
+from . import citations, content, routes
 from .config import (
     CONTENT_DIR,
     DATE_FORMAT_LABEL,
@@ -123,6 +123,53 @@ class Preflight:
         kind = content.item_type(item)
         registry.folder_renderer(section.kind).validate_item_membership(section, item, kind)
         registry.file_renderer(kind).validate_item(section, item)
+        if kind == FileType.ARTICLE:
+            self.check_article_bibliography(item)
+
+    @staticmethod
+    def check_article_bibliography(item: content.Item) -> None:
+        legacy = item.path / "references.bib"
+        if legacy.exists():
+            raise RuntimeError(
+                f"Legacy shared bibliography is not allowed: {legacy}\n"
+                "Rename it to one explicit file per source language, for example `references.en.bib`."
+            )
+
+        source_langs = {source.lang for source in item.sources}
+        for bib_path in item.path.glob("references.*.bib"):
+            lang = bib_path.name.removeprefix("references.").removesuffix(".bib")
+            if lang not in source_langs:
+                raise RuntimeError(
+                    f"Bibliography language has no matching article source: {bib_path}\n"
+                    f"Add `{item.slug}.{lang}.tex` or remove the bibliography file."
+                )
+
+        for source in item.sources:
+            source_text = source.path.read_text(encoding="utf-8")
+            if not citations.has_citetext(source_text):
+                continue
+
+            cleaned_tex, cited = citations.preprocess_tex(source_text)
+            if "\\citetext{" in cleaned_tex:
+                raise RuntimeError(
+                    f"Malformed `\\citetext` command in {source.path}\n"
+                    "Expected: `\\citetext{key}[optional location]{cited text}`."
+                )
+
+            bib_path = item.path / f"references.{source.lang}.bib"
+            if not bib_path.is_file():
+                raise RuntimeError(
+                    f"Missing localized bibliography for {source.path}\n"
+                    f"Expected: {bib_path}"
+                )
+
+            entries = citations.read_bib(bib_path)
+            missing = sorted({citation.key for citation in cited if citation.key not in entries})
+            if missing:
+                raise RuntimeError(
+                    f"Unknown citation key(s) in {source.path}: {', '.join(missing)}\n"
+                    f"Add matching BibTeX entries to {bib_path}."
+                )
 
     def check_meta(self, meta: dict[str, Any], slug: str, path: Path, section_meta: bool) -> None:
         for key in ("slug", "label", "title", "description"):

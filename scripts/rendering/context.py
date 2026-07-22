@@ -104,7 +104,7 @@ class SourceRenderContext:
     source: content.Source
     item: content.Item
     file_type: FileType
-    convert_tex_to_html: Callable[[Path, Path, str, str], str]
+    convert_tex_to_html: Callable[[Path, Path, str, str, str], str]
     convert_markdown_to_html: Callable[[Path, Path, str, str], str]
 
 

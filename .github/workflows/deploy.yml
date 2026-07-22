@@ -55,7 +55,8 @@ jobs:
         with:
           path: |
             public/**/*.pdf
-          key: autophany-pdf-cache-${{ runner.os }}-${{ hashFiles('content/**/*.tex', 'content/**/*.meta', 'content/**/assets/**') }}
+            .cache/pdf/**/*.sha256
+          key: autophany-pdf-cache-${{ runner.os }}-${{ hashFiles('content/**/*.tex', 'content/**/*.meta', 'content/**/*.bib', 'content/**/assets/**', 'scripts/pdf.py', 'docker/pdf/Dockerfile') }}
           restore-keys: |
             autophany-pdf-cache-${{ runner.os }}-
 

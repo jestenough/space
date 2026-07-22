@@ -410,6 +410,12 @@ class Verify:
         media_block = re.search(r"^/media/\*\n(?P<body>(?:  .+\n)+)", headers, re.M)
         if media_block and "immutable" in media_block.group("body").lower():
             raise RuntimeError("Article media must not be cached with immutable headers")
+        if not media_block or "public" not in media_block.group("body").lower() or "max-age=" not in media_block.group("body").lower():
+            raise RuntimeError("Article media must use a bounded public cache policy")
+
+        fonts_block = re.search(r"^/fonts/\*\n(?P<body>(?:  .+\n)+)", headers, re.M)
+        if not fonts_block or "immutable" not in fonts_block.group("body").lower():
+            raise RuntimeError("Versioned font assets must use immutable cache headers")
 
         generated_block = re.search(r"^/generated/\*\n(?P<body>(?:  .+\n)+)", headers, re.M)
         if not generated_block or "no-store" not in generated_block.group("body").lower():

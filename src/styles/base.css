@@ -24,20 +24,6 @@
       linear-gradient(180deg, var(--color-bg-2), var(--color-bg));
   }
 
-  body.terminal-only::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-    opacity: 0.42;
-    background-image:
-      radial-gradient(circle at 20% 30%, color-mix(in srgb, var(--color-text) 10%, transparent) 0 0.7px, transparent 0.8px),
-      radial-gradient(circle at 75% 58%, color-mix(in srgb, var(--color-accent) 9%, transparent) 0 0.8px, transparent 0.9px);
-    background-size: 19px 23px, 29px 31px;
-    mix-blend-mode: multiply;
-  }
-
   ::selection {
     color: var(--color-bg);
     background: color-mix(in srgb, var(--color-accent) 72%, var(--color-ok));

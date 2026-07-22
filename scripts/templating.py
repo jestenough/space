@@ -11,10 +11,15 @@ PLACEHOLDER_RE = re.compile(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}")
 class TemplateRenderer:
     def __init__(self, root: Path) -> None:
         self.root = root
+        self._cache: dict[str, tuple[Path, str]] = {}
 
     def render(self, relative_path: str, **context: object) -> str:
-        template_path = self.root / relative_path
-        template = template_path.read_text(encoding="utf-8")
+        cached = self._cache.get(relative_path)
+        if cached is None:
+            template_path = self.root / relative_path
+            cached = (template_path, template_path.read_text(encoding="utf-8"))
+            self._cache[relative_path] = cached
+        template_path, template = cached
 
         def replace(match: re.Match[str]) -> str:
             key = match.group(1)

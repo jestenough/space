@@ -1,4 +1,4 @@
 import "./styles/index.css";
-import { PageController } from "@/app/pageController";
+import { initPage } from "@/app/initPage";
 
-new PageController().init();
+initPage();

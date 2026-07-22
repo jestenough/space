@@ -26,3 +26,12 @@ Copyright 2020 The Inter Project Authors.<br>
 **Local license copy**: *[`public/fonts/inter/OFL.txt`](/fonts/inter/OFL.txt)*<br>
 **Upstream**: *[github.com/rsms/inter](https://github.com/rsms/inter)*<br>
 **Google Fonts specimen**: *[Inter](https://fonts.google.com/specimen/Inter)*
+
+### JetBrains Mono
+
+The site includes local JetBrains Mono webfont files under `public/fonts/jetbrains-mono/`.<br>
+Copyright 2020 The JetBrains Mono Project Authors.<br>
+**License**: *[SIL Open Font License 1.1](https://openfontlicense.org/open-font-license-official-text/)*<br>
+**Local license copy**: *[`public/fonts/jetbrains-mono/OFL.txt`](/fonts/jetbrains-mono/OFL.txt)*<br>
+**Upstream**: *[github.com/JetBrains/JetBrainsMono](https://github.com/JetBrains/JetBrainsMono)*<br>
+**Google Fonts specimen**: *[JetBrains Mono](https://fonts.google.com/specimen/JetBrains+Mono)*

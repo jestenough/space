@@ -1,5 +1,3 @@
-import { StorageKey } from "@/core/enums";
-
 const safeGet = (storage: Storage, key: string): string | null => {
   try {
     return storage.getItem(key);
@@ -18,6 +16,13 @@ const safeSet = (storage: Storage, key: string, value: string): boolean => {
 };
 
 export const storageService = {
-  get: (key: StorageKey): string | null => safeGet(window.localStorage, key),
-  set: (key: StorageKey, value: string): boolean => safeSet(window.localStorage, key, value),
+  get: (key: string): string | null => safeGet(window.localStorage, key),
+  set: (key: string, value: string): boolean => safeSet(window.localStorage, key, value),
+  getBoolean(key: string): boolean | null {
+    const value = safeGet(window.localStorage, key);
+    if (value === "true") return true;
+    if (value === "false") return false;
+    return null;
+  },
+  setBoolean: (key: string, value: boolean): boolean => safeSet(window.localStorage, key, String(value)),
 } as const;

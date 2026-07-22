@@ -11,7 +11,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from . import content, routes
+from . import citations, content, routes
 from .config import (
     GENERATED_DIR,
     GENERATED_FILE_META_NAME,
@@ -226,10 +226,39 @@ class Html:
     def is_downloadable(item: content.Item) -> bool:
         return item.meta.get("download") is True
 
-    def convert_tex_to_html(self, source_path: Path, item_dir: Path, section: str, slug: str) -> str:
+    BIB_FILE = "references.{lang}.bib"
+
+    def convert_tex_to_html(
+        self,
+        source_path: Path,
+        item_dir: Path,
+        section: str,
+        slug: str,
+        lang: str,
+    ) -> str:
+        bib_path = item_dir / self.BIB_FILE.format(lang=lang)
+        source_text = source_path.read_text(encoding="utf-8")
+
+        citations_list: list[citations.Citation] = []
+        bib_entries: dict[str, dict[str, str]] = {}
+        refs: list[citations.Reference] = []
+
+        if bib_path.is_file() and citations.has_citetext(source_text):
+            cleaned_tex, citations_list = citations.preprocess_tex(source_text)
+            bib_entries = citations.read_bib(bib_path)
+            refs = citations.format_references(bib_entries, citations_list, lang)
+
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=".tex", encoding="utf-8", delete=False
+            ) as tmp:
+                tmp.write(cleaned_tex)
+                tex_input = Path(tmp.name)
+        else:
+            tex_input = source_path
+
         command = [
             "pandoc",
-            str(source_path),
+            str(tex_input),
             "--from",
             "latex",
             "--to",
@@ -245,6 +274,9 @@ class Html:
             raise RuntimeError(
                 f"Missing required build tool: pandoc\nCannot render TeX source: {source_path}\nInstall pandoc or run `make toolchain` before html generation."
             ) from exc
+        finally:
+            if tex_input != source_path and tex_input.exists():
+                tex_input.unlink(missing_ok=True)
 
         if result.returncode != 0:
             raise RuntimeError(
@@ -254,7 +286,12 @@ class Html:
                 f"stderr:\n{result.stderr.strip() or '(empty)'}"
             )
 
-        return self.rewrite_asset_paths(result.stdout.strip(), section, slug)
+        html_output = self.rewrite_asset_paths(result.stdout.strip(), section, slug)
+
+        if citations_list:
+            html_output = citations.postprocess_html(html_output, citations_list, refs, lang)
+
+        return html_output
 
     def convert_markdown_to_html(self, source_path: Path, item_dir: Path, section: str, slug: str) -> str:
         command = [

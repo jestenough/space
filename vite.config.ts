@@ -35,7 +35,7 @@ const LANGUAGE_TAG_PATTERN = /^[a-z]{2,3}(?:-[A-Z]{2})?$/;
 const TRANSFORM_IMAGE_EXTENSIONS = new Set([".jpg", ".jpeg", ".png"]);
 const RASTER_IMAGE_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".webp"]);
 const MAX_IMAGE_DIMENSION = 2200;
-const RESPONSIVE_WIDTHS = [800, 1400, 2000];
+const RESPONSIVE_WIDTHS = [128, 320, 800, 1400, 2000];
 
 const safeDecodeURIComponent = (value: string): string | null => {
   try {
@@ -58,6 +58,7 @@ const variantPublicPath = (target: string, width: number): string => target.repl
 const isLang = (value: string | undefined): boolean => Boolean(value && LANGUAGE_TAG_PATTERN.test(normalizeLang(value)));
 const hasFileExtension = (path: string): boolean => /\.[a-zA-Z0-9]+$/.test(path);
 const readJson = <T>(path: string): T | null => existsSync(path) ? JSON.parse(readFileSync(path, "utf8")) as T : null;
+let downloadRoutesCache: Map<string, string> | null = null;
 
 const sourceName = (slug: string, downloadPath: string): string => {
   const [, lang = DEFAULT_LANG] = downloadPath.split("/");
@@ -67,6 +68,8 @@ const sourceName = (slug: string, downloadPath: string): string => {
 };
 
 const loadDownloadRoutes = (): Map<string, string> => {
+  if (downloadRoutesCache) return downloadRoutesCache;
+
   const sections = readJson<Array<{ slug: string }>>(resolve(generatedDir, "sections-index.json")) ?? [];
   const routes = new Map<string, string>();
   for (const section of sections) {
@@ -76,7 +79,12 @@ const loadDownloadRoutes = (): Map<string, string> => {
       routes.set(file.downloadPath, resolve(contentDir, section.slug, file.slug, sourceName(file.slug, file.downloadPath)));
     }
   }
-  return routes;
+  downloadRoutesCache = routes;
+  return downloadRoutesCache;
+};
+
+const invalidateDownloadRoutes = (path: string): void => {
+  if (path.startsWith(generatedDir)) downloadRoutesCache = null;
 };
 
 const prerenderTarget = (url: string): { url: string; status?: number; redirect?: string } => {
@@ -175,6 +183,9 @@ const generatedAssetsPlugin = (): Plugin => ({
 const contentFilesPlugin = (): Plugin => ({
   name: "content-files",
   configureServer: (server) => {
+    server.watcher.on("add", invalidateDownloadRoutes);
+    server.watcher.on("change", invalidateDownloadRoutes);
+    server.watcher.on("unlink", invalidateDownloadRoutes);
     server.middlewares.use((req, res, next) => {
       const rawPath = req.url?.split("?")[0] ?? "";
       const filePath = loadDownloadRoutes().get(rawPath);

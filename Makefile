@@ -6,7 +6,7 @@ HOST_UID := $(shell id -u)
 HOST_GID := $(shell id -g)
 
 DOCKER_ENV = -e SITE_URL="$${SITE_URL:-https://autophany.space}" -e STRICT_PDF=1
-DOCKER_VOLUMES = -v "$$PWD/public:/app/public" -v "$$PWD/dist:/app/dist" -v "$$PWD/generated:/app/generated" -v "$$PWD/.cache:/app/.cache"
+DOCKER_VOLUMES = -v "$$PWD/content:/app/content:ro" -v "$$PWD/scripts:/app/scripts:ro" -v "$$PWD/templates:/app/templates:ro" -v "$$PWD/public:/app/public" -v "$$PWD/dist:/app/dist" -v "$$PWD/generated:/app/generated" -v "$$PWD/.cache:/app/.cache"
 DOCKER_RUN = docker run --rm $(DOCKER_ENV) $(DOCKER_VOLUMES)
 
 .PHONY: help install dev dev-host preview typecheck preflight toolchain create html pdf frontend prerender seo verify build clean docker-build docker-toolchain docker-build-site docker-shell

@@ -15,10 +15,15 @@ export const imageViewerController = {
 
     let activeSrc = "";
 
+    const onKeydown = (event: KeyboardEvent): void => {
+      if (event.key === "Escape") close();
+    };
+
     const close = (): void => {
       viewer.classList.add("hidden");
       viewer.setAttribute("aria-hidden", "true");
       document.body.classList.remove(OPEN_CLASS);
+      document.removeEventListener("keydown", onKeydown);
       activeSrc = "";
     };
 
@@ -36,18 +41,16 @@ export const imageViewerController = {
       viewer.classList.remove("hidden");
       viewer.setAttribute("aria-hidden", "false");
       document.body.classList.add(OPEN_CLASS);
+      document.addEventListener("keydown", onKeydown);
     };
 
-    root.querySelectorAll<HTMLImageElement>("img[data-zoomable-image]").forEach((image) => {
-      image.addEventListener("click", () => open(image));
+    root.addEventListener("click", (event) => {
+      const image = (event.target as HTMLElement | null)?.closest<HTMLImageElement>("img[data-zoomable-image]");
+      if (image) open(image);
     });
 
     viewer.addEventListener("click", (event) => {
       if (event.target === viewer || event.target === viewerImage) close();
-    });
-
-    document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape" && !viewer.classList.contains("hidden")) close();
     });
   }
 } as const;

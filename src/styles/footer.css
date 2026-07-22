@@ -27,15 +27,10 @@
       var(--color-muted) 100%
     );
     background-size: 180% 100%;
+    background-position: 50% 50%;
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
-    animation: motto-gradient 14s ease-in-out infinite;
-  }
-
-  @keyframes motto-gradient {
-    0%, 100% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
   }
 
   .footbar nav {

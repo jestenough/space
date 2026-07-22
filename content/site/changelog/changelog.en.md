@@ -1,3 +1,15 @@
+## v1.4.0
+
+Date: **2026.07.22**
+- Added numbered interactive citations with explicit `\citetext{key}[location]{text}` ranges, hover highlighting, source navigation, link opening, and one-click reference copying
+- Added strict per-language bibliographies through `references.<lang>.bib`, localized reference formatting, and preflight validation for missing files, malformed commands, and unknown citation keys
+- Added article author and co-author metadata with optional links, visible bylines, JSON-LD authors, and BibTeX export support
+- Brought PDF output to parity with HTML: localized authors, citations, bibliography, stable citation order, improved compiler diagnostics, and content-fingerprint caching
+- Added local JetBrains Mono Latin/Cyrillic webfonts for the terminal UI while keeping Inter for readable article content
+- Refactored the frontend into focused actions, citations, clipboard, and panels modules; replaced the stateful PageController with an explicit `initPage()` composition
+- Fixed mobile/desktop panel relocation across viewport changes and reduced unnecessary listeners, DOM work, paint effects, and repeated build-time HTML scans
+- Improved responsive image variants, explicit image sizing, media/font cache headers, Docker source mounts, and repeatable prerender/PDF builds
+
 ## v1.3.0
 
 Date: **2026.06.28**

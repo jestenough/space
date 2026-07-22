@@ -1,21 +1,27 @@
 {
   "slug": "hello-world",
   "label": {
-    "ru": "Привет, Мир!",
-    "en": "Hello World!"
+    "ru": "Почему TeX всё ещё важен",
+    "en": "Why TeX Still Matters"
   },
   "type": "article",
   "date": "2026-05-03",
+  "author": {
+    "name": "Vyacheslav Dmitriev",
+    "url": "https://github.com/jestenough"
+  },
+  "coAuthors": [],
   "tags": [
-    "notes",
-    "performance"
+    "tex",
+    "web",
+    "typography"
   ],
   "title": {
-    "ru": "Привет, Мир!",
-    "en": "Hello World!"
+    "ru": "Почему TeX всё ещё важен в 2026 году",
+    "en": "Why TeX Still Matters in 2026"
   },
   "description": {
-    "ru": "Первая тестовая статья",
-    "en": "First article"
+    "ru": "О типах вёрстки, математике, долговечности форматов и о том, почему TeX и веб — союзники, а не соперники.",
+    "en": "On typesetting precision, mathematics, format longevity, and why TeX and the web are allies, not rivals."
   }
 }

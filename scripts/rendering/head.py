@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import html
 import re
+from functools import lru_cache
 
 from .. import routes
 
@@ -65,6 +66,7 @@ class Head:
             r"<head>[\s\S]*?</head>", f"<head>\n{full_head}\n  </head>", base_html, count=1, flags=re.IGNORECASE
         )
 
+    @lru_cache(maxsize=4)
     def runtime_tags(self, base_html: str) -> str:
         match = re.search(r"<head>([\s\S]*?)</head>", base_html, re.IGNORECASE)
         if not match:

@@ -99,9 +99,11 @@ class Shell:
     def __init__(self, templates: TemplateRenderer, languages: list[str] | None = None) -> None:
         self.templates = templates
         self.languages = languages or []
+        self._language_options: dict[str, str] = {}
 
     def set_languages(self, languages: list[str]) -> None:
         self.languages = languages
+        self._language_options.clear()
 
     def ui(self, lang: str) -> dict[str, str]:
         if lang == DEFAULT_LANG:
@@ -119,45 +121,66 @@ class Shell:
         ui = self.ui(lang)
         cwd = str(shell.get("cwd") or "~")
         page = dom.set_html_lang(page, lang)
-        page = dom.replace_inner(page, "ascii-logo", html.escape(ASCII_LOGO), tag="pre")
-        page = dom.replace_inner(page, "pwd-line", self.command("tree -d -L 1 .", cwd="~"), tag="p")
-        page = dom.replace_inner(page, "theme-label", html.escape(ui["theme_label"]), tag="span")
-        page = dom.replace_inner(page, "lang-label", html.escape(ui["lang_label"]), tag="span")
-        page = dom.replace_inner(page, "session-title", html.escape(ui["window_session"]), tag="summary")
-        page = dom.replace_inner(page, "navigation-title", html.escape(ui["window_navigation"]), tag="summary")
-        page = dom.replace_inner(page, "metainfo-title", html.escape(ui["window_metainfo"]), tag="summary")
-        page = dom.replace_inner(page, "systemnote-title", html.escape(ui["window_systemnote"]), tag="summary")
-        page = dom.replace_inner(page, "drawer-title", html.escape(ui["window_drawer"]), tag="summary")
-        page = dom.replace_inner(page, "mobile-sections-btn", html.escape(ui["mobile_sections"]), tag="button")
-        page = dom.replace_inner(page, "mobile-options-btn", html.escape(ui["mobile_options"]), tag="button")
-        page = dom.replace_inner(page, "mobile-contents-btn", html.escape(ui["mobile_contents"]), tag="button")
-        page = dom.replace_inner(page, "mobile-sections-title", html.escape(ui["mobile_sections"]), tag="h2")
-        page = dom.replace_inner(page, "mobile-options-title", html.escape(ui["mobile_options"]), tag="h2")
-        page = dom.replace_inner(page, "mobile-contents-title", html.escape(ui["mobile_contents"]), tag="h2")
-        page = dom.replace_option(page, "reading", ui["theme_reading"])
-        page = dom.replace_option(page, "light", ui["theme_light"])
-        page = dom.replace_option(page, "system", ui["theme_system"])
-        page = dom.replace_option(page, "dark", ui["theme_dark"])
-        page = dom.replace_inner(page, "lang-switcher", self.language_options(lang), tag="select")
-        page = dom.replace_inner(page, "welcome-command", self.command(str(shell["welcome_command"]), cwd=cwd))
-        page = dom.replace_inner(page, "welcome-title", html.escape(str(shell["welcome_title"])))
-        page = dom.replace_inner(page, "welcome-lead", html.escape(str(shell["welcome_lead"])))
-        page = dom.replace_inner(page, "welcome-body", html.escape(str(shell.get("welcome_body") or "")))
-        page = dom.replace_inner(page, "render-indicator", self.command(str(shell["render_command"]), cwd=cwd))
-        page = dom.replace_inner(page, "process-log", str(shell["process_html"]))
-        page = dom.replace_inner(page, "content-list-view", str(shell.get("list_stage_html") or ""), tag="section")
-        page = dom.replace_inner(page, "file-view", str(shell.get("file_stage_html") or ""), tag="article")
-        page = dom.replace_inner(
+        page = dom.replace_inners(
             page,
-            "toc-panel",
-            f'<summary class="window-title">{html.escape(ui["window_headings"])}</summary><div class="side-window-body"><h3 class="toc-title">{html.escape(ui["toc_title"])}</h3><ul id="toc-list" class="toc-list">{shell.get("toc_html") or ""}</ul></div>',
-            tag="details",
+            {
+                "ascii-logo": html.escape(ASCII_LOGO),
+                "pwd-line": self.command("tree -d -L 1 .", cwd="~"),
+                "theme-label": html.escape(ui["theme_label"]),
+                "lang-label": html.escape(ui["lang_label"]),
+                "session-title": html.escape(ui["window_session"]),
+                "navigation-title": html.escape(ui["window_navigation"]),
+                "metainfo-title": html.escape(ui["window_metainfo"]),
+                "systemnote-title": html.escape(ui["window_systemnote"]),
+                "drawer-title": html.escape(ui["window_drawer"]),
+                "mobile-sections-btn": html.escape(ui["mobile_sections"]),
+                "mobile-options-btn": html.escape(ui["mobile_options"]),
+                "mobile-contents-btn": html.escape(ui["mobile_contents"]),
+                "mobile-sections-title": html.escape(ui["mobile_sections"]),
+                "mobile-options-title": html.escape(ui["mobile_options"]),
+                "mobile-contents-title": html.escape(ui["mobile_contents"]),
+                "lang-switcher": self.language_options(lang),
+                "welcome-command": self.command(str(shell["welcome_command"]), cwd=cwd),
+                "welcome-title": html.escape(str(shell["welcome_title"])),
+                "welcome-lead": html.escape(str(shell["welcome_lead"])),
+                "welcome-body": html.escape(str(shell.get("welcome_body") or "")),
+                "render-indicator": self.command(str(shell["render_command"]), cwd=cwd),
+                "process-log": str(shell["process_html"]),
+                "content-list-view": str(shell.get("list_stage_html") or ""),
+                "file-view": str(shell.get("file_stage_html") or ""),
+                "toc-panel": f'<summary class="window-title">{html.escape(ui["window_headings"])}</summary><div class="side-window-body"><h3 class="toc-title">{html.escape(ui["toc_title"])}</h3><ul id="toc-list" class="toc-list">{shell.get("toc_html") or ""}</ul></div>',
+                "footer-motto": html.escape(ui["footer_motto"]),
+            },
         )
-        page = dom.replace_inner(page, "footer-motto", html.escape(ui["footer_motto"]), tag="p")
-        page = dom.set_attr(page, "brand-link", "href", f"/{shell['lang']}")
+        page = dom.replace_options(
+            page,
+            {
+                "reading": ui["theme_reading"],
+                "light": ui["theme_light"],
+                "system": ui["theme_system"],
+                "dark": ui["theme_dark"],
+            },
+        )
         page = self.quick_nav(page, shell)
-
-        return self.view_classes(page, shell)
+        return dom.set_attrs(
+            page,
+            {
+                "brand-link": {"href": f"/{shell['lang']}"},
+                "content-list-view": {
+                    "class": "list-stage hidden" if shell.get("view") != "list" else "list-stage"
+                },
+                "file-view": {
+                    "class": "file-stage" if shell.get("view") == "article" else "file-stage hidden"
+                },
+                "error-view": {
+                    "class": "file-stage" if shell.get("view") == "error" else "file-stage hidden"
+                },
+                "mobile-contents-btn": {"class": "" if shell.get("show_toc") else "hidden"},
+                "toc-panel": {
+                    "class": "side-window toc-panel" if shell.get("show_toc") else "side-window toc-panel hidden"
+                },
+            },
+        )
 
     def quick_nav(self, page: str, shell: dict[str, Any]) -> str:
         links = []
@@ -181,21 +204,6 @@ class Shell:
                 page,
                 count=1,
             )
-
-    @staticmethod
-    def view_classes(page: str, shell: dict[str, Any]) -> str:
-        view = str(shell.get("view") or "list")
-        page = dom.set_attr(page, "content-list-view", "class", "list-stage hidden" if view != "list" else "list-stage")
-        page = dom.set_attr(page, "file-view", "class", "file-stage" if view == "article" else "file-stage hidden")
-        page = dom.set_attr(page, "error-view", "class", "file-stage" if view == "error" else "file-stage hidden")
-        page = dom.set_attr(page, "mobile-contents-btn", "class", "" if shell.get("show_toc") else "hidden")
-
-        return dom.set_attr(
-            page,
-            "toc-panel",
-            "class",
-            "side-window toc-panel" if shell.get("show_toc") else "side-window toc-panel hidden",
-        )
 
     def list(self, context: ListShellContext) -> dict[str, Any]:
         return {
@@ -265,6 +273,10 @@ class Shell:
         return self.templates.render(f"files/{shell.file_type.value}.html", **context)
 
     def language_options(self, active_lang: str) -> str:
+        cached = self._language_options.get(active_lang)
+        if cached is not None:
+            return cached
+
         options = []
         for lang in self.languages:
             selected = ' selected="selected"' if lang == active_lang else ""
@@ -272,7 +284,9 @@ class Shell:
                 f'<option value="{html.escape(lang, quote=True)}"{selected}>{html.escape(self.locale_name(lang))}</option>'
             )
         else:
-            return "".join(options)
+            rendered = "".join(options)
+            self._language_options[active_lang] = rendered
+            return rendered
 
     @staticmethod
     def command(command: str, cwd: str = "~") -> str:

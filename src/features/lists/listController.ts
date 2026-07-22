@@ -1,5 +1,7 @@
 const DEFAULT_PAGE_SIZE = 4;
+const SEARCH_DEBOUNCE_MS = 120;
 const PAGE_SIZE_OPTIONS = new Set([4, 8, 16, 32]);
+const COLLATOR = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
 
 type SortDirection = "asc" | "desc";
 type Item = { element: HTMLElement; search: string };
@@ -31,6 +33,10 @@ export class ListController {
   private readonly pager: HTMLElement | null;
   private readonly items: Item[];
   private readonly defaultSortValue: string;
+  private readonly processFields = new Map<string, HTMLElement[]>();
+  private orderedItems: Item[];
+  private activeSortValue: string;
+  private searchTimer: number | null = null;
   private routeQuery = "";
   private currentPage = 1;
 
@@ -49,6 +55,15 @@ export class ListController {
       search: normalizeQuery(element.dataset.search || element.textContent || "")
     }));
     this.defaultSortValue = this.sortSelect?.value || "";
+    this.activeSortValue = this.defaultSortValue;
+    this.orderedItems = this.items;
+    document.querySelectorAll<HTMLElement>("[data-process-field]").forEach((element) => {
+      const name = element.dataset.processField;
+      if (!name) return;
+      const fields = this.processFields.get(name) ?? [];
+      fields.push(element);
+      this.processFields.set(name, fields);
+    });
   }
 
   init(): void {
@@ -63,7 +78,7 @@ export class ListController {
 
     this.searchInput?.addEventListener("input", () => {
       this.currentPage = 1;
-      this.render();
+      this.scheduleRender();
     });
     this.sortSelect?.addEventListener("change", () => {
       this.currentPage = 1;
@@ -91,23 +106,17 @@ export class ListController {
     const query = normalizeQuery(this.searchInput ? this.searchInput.value : this.routeQuery);
     const sortValue = this.sortSelect?.value || "date-desc";
     const pageSizeValue = pageSize(this.sizeSelect?.value || null);
-    const filtered = this.items.filter((item) => !query || item.search.includes(query));
-    const filteredSet = new Set(filtered);
-    const ordered = filtered.slice().sort((left, right) => this.compare(left.element, right.element, sortValue));
-    const hidden = this.items.filter((item) => !filteredSet.has(item));
+    this.ensureOrder(sortValue);
+    const filtered = this.orderedItems.filter((item) => !query || item.search.includes(query));
 
-    this.list.replaceChildren(...ordered.map((item) => item.element), ...hidden.map((item) => item.element));
-
-    const totalPages = Math.ceil(ordered.length / pageSizeValue);
+    const totalPages = Math.ceil(filtered.length / pageSizeValue);
     this.currentPage = totalPages > 0 ? Math.min(this.currentPage, totalPages) : 1;
     const start = (this.currentPage - 1) * pageSizeValue;
     const end = start + pageSizeValue;
+    const visible = new Set(filtered.slice(start, end));
 
-    ordered.forEach((item, index) => {
-      item.element.hidden = index < start || index >= end;
-    });
-    hidden.forEach((item) => {
-      item.element.hidden = true;
+    this.orderedItems.forEach((item) => {
+      item.element.hidden = !visible.has(item);
     });
 
     if (this.pageInfo) this.pageInfo.textContent = totalPages > 0 ? `${this.currentPage}/${totalPages}` : "0/0";
@@ -115,8 +124,8 @@ export class ListController {
     if (this.prevButton) this.prevButton.disabled = this.currentPage <= 1;
     if (this.nextButton) this.nextButton.disabled = this.currentPage >= totalPages;
 
-    this.setProcessField("shown", String(Math.max(0, Math.min(pageSizeValue, ordered.length - start))));
-    this.setProcessField("total", String(ordered.length));
+    this.setProcessField("shown", String(visible.size));
+    this.setProcessField("total", String(filtered.length));
     this.setProcessField("page", String(totalPages > 0 ? this.currentPage : 0));
     this.setProcessField("pages", String(totalPages));
 
@@ -126,7 +135,24 @@ export class ListController {
     if (pageSizeValue !== DEFAULT_PAGE_SIZE) params.set("size", String(pageSizeValue)); else params.delete("size");
     if (this.currentPage > 1) params.set("page", String(this.currentPage)); else params.delete("page");
     const next = `${window.location.pathname}${params.toString() ? `?${params}` : ""}${window.location.hash}`;
-    window.history.replaceState({}, "", next);
+    if (next !== `${window.location.pathname}${window.location.search}${window.location.hash}`) {
+      window.history.replaceState({}, "", next);
+    }
+  }
+
+  private scheduleRender(): void {
+    if (this.searchTimer !== null) window.clearTimeout(this.searchTimer);
+    this.searchTimer = window.setTimeout(() => {
+      this.searchTimer = null;
+      this.render();
+    }, SEARCH_DEBOUNCE_MS);
+  }
+
+  private ensureOrder(sortValue: string): void {
+    if (!this.list || sortValue === this.activeSortValue) return;
+    this.orderedItems = this.items.slice().sort((left, right) => this.compare(left.element, right.element, sortValue));
+    this.list.append(...this.orderedItems.map((item) => item.element));
+    this.activeSortValue = sortValue;
   }
 
   private compare(left: HTMLElement, right: HTMLElement, sortValue: string): number {
@@ -137,12 +163,12 @@ export class ListController {
     const numeric = key === "count";
     const result = numeric
       ? Number(leftValue) - Number(rightValue)
-      : leftValue.localeCompare(rightValue, undefined, { numeric: true, sensitivity: "base" });
+      : COLLATOR.compare(leftValue, rightValue);
     return direction === "asc" ? result : -result;
   }
 
   private setProcessField(name: string, value: string): void {
-    document.querySelectorAll<HTMLElement>(`[data-process-field="${name}"]`).forEach((element) => {
+    this.processFields.get(name)?.forEach((element) => {
       element.textContent = value;
     });
   }

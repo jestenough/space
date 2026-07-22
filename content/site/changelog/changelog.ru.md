@@ -1,3 +1,15 @@
+## v1.4.0
+
+Дата: **2026.07.22**
+- добавлены нумерованные интерактивные цитаты с явными диапазонами `\citetext{key}[location]{text}`, hover-подсветкой, переходом к источнику, открытием ссылок и копированием Reference в один клик
+- добавлены строгие локализованные библиографии `references.<lang>.bib`, локализованное форматирование источников и preflight-проверки отсутствующих файлов, некорректных команд и неизвестных citation keys
+- добавлены метаданные автора и соавторов с опциональными ссылками, видимый byline, авторы в JSON-LD и поддержка экспорта BibTeX
+- PDF приведён к паритету с HTML: локализованные авторы, citations и библиография, стабильный порядок нумерации, улучшенная диагностика компилятора и кеширование по content fingerprint
+- добавлен локальный JetBrains Mono с Latin/Cyrillic subsets для terminal UI, Inter сохранён для читаемого текста статей
+- frontend разделён на независимые actions, citations, clipboard и panels modules; stateful PageController заменён явной композицией `initPage()`
+- исправлено перемещение панелей между mobile/desktop при изменении viewport, сокращены лишние listeners, DOM-операции, paint-эффекты и повторные build-time проходы по HTML
+- улучшены responsive image variants, явные размеры изображений, cache headers для media/fonts, Docker source mounts и повторяемость prerender/PDF сборок
+
 ## v1.3.0
 
 Дата: **2026.06.28**

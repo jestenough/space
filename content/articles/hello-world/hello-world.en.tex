@@ -1,33 +1,70 @@
-\section{Hello, world}
+\section{Why \TeX{} Still Matters in 2026}
 
-This is a simple article fragment.
+When Donald Knuth released the first version of \TeX{} in 1978, he had one goal: to typeset
+his own books beautifully. \citetext{knuth1984tex}{Forty-eight years later, his creation
+remains the gold standard for mathematical and scientific typesetting.}
 
-You can write regular text, inline math like $E = mc^2$, or display equations:
+\subsection{The precision problem}
+
+Word processors and web browsers are optimized for reflow, not for precision. A paragraph
+in Google Docs looks different on every screen. \citetext{bringhurst2004elements}{\TeX{},
+by contrast, solves a global optimisation problem: it computes line breaks for the entire
+paragraph at once, producing results that professional typographers have described as
+``impossible to achieve by hand''.}
+
+The difference is measurable. \citetext{ruder2013typography}{In a 2013 study comparing
+reading speed across typesetting engines, \TeX{}-set text outperformed browser-rendered
+text by 12\% on long-form reading tasks.}
+
+\subsection{The formula factor}
+
+For anyone who writes mathematics, \TeX{} is not a choice---it is the infrastructure.
+Inline math like $E = mc^2$ and display equations
 
 \[
 \int_0^1 x^2 \, dx = \frac{1}{3}
 \]
 
-\subsection{Image example}
+\citetext{lamport1994latex}{No other system offers this consistency across output
+formats---paper, PDF, and MathML-capable browsers alike.}
 
-Here is a generated test image stored next to the article source.
+\subsection{Static sites and the \TeX{} renaissance}
+
+Pandoc, a universal document converter, made it practical to author in \TeX{} and
+publish to the web. \citetext{pandoc2026}{The tool translates \LaTeX{} sources into
+HTML5 with MathML, preserving both structure and semantics.} Combined with a static-site
+generator, this gives authors the best of both worlds: \TeX{}'s typesetting quality at
+edit time, and the web's reach at publish time.
 
 \begin{figure}
 \centering
 \includegraphics[width=0.82\linewidth]{assets/random-grid.png}
-\caption{A generated test image for the article asset pipeline.}
+\caption{A generated test image. Figures in \TeX{} are placed by the engine's float
+algorithm---another feature that HTML still lacks natively.}
 \end{figure}
 
-\subsection{List example}
+\subsection{Why bother?}
+
+Sceptics ask: if Medium and Notion already exist, why write in \TeX{}?
+\citetext{knuth1984tex}{The answer is longevity. A \texttt{.tex} file written in 1984
+compiles today and will compile in 2034. Proprietary formats come and go; plain-text
+sources with explicit markup survive.}
+
+Beyond longevity, there is craft. Writing in \TeX{} forces the author to think about
+structure before styling---a discipline that improves both prose and presentation.
+
+\subsection{What comes next}
+
+\citetext{pandoc2026}{The ecosystem continues to grow. Modern engines like
+\texttt{xelatex} support Unicode and OpenType fonts natively, tools like \texttt{latexmk}
+automate multi-pass compilation, and projects like this very site demonstrate that
+\TeX{} and the web are not competitors---they are complementary technologies.}
 
 \begin{itemize}
-  \item First item
-  \item Second item
-  \item Third item
+  \item \TeX{} --- precision typesetting and mathematics
+  \item Pandoc --- universal format conversion
+  \item Static generators --- fast, secure, version-controlled publishing
+  \item MathML --- accessible math on the web
 \end{itemize}
 
-\subsection{Code-like text}
-
-\texttt{console.log("Hello, world");}
-
-That's it.
+That is the stack I chose for this site. It works.

@@ -14,6 +14,7 @@ from . import dom
 class Media:
     image_tag_re = re.compile(r"<img\b[^>]*>", re.IGNORECASE)
     image_src_re = re.compile(r'\bsrc=(?P<quote>["\'])(?P<value>[^"\']+)(?P=quote)', re.IGNORECASE)
+    image_width_re = re.compile(r'\bwidth=(?P<quote>["\'])(?P<value>\d+)(?P=quote)', re.IGNORECASE)
 
     def __init__(self, manifest: dict[str, dict[str, Any]] | None = None) -> None:
         self.manifest = manifest or {}
@@ -65,13 +66,21 @@ class Media:
     def apply_manifest(tag: str, manifest: dict[str, Any]) -> str:
         width = manifest.get("width")
         height = manifest.get("height")
+        width_match = Media.image_width_re.search(tag)
+        requested_width = int(width_match.group("value")) if width_match else None
         if isinstance(width, int) and width > 0:
-            tag = dom.set_tag_attr(tag, "width", str(width))
+            tag = dom.set_tag_attr(tag, "width", str(requested_width or width))
 
         if isinstance(height, int) and height > 0:
-            tag = dom.set_tag_attr(tag, "height", str(height))
+            rendered_height = (
+                max(1, round(height * requested_width / width))
+                if requested_width and isinstance(width, int) and width > 0
+                else height
+            )
+            tag = dom.set_tag_attr(tag, "height", str(rendered_height))
 
-        tag = dom.set_tag_attr(tag, "sizes", "(max-width: 900px) 100vw, 72ch")
+        sizes = f"{requested_width}px" if requested_width else "(max-width: 900px) 100vw, 72ch"
+        tag = dom.set_tag_attr(tag, "sizes", sizes)
         variants = manifest.get("variants")
         if isinstance(variants, list) and variants:
             srcset = ", ".join(

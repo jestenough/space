@@ -25,6 +25,7 @@ class ContentTarget(StrEnum):
 
 
 SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+DEFAULT_ARTICLE_AUTHOR = "Vyacheslav Dmitriev"
 
 
 @dataclass(frozen=True)
@@ -60,6 +61,8 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--date", help="Item date in YYYY-MM-DD. Defaults to today in interactive mode")
     parser.add_argument("--no-date", action="store_true", help="Don't add a date field to item metadata")
     parser.add_argument("--tags", help="Comma-separated article tags")
+    parser.add_argument("--author", help="Article author name")
+    parser.add_argument("--author-url", help="Optional article author URL")
     parser.add_argument("--download", action="store_true", help="Expose raw localized source routes for this item")
 
     parser.add_argument("--label", action="append", default=[], help="Localized label as LANG=TEXT. May repeat")
@@ -164,6 +167,11 @@ class Creator:
             meta["date"] = self.item_date()
         if item_type == FileType.ARTICLE:
             meta["tags"] = self.tags()
+            author = {"name": self.args.author or DEFAULT_ARTICLE_AUTHOR}
+            if self.args.author_url:
+                author["url"] = self.args.author_url
+            meta["author"] = author
+            meta["coAuthors"] = []
         if self.args.download:
             meta["download"] = True
         meta.update(localized)

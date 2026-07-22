@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from ... import content, routes
-from ...config import SYSTEM_SECTION, WORDS_PER_MINUTE, ContentExtension, FileType, FolderType
+from ...config import DEFAULT_LANG, SYSTEM_SECTION, WORDS_PER_MINUTE, ContentExtension, FileType, FolderType
 from ...localization import exact_text, strict_text
 from ..context import (
     FileIndexContext,
@@ -21,13 +21,24 @@ from ..context import (
 )
 from .base import FileRenderer
 
+BYLINE_UI = {
+    DEFAULT_LANG: {"author": "Author", "coauthors": "Co-Authors"},
+    "ru": {"author": "Автор", "coauthors": "Соавторы"},
+}
+
 
 class ArticleFileRenderer(FileRenderer):
     file_type = FileType.ARTICLE
 
     def index_meta(self, context: FileIndexContext) -> dict[str, Any]:
+        author, coauthors = self.article_people(
+            context.item.meta,
+            context.item.path / f"{context.item.slug}.meta",
+        )
         return {
             "tags": self.string_list(context.item.meta.get("tags", []), f"{context.item.slug}.tags"),
+            "author": author,
+            "coAuthors": coauthors,
             "tagSection": context.tag_section_slug,
             "pdfPath": f"{routes.item_route(context.section, context.languages[0], context.item.slug)}.pdf",
             "prev": None,
@@ -52,8 +63,13 @@ class ArticleFileRenderer(FileRenderer):
     def render_source(self, context: SourceRenderContext) -> str:
         source = context.source
         item = context.item
-        body = self.decorate_code_blocks(context.convert_tex_to_html(source.path, item.path, item.section, item.slug), source.lang)
+        body = self.decorate_code_blocks(
+            context.convert_tex_to_html(source.path, item.path, item.section, item.slug, source.lang),
+            source.lang,
+        )
+        byline = self.render_byline(source.lang, item.meta, item.path / f"{item.slug}.meta")
         return f"""<article class="article" lang="{html.escape(source.lang)}">
+{byline}
   <div class="article__content">
 {body}
   </div>
@@ -157,6 +173,7 @@ class ArticleFileRenderer(FileRenderer):
                 )
 
         self.check_tags(item.meta.get("tags"), item.path / f"{item.slug}.meta")
+        self.article_people(item.meta, item.path / f"{item.slug}.meta")
 
     def head_extras(self, article: dict[str, Any], lang: str, images: list[dict[str, str]]) -> str:
         lines: list[str] = []
@@ -184,6 +201,18 @@ class ArticleFileRenderer(FileRenderer):
             "url": routes.absolute_url(routes.generated_item_route(article, lang)),
         }
 
+        people = [article.get("author"), *article.get("coAuthors", [])]
+        authors = []
+        for person in people:
+            if not isinstance(person, dict) or not person.get("name"):
+                continue
+            author: dict[str, str] = {"@type": "Person", "name": str(person["name"])}
+            if person.get("url"):
+                author["url"] = str(person["url"])
+            authors.append(author)
+        if authors:
+            payload["author"] = authors
+
         image_urls = [routes.absolute_url(image["src"]) for image in images if image.get("src")]
         if image_urls:
             payload["image"] = image_urls
@@ -201,10 +230,13 @@ class ArticleFileRenderer(FileRenderer):
         access_date = datetime.now(UTC).date().isoformat()
         key = f"autophany-{self.bibtex_key(str(article['slug']))}-{self.bibtex_key(lang)}"
 
-        return "\n".join(
+        lines = [f"@misc{{{key},", f"  title = {{{self.escape_tex(title)}}},"]
+        people = [article.get("author"), *article.get("coAuthors", [])]
+        authors = [str(person["name"]) for person in people if isinstance(person, dict) and person.get("name")]
+        if authors:
+            lines.append(f"  author = {{{self.escape_tex(' and '.join(authors))}}},")
+        lines.extend(
             [
-                f"@misc{{{key},",
-                f"  title = {{{self.escape_tex(title)}}},",
                 f"  year = {{{self.escape_tex(year)}}},",
                 f"  howpublished = {{\\url{{{article_url}}}}},",
                 f"  note = {{{self.escape_tex(f'Article on autophany.space; accessed {access_date}')}}},",
@@ -212,6 +244,7 @@ class ArticleFileRenderer(FileRenderer):
                 "}",
             ]
         )
+        return "\n".join(lines)
 
     @staticmethod
     def bibtex_key(value: str) -> str:
@@ -271,6 +304,79 @@ class ArticleFileRenderer(FileRenderer):
         )
 
         return f"{top_nav}{article_html}{bottom_nav}"
+
+    @classmethod
+    def render_byline(cls, lang: str, meta: dict[str, Any], path: object) -> str:
+        ui = BYLINE_UI.get(lang)
+        if ui is None:
+            raise RuntimeError(
+                f"Missing article byline translations for language `{lang}` in scripts/rendering/files/article.py"
+            )
+
+        author, coauthors = cls.article_people(meta, path)
+        rows = [
+            '<div class="article-byline-row">'
+            f'<dt>{html.escape(ui["author"])}:</dt><dd>{cls.person_html(author)}</dd>'
+            "</div>"
+        ]
+        if coauthors:
+            rows.append(
+                '<div class="article-byline-row">'
+                f'<dt>{html.escape(ui["coauthors"])}:</dt>'
+                f'<dd>{", ".join(cls.person_html(person) for person in coauthors)}</dd>'
+                "</div>"
+            )
+        return f'<dl class="article-byline">{"".join(rows)}</dl>'
+
+    @classmethod
+    def article_people(cls, meta: dict[str, Any], path: object) -> tuple[dict[str, str], list[dict[str, str]]]:
+        author = cls.person(meta.get("author"), f"{path}: author")
+        raw_coauthors = meta.get("coAuthors")
+        if not isinstance(raw_coauthors, list):
+            raise RuntimeError(f"{path}: `coAuthors` must be an array of author objects")
+
+        coauthors = [cls.person(value, f"{path}: coAuthors[{index}]") for index, value in enumerate(raw_coauthors)]
+        names = [author["name"], *(person["name"] for person in coauthors)]
+        if len(set(names)) != len(names):
+            raise RuntimeError(f"{path}: author and co-author names must be unique")
+        return author, coauthors
+
+    @staticmethod
+    def person(value: Any, path: str) -> dict[str, str]:
+        if not isinstance(value, dict):
+            raise RuntimeError(f"{path} must be an object with a non-empty `name` and optional `url`")
+
+        name = value.get("name")
+        if not isinstance(name, str) or not name.strip():
+            raise RuntimeError(f"{path}.name must be a non-empty string")
+
+        person = {"name": name.strip()}
+        url = value.get("url")
+        if url is not None:
+            if not isinstance(url, str) or not url.strip():
+                raise RuntimeError(f"{path}.url must be a non-empty string when present")
+            normalized_url = url.strip()
+            if not (
+                normalized_url.startswith(("https://", "http://", "mailto:"))
+                or (normalized_url.startswith("/") and not normalized_url.startswith("//"))
+            ):
+                raise RuntimeError(f"{path}.url must be an absolute http(s), mailto, or root-relative URL")
+            person["url"] = normalized_url
+        return person
+
+    @staticmethod
+    def person_html(person: dict[str, str]) -> str:
+        name = html.escape(person["name"])
+        url = person.get("url")
+        if not url:
+            return f'<span class="article-person">{name}</span>'
+
+        escaped_url = html.escape(url, quote=True)
+        if url.startswith("/"):
+            return f'<a class="article-person" href="{escaped_url}" data-internal="true">{name}</a>'
+        if url.startswith("mailto:"):
+            return f'<a class="article-person" href="{escaped_url}">{name}</a>'
+        return f'<a class="article-person" href="{escaped_url}" target="_blank" rel="noopener noreferrer">{name}</a>'
 
     @staticmethod
     def neighbor(article: dict[str, Any] | None, preferred_languages: list[str]) -> dict[str, str] | None:
