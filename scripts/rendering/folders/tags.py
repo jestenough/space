@@ -103,6 +103,7 @@ class TagsFolderRenderer(FolderRenderer):
         return context.templates.render(
             "folders/tags.html",
             content_panel_class="panel directory-panel" if tag else "panel hidden directory-panel",
+            article_command_base=html.escape(f'grep -R "tag:{tag}" .' if tag else "", quote=True),
             list_title=html.escape(title),
             search_placeholder=html.escape(context.ui["search_placeholder"]),
             sort_label=html.escape(context.ui["sort_label"]),

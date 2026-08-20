@@ -21,6 +21,7 @@ const sortDataKey = (value: string): { key: string; direction: SortDirection } =
   return { key, direction: direction === "asc" ? "asc" : "desc" };
 };
 const datasetKey = (key: string): string => `sort${key.charAt(0).toUpperCase()}${key.slice(1)}`;
+const shellQuote = (value: string): string => `'${value.replaceAll("'", "'\\''")}'`;
 
 export class ListController {
   private readonly list: HTMLElement | null;
@@ -103,7 +104,8 @@ export class ListController {
   render(): void {
     if (!this.list || !isVisibleRoot(this.root)) return;
 
-    const query = normalizeQuery(this.searchInput ? this.searchInput.value : this.routeQuery);
+    const searchValue = (this.searchInput ? this.searchInput.value : this.routeQuery).trim();
+    const query = normalizeQuery(searchValue);
     const sortValue = this.sortSelect?.value || "date-desc";
     const pageSizeValue = pageSize(this.sizeSelect?.value || null);
     this.ensureOrder(sortValue);
@@ -128,6 +130,7 @@ export class ListController {
     this.setProcessField("total", String(filtered.length));
     this.setProcessField("page", String(totalPages > 0 ? this.currentPage : 0));
     this.setProcessField("pages", String(totalPages));
+    this.updateCommand(searchValue, sortValue, pageSizeValue, start);
 
     const params = new URLSearchParams(window.location.search);
     if (query) params.set("q", query); else params.delete("q");
@@ -165,6 +168,24 @@ export class ListController {
       ? Number(leftValue) - Number(rightValue)
       : COLLATOR.compare(leftValue, rightValue);
     return direction === "asc" ? result : -result;
+  }
+
+  private updateCommand(query: string, sortValue: string, pageSizeValue: number, start: number): void {
+    const base = this.root.dataset.listCommandBase;
+    const output = document.querySelector<HTMLElement>("#render-indicator .shell-cmd");
+    if (!base || !output) return;
+
+    const parts = [base];
+    const searchCommand = this.searchInput?.dataset.listCommand;
+    if (query && searchCommand) parts.push(`${searchCommand} ${shellQuote(query)}`);
+
+    const sortCommand = this.sortSelect?.selectedOptions[0]?.dataset.listCommand;
+    if (sortValue && sortCommand) parts.push(sortCommand);
+
+    if (start > 0) parts.push(`tail -n +${start + 1}`);
+    const sizeCommand = this.sizeSelect?.dataset.listCommand;
+    if (sizeCommand) parts.push(`${sizeCommand} ${pageSizeValue}`);
+    output.textContent = parts.join(" | ");
   }
 
   private setProcessField(name: string, value: string): void {

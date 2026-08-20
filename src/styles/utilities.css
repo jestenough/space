@@ -1,5 +1,6 @@
 @layer utilities {
   .hidden { display: none !important; }
+  [data-list-item][hidden] { display: none !important; }
 
   .sr-only,
   #list-title.sr-only,

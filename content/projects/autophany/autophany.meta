@@ -2,12 +2,12 @@
   "slug": "autophany",
   "type": "project",
   "label": {
-    "en": "autophany.space",
-    "ru": "autophany.space"
+    "en": "Autophany Space",
+    "ru": "Autophany Space"
   },
   "title": {
-    "en": "Autophany space",
-    "ru": "Autophany space"
+    "en": "Autophany Space",
+    "ru": "Autophany Space"
   },
   "description": {
     "en": "A section-based static personal site with prerendered pages and a shell-inspired interface.",

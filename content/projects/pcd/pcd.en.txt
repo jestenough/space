@@ -1,0 +1,1 @@
+pcd (project cd) is a fast way to jump between projects from your terminal. It discovers projects inside registered directories and supports Bash, Zsh, and Fish.

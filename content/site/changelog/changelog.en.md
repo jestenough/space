@@ -1,3 +1,12 @@
+## v1.5.0
+
+Date: **2026.08.21**
+- Added the pcd project with localized descriptions
+- Made shell commands update automatically with search, sorting, page size, and pagination across all filtered lists
+- Standardized project display names across cards and project pages
+- Fixed pagination for project grid cards
+- Fixed the image viewer briefly showing the previously opened image
+
 ## v1.4.0
 
 Date: **2026.07.22**

@@ -22,6 +22,8 @@ export const imageViewerController = {
     const close = (): void => {
       viewer.classList.add("hidden");
       viewer.setAttribute("aria-hidden", "true");
+      viewerImage.classList.add("hidden");
+      viewerImage.removeAttribute("src");
       document.body.classList.remove(OPEN_CLASS);
       document.removeEventListener("keydown", onKeydown);
       activeSrc = "";
@@ -35,9 +37,14 @@ export const imageViewerController = {
         return;
       }
       activeSrc = src;
-      viewerImage.src = src;
+      viewerImage.classList.add("hidden");
+      viewerImage.removeAttribute("src");
       viewerImage.alt = image.alt;
       viewerCaption.textContent = captionText(image);
+      viewerImage.addEventListener("load", () => {
+        if (activeSrc === src) viewerImage.classList.remove("hidden");
+      }, { once: true });
+      viewerImage.src = src;
       viewer.classList.remove("hidden");
       viewer.setAttribute("aria-hidden", "false");
       document.body.classList.add(OPEN_CLASS);

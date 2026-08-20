@@ -1,19 +1,19 @@
 <section id="home-files-panel" class="panel info-panel hidden" aria-label="Home files panel"></section>
-<section id="content-panel" class="panel directory-panel" aria-label="Projects panel" data-list-root>
+<section id="content-panel" class="panel directory-panel" aria-label="Projects panel" data-list-root data-list-command-base="ls -l -p | grep -v /">
   <p id="list-title" class="sr-only">{{list_title}}</p>
   <div class="tools-row" role="group" aria-label="Project controls">
     <label class="inline-tool">
       <span id="sort-label">{{sort_label}}</span>
       <select id="sort-select" aria-label="Sort projects" data-list-sort>
-        <option value="date-desc">{{date_desc_label}}</option>
-        <option value="date-asc">{{date_asc_label}}</option>
-        <option value="title-asc">{{title_asc_label}}</option>
-        <option value="title-desc">{{title_desc_label}}</option>
+        <option value="date-desc" data-list-command="sort -k 6,7 -r">{{date_desc_label}}</option>
+        <option value="date-asc" data-list-command="sort -k 6,7">{{date_asc_label}}</option>
+        <option value="title-asc" data-list-command="sort -k 9">{{title_asc_label}}</option>
+        <option value="title-desc" data-list-command="sort -k 9 -r">{{title_desc_label}}</option>
       </select>
     </label>
     <label class="inline-tool">
       <span id="size-label">{{size_label}}</span>
-      <select id="page-size-select" aria-label="Projects per page" data-list-size>
+      <select id="page-size-select" aria-label="Projects per page" data-list-size data-list-command="head -n">
         <option value="4">4</option>
         <option value="8">8</option>
         <option value="16">16</option>

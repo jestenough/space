@@ -1,0 +1,22 @@
+{
+  "slug": "pcd",
+  "type": "project",
+  "label": {
+    "en": "Pcd",
+    "ru": "Pcd"
+  },
+  "title": {
+    "en": "Pcd",
+    "ru": "Pcd"
+  },
+  "description": {
+    "en": "Fast project directory navigation for Bash, Zsh, and Fish",
+    "ru": "Быстрая навигация по директориям проектов в Bash, Zsh и Fish"
+  },
+  "sourceUrl": "https://github.com/jestenough/pcd",
+  "stack": ["Python"],
+  "status": {
+    "en": "Development",
+    "ru": "В разработке"
+  }
+}

@@ -16,6 +16,10 @@ class ProjectsFolderRenderer(FolderRenderer):
     expected_file_type = FileType.PROJECT
 
     @override
+    def command(self, _: FolderContext) -> str:
+        return "ls -l -p | grep -v / | sort -k 6,7 -r | head -n 4"
+
+    @override
     def stage_html(self, context: FolderContext) -> str:
         total_pages = project_file.ProjectPresenter.total_pages(context.items, context.lang, context.page_size)
         return context.templates.render(

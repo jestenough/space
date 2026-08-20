@@ -83,7 +83,7 @@ class ProjectFileRenderer(FileRenderer):
         label = exact_text(context.item.get("label"), context.lang)
         title = exact_text(context.item.get("title"), context.lang)
 
-        return label if label and label != title else context.item_slug
+        return label or title or context.item_slug
 
     @override
     def process_html(self, context: FilePageContext, display_name: str) -> str:

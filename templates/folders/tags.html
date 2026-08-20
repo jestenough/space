@@ -1,23 +1,23 @@
 <section id="home-files-panel" class="panel info-panel hidden" aria-label="Home files panel"></section>
-<section id="content-panel" class="{{content_panel_class}}" aria-label="Content panel" data-list-root>
+<section id="content-panel" class="{{content_panel_class}}" aria-label="Content panel" data-list-root data-list-command-base="{{article_command_base}}">
   <p id="list-title" class="sr-only">{{list_title}}</p>
   <div class="tools-row" role="group" aria-label="Content controls">
     <label class="command-input" aria-label="Filter content">
       <span>$ grep -i --</span>
-      <input id="article-search-input" class="search-input" type="search" placeholder="{{search_placeholder}}" maxlength="48" data-list-search />
+      <input id="article-search-input" class="search-input" type="search" placeholder="{{search_placeholder}}" maxlength="48" data-list-search data-list-command="grep -i --" />
     </label>
     <label class="inline-tool">
       <span id="sort-label">{{sort_label}}</span>
       <select id="sort-select" aria-label="Sort content" data-list-sort>
-        <option value="date-desc">{{date_desc_label}}</option>
-        <option value="date-asc">{{date_asc_label}}</option>
-        <option value="title-asc">{{title_asc_label}}</option>
-        <option value="title-desc">{{title_desc_label}}</option>
+        <option value="date-desc" data-list-command="sort -k 6,7 -r">{{date_desc_label}}</option>
+        <option value="date-asc" data-list-command="sort -k 6,7">{{date_asc_label}}</option>
+        <option value="title-asc" data-list-command="sort -k 9">{{title_asc_label}}</option>
+        <option value="title-desc" data-list-command="sort -k 9 -r">{{title_desc_label}}</option>
       </select>
     </label>
     <label class="inline-tool">
       <span id="size-label">{{size_label}}</span>
-      <select id="page-size-select" aria-label="Items per page" data-list-size>
+      <select id="page-size-select" aria-label="Items per page" data-list-size data-list-command="head -n">
         <option value="4">4</option>
         <option value="8">8</option>
         <option value="16">16</option>
@@ -34,25 +34,25 @@
     <button id="page-next" type="button" data-list-next>{{page_next}}</button>
   </div>
 </section>
-<section id="tags-panel" class="{{tags_panel_class}}" aria-label="Tags panel" data-list-root>
+<section id="tags-panel" class="{{tags_panel_class}}" aria-label="Tags panel" data-list-root data-list-command-base="grep -R &quot;tag:&quot; . | cut -d: -f2 | cut -d&quot; &quot; -f1">
   <p id="tags-headline" class="sr-only">{{tags_headline}}</p>
   <div class="tools-row tags-tools" role="group" aria-label="Tag controls">
     <label class="command-input" aria-label="Filter tags">
       <span>$ grep -i --</span>
-      <input id="tag-search-input" class="search-input" type="search" placeholder="{{tag_search_placeholder}}" maxlength="36" data-list-search />
+      <input id="tag-search-input" class="search-input" type="search" placeholder="{{tag_search_placeholder}}" maxlength="36" data-list-search data-list-command="grep -i --" />
     </label>
     <label class="inline-tool">
       <span id="tag-sort-label">{{tag_sort_label}}</span>
       <select id="tag-sort-select" aria-label="Sort tags" data-list-sort>
-        <option value="name-asc">{{name_asc_label}}</option>
-        <option value="name-desc">{{name_desc_label}}</option>
-        <option value="count-desc">{{count_desc_label}}</option>
-        <option value="count-asc">{{count_asc_label}}</option>
+        <option value="name-asc" data-list-command="sort -f">{{name_asc_label}}</option>
+        <option value="name-desc" data-list-command="sort -f -r">{{name_desc_label}}</option>
+        <option value="count-desc" data-list-command="sort -k 2 -nr">{{count_desc_label}}</option>
+        <option value="count-asc" data-list-command="sort -k 2 -n">{{count_asc_label}}</option>
       </select>
     </label>
     <label class="inline-tool">
       <span id="tag-size-label">{{tag_size_label}}</span>
-      <select id="tag-page-size-select" aria-label="Tags per page" data-list-size>
+      <select id="tag-page-size-select" aria-label="Tags per page" data-list-size data-list-command="head -n">
         <option value="4">4</option>
         <option value="8">8</option>
         <option value="16">16</option>

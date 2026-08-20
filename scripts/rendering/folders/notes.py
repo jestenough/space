@@ -20,7 +20,7 @@ class NotesFolderRenderer(FolderRenderer):
 
     @override
     def command(self, _: FolderContext) -> str:
-        return "ls -lt | head -n 4"
+        return "ls -l -p | grep -v / | sort -k 6,7 -r | head -n 4"
 
     @override
     def stage_html(self, context: FolderContext) -> str:
