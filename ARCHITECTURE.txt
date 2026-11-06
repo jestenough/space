@@ -8,13 +8,19 @@ Important files:
 - content/<section>/<section>.meta
 - content/<section>/<slug>/<slug>.meta
 - content/<section>/<slug>/<slug>.<lang>.<ext>
+- content/<section>/<slug>/assets/...          optional item media
+- content/<section>/<slug>/references.<lang>.bib  article citations
 
 Current type definitions live in:
 - scripts/config.py
 
 Enums:
-- FolderType: system, files, articles, tags
-- FileType: page, article
+- FolderType: system, files, articles, notes, projects, tags
+- FileType: page, article, project
+- ContentExtension: tex, md, txt, meta
+
+A system section sets both "kind": "system" and "system": true. Section kind
+defaults to "files". Item type defaults to "page".
 
 
 2. Build pipeline
@@ -22,6 +28,12 @@ Enums:
 The Python build pipeline is the source of truth.
 
 Main modules:
+- scripts/cli.py
+  Command registry and dispatch.
+
+- scripts/config.py
+  Paths, enums, and stable build constants.
+
 - scripts/content.py
   Scans sections, items, sources, and resolves FolderType/FileType from meta.
 
@@ -34,23 +46,86 @@ Main modules:
   - generated/files-meta/<section>/<slug>.<lang>.json
   - generated/site-meta.json
 
+- scripts/pdf.py
+  Builds article PDFs with latexmk/xelatex into public/<lang>/... and keeps
+  fingerprint caches in .cache/pdf/.
+
 - scripts/prerender.py
   Reads dist/index.html as a shell/base document.
   Reads generated data and localized file metadata.
-  Selects templates by enum type.
-  Injects final HTML into the shell and writes prerendered pages into dist/<lang>/.../index.html.
+  Creates RouteRender objects through the rendering layer.
+  Writes prerendered pages into dist/<lang>/.../index.html.
+
+- scripts/seo.py
+  Generates sitemap.xml, robots.txt, _headers, 404.html, and per-language feeds.
+
+- scripts/verify.py
+  Verifies generated and prerendered output.
+
+- scripts/preflight.py
+  Validates source content before the build.
+
+- scripts/clean.py
+  Removes generated output, caches, generated public PDFs, and public media.
+
+- scripts/citations.py
+  Preprocesses \citetext commands and builds localized reference HTML.
+
+- scripts/routes.py
+  Builds localized public routes.
+
+- scripts/generated.py
+  Reads generated indexes and metadata.
+
+- scripts/jsonio.py
+  JSON file IO with consistent build errors.
+
+- scripts/localization.py
+  Language normalization and localized text helpers.
 
 - scripts/templating.py
   Small file-based template renderer for placeholders like {{ name }}.
 
-- scripts/seo.py
-  Generates SEO artifacts such as sitemap, feeds, robots, headers, and 404.
-
-- scripts/verify.py
-  Verifies generated output.
+- scripts/create.py
+  Interactive content creation command.
 
 
-3. Templates
+3. Rendering layer
+
+The rendering layer lives in scripts/rendering/.
+
+- registry.py
+  Maps FolderType and FileType enum values to renderer instances.
+
+- context.py
+  Shared rendering contexts and RouteRender.
+
+- services.py
+  Facade used by renderers.
+
+- shell.py
+  Shell-style page shell, prompt markup, and localized UI strings.
+
+- head.py
+  Document head rendering for prerendered routes.
+
+- meta.py
+  Localized route metadata helpers.
+
+- media.py
+  Responsive image enhancement from .cache/media-manifest.json.
+
+- dom.py
+  Small HTML string patch helpers.
+
+- folders/
+  Folder renderers: system, files, articles, notes, projects, tags.
+
+- files/
+  File renderers: page, article, project.
+
+
+4. Templates
 
 Templates are selected by Python only.
 
@@ -58,20 +133,25 @@ Folder templates:
 - templates/folders/system.html
 - templates/folders/files.html
 - templates/folders/articles.html
+- templates/folders/notes.html
+- templates/folders/projects.html
 - templates/folders/tags.html
 
 File templates:
 - templates/files/page.html
 - templates/files/article.html
+- templates/files/project.html
 
-Template selection happens in:
-- scripts/prerender.py
+Selection happens in:
+- scripts/rendering/registry.py
+- scripts/rendering/folders/base.py
+- scripts/rendering/shell.py
 
 Folder templates render the list-stage structure.
 File templates render the file-stage structure.
 
 
-4. Generated stats and metadata
+5. Generated stats and metadata
 
 Build-time metadata is generated in Python, not in TypeScript.
 
@@ -88,11 +168,12 @@ Examples:
 These values are used by scripts/prerender.py while building final pages.
 
 
-5. Final prerendered pages
+6. Final prerendered pages
 
 The browser should receive already assembled pages.
 
 Examples:
+- dist/index.html
 - dist/en/index.html
 - dist/en/profile/index.html
 - dist/en/articles/index.html
@@ -108,7 +189,7 @@ Each page already includes:
 - localized strings
 
 
-6. Frontend runtime
+7. Frontend runtime
 
 Frontend code is only a DOM enhancement layer.
 
@@ -116,17 +197,30 @@ Entry point:
 - src/main.ts
 
 Runtime controller:
-- src/app/pageController.ts
+- src/app/initPage.ts
 
 Frontend modules:
 - src/features/lists/listController.ts
-  Client-side filtering, sorting, and pagination over prerendered DOM.
+  Client-side filtering, sorting, pagination, and URL query sync over
+  prerendered DOM.
 
 - src/features/toc/tocEnhancer.ts
   TOC activation, heading anchors, and hash scrolling.
 
-- src/features/content/contentCopyController.ts
-  Copy behavior inside rendered content.
+- src/features/clipboard/clipboardController.ts
+  Copy behavior for code blocks, citations, and references.
+
+- src/features/citations/citationController.ts
+  Citation highlighting and reference scrolling.
+
+- src/features/content/imageViewerController.ts
+  Zoomable image viewer.
+
+- src/features/actions/actionController.ts
+  Opens already generated action links.
+
+- src/features/panels/panelController.ts
+  Desktop panel state and mobile panel overlays.
 
 - src/features/zen/zenModeController.ts
   Zen mode behavior.
@@ -135,17 +229,18 @@ Frontend modules:
   Theme switching.
 
 - src/services/storageService.ts
-  Local storage access for theme and language preference.
+  Local storage access for theme, language, and panel preferences.
 
 TypeScript must not:
 - define content types
+- define folder types
 - choose templates
 - fetch generated content to build pages
 - compute build-time stats
 - assemble article/tag/info page markup
 
 
-7. Preview and assets
+8. Preview and assets
 
 Vite config lives in:
 - vite.config.ts
@@ -155,10 +250,12 @@ It only:
 - builds frontend assets
 - serves generated assets and raw downloads in dev
 - rewrites preview requests to prerendered dist/<lang>/.../index.html files
+- converts item images to WebP with responsive variants and writes
+  .cache/media-manifest.json
 - copies generated and media artifacts into dist where needed
 
 
-8. Command flow
+9. Command flow
 
 CLI entry point:
 - scripts/cli.py
@@ -173,12 +270,18 @@ Typical production flow:
 7. python3 -m scripts.cli seo
 8. python3 -m scripts.cli verify
 
+Full local pipeline:
+- make build
 
-9. Rule of thumb for future changes
 
-If a new content type is added:
+10. Rule of thumb for future changes
+
+If a new folder or file type is added:
 1. add enum value in scripts/config.py
-2. add matching template in templates/
-3. update scripts/prerender.py only where specific rendering behavior is actually needed
+2. add a renderer under scripts/rendering/folders/ or scripts/rendering/files/
+3. register it in scripts/rendering/registry.py
+4. add the matching template in templates/
+5. implement only the renderer hooks that differ
+6. add preflight validation if the type requires new metadata
 
 Do not move content architecture back into TypeScript.
