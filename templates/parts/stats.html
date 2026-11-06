@@ -1,0 +1,9 @@
+{% macro rows(stats) -%}
+{% for stat in stats -%}
+{% if stat.rule -%}
+<span class="meta-rule" aria-hidden="true"></span>
+{%- else -%}
+<span class="stat-row"><span class="stat-key">{{ stat.key }}</span><span class="stat-sep">:</span><span class="stat-value">{% if stat.field %}<span data-process-field="{{ stat.field }}">{{ stat.value }}</span>{% elif stat.tags %}{% for tag in stat.tags %}<a class="meta-tag-link" href="{{ tag.href }}" data-internal="true">{{ tag.label }}</a>{% if not loop.last %} {% endif %}{% endfor %}{% else %}{{ stat.value }}{% endif %}</span></span>
+{%- endif -%}
+{%- endfor -%}
+{%- endmacro %}

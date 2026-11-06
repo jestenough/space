@@ -43,6 +43,7 @@ class GeneratedItem(TypedDict, total=False):
     translations: dict[str, str]
     canonicalPath: str
     downloadPath: str | None
+    downloadPaths: dict[str, str]
     projectUrl: str
     sourceUrl: str
     stack: list[str]
@@ -88,8 +89,7 @@ def items(sections_index: list[GeneratedSection] | None = None) -> list[Generate
         slug = section.get("slug")
         if isinstance(slug, str):
             result.extend(section_items(slug))
-    else:
-        return result
+    return result
 
 
 def articles(sections_index: list[GeneratedSection] | None = None) -> list[GeneratedItem]:
@@ -107,8 +107,7 @@ def section_languages(section: dict[str, Any]) -> list[str]:
         value = section.get(field)
         if isinstance(value, dict):
             values.update(lang for lang in value if isinstance(lang, str))
-    else:
-        return language_list(values)
+    return language_list(values)
 
 
 def collect_tags_by_lang(articles: list[GeneratedItem]) -> dict[str, set[str]]:
@@ -118,8 +117,21 @@ def collect_tags_by_lang(articles: list[GeneratedItem]) -> dict[str, set[str]]:
         for lang in article.get("languages", []):
             if isinstance(lang, str):
                 result.setdefault(lang, set()).update(tags)
-    else:
-        return result
+    return result
+
+
+def tag_articles_by_lang(
+    articles: list[GeneratedItem],
+) -> dict[str, dict[str, list[GeneratedItem]]]:
+    result: dict[str, dict[str, list[GeneratedItem]]] = {}
+    for article in articles:
+        for lang in article.get("languages", []):
+            if not isinstance(lang, str):
+                continue
+            for tag in article.get("tags", []):
+                if isinstance(tag, str):
+                    result.setdefault(lang, {}).setdefault(tag, []).append(article)
+    return result
 
 
 def first_section_slug(sections_index: list[GeneratedSection], kind: FolderType) -> str | None:
@@ -129,8 +141,7 @@ def first_section_slug(sections_index: list[GeneratedSection], kind: FolderType)
             slug = section.get("slug")
             if isinstance(slug, str):
                 return slug
-    else:
-        return None
+    return None
 
 
 def localized_item(section: str, slug: str, lang: str) -> GeneratedLocalizedItem:

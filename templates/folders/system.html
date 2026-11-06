@@ -1,5 +1,12 @@
+{% from "parts/file_row.html" import row %}
 <section id="home-files-panel" class="panel info-panel" aria-label="Home files panel">
-  {{items_html}}
+{% if rows %}
+  <ul class="info-file-tree">
+{% for item in rows %}
+    {{ row(item) }}
+{% endfor %}
+  </ul>
+{% endif %}
 </section>
 <section id="content-panel" class="panel hidden directory-panel" aria-label="Content panel"></section>
 <section id="tags-panel" class="panel hidden directory-panel" aria-label="Tags panel"></section>

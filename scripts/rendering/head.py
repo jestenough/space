@@ -1,75 +1,69 @@
-"""Document head rendering for prerendered routes"""
+"""Document head data for prerendered routes."""
 
 from __future__ import annotations
 
-import html
-import re
-from functools import lru_cache
+import json
+from typing import Any
 
 from .. import routes
+from .context import RouteRender
+
+FONTS = {
+    "en": (
+        "/fonts/inter/inter-latin.woff2",
+        "/fonts/jetbrains-mono/jetbrains-mono-latin.woff2",
+    ),
+    "ru": (
+        "/fonts/inter/inter-cyrillic.woff2",
+        "/fonts/jetbrains-mono/jetbrains-mono-cyrillic.woff2",
+        "/fonts/inter/inter-latin.woff2",
+        "/fonts/jetbrains-mono/jetbrains-mono-latin.woff2",
+    ),
+}
 
 
 class Head:
-    runtime_tag_re = re.compile(
-        r"^\s*(?:"
-        r'<meta\b(?=[^>]*\bname=["\']color-scheme["\'])[^>]*>|'
-        r"<script\b(?![^>]*\bsrc=)[^>]*>[\s\S]*?</script>|"
-        r"<script\b(?=[^>]*\bsrc=)[^>]*></script>|"
-        r'<link\b(?=[^>]*\brel=["\'](?:stylesheet|modulepreload|preload)["\'])[^>]*>'
-        r")\s*$",
-        re.IGNORECASE | re.MULTILINE,
-    )
-
-    def render(
-        self,
-        lang: str,
-        title: str,
-        description: str,
-        canonical_path: str,
-        alternates: dict[str, str],
-        og_type: str,
-        extra_head: str = "",
-    ) -> str:
-        canonical_url = routes.absolute_url(canonical_path)
-        lines = [
-            '    <meta charset="UTF-8" />',
-            '    <meta name="viewport" content="width=device-width, initial-scale=1.0" />',
-            '    <meta name="robots" content="index,follow" />',
-            f"    <title>{html.escape(title)}</title>",
-            f'    <meta name="description" content="{html.escape(description, quote=True)}" />',
-            '    <link rel="icon" type="image/png" sizes="96x96" href="/icons/favicon-96x96.png" />',
-            '    <link rel="shortcut icon" href="/icons/favicon.ico" />',
-            '    <link rel="apple-touch-icon" sizes="152x152" href="/icons/apple-touch-icon.png" />',
-            '    <link rel="manifest" href="/icons/site.webmanifest" />',
-            f'    <link rel="canonical" href="{html.escape(canonical_url, quote=True)}" />',
-            f'    <meta property="og:title" content="{html.escape(title, quote=True)}" />',
-            f'    <meta property="og:description" content="{html.escape(description, quote=True)}" />',
-            f'    <meta property="og:url" content="{html.escape(canonical_url, quote=True)}" />',
-            f'    <meta property="og:type" content="{html.escape(og_type, quote=True)}" />',
-            f'    <meta property="og:locale" content="{html.escape(lang, quote=True)}" />',
+    def build(self, route: RouteRender, assets: dict[str, list[str]]) -> dict[str, Any]:
+        images = [
+            {"url": url, "alt": str(image.get("alt") or "")}
+            for image in route.images
+            if (url := self.image_url(image.get("src")))
         ]
-        for hreflang, path in alternates.items():
-            lines.append(
-                f'    <link rel="alternate" hreflang="{html.escape(hreflang, quote=True)}" href="{html.escape(routes.absolute_url(path), quote=True)}" />'
-            )
 
-        if extra_head:
-            lines.append(extra_head)
+        return {
+            "lang": route.lang,
+            "title": route.title,
+            "description": route.description,
+            "canonical": routes.absolute_url(route.canonical_path),
+            "alternates": {
+                lang: routes.absolute_url(path) for lang, path in route.alternates.items()
+            },
+            "og_type": route.og_type,
+            "og_locale": route.lang,
+            "scripts": assets.get("scripts", []),
+            "styles": assets.get("styles", []),
+            "fonts": FONTS.get(route.lang, FONTS["en"]),
+            "images": images,
+            "json_ld": self.json_ld(route.json_ld),
+        }
 
-        return "\n".join(lines)
+    @staticmethod
+    def image_url(value: Any) -> str:
+        src = str(value or "").strip()
+        if src.startswith(("http://", "https://")):
+            return src
+        if src.startswith("/"):
+            return routes.absolute_url(src)
+        return ""
 
-    def inject(self, base_html: str, head: str) -> str:
-        runtime_tags = self.runtime_tags(base_html)
-        full_head = f"{head}\n{runtime_tags}" if runtime_tags else head
+    @staticmethod
+    def json_ld(payload: dict[str, Any] | None) -> str | None:
+        if not payload:
+            return None
 
-        return re.sub(
-            r"<head>[\s\S]*?</head>", f"<head>\n{full_head}\n  </head>", base_html, count=1, flags=re.IGNORECASE
+        return (
+            json.dumps(payload, ensure_ascii=False)
+            .replace("<", "\\u003c")
+            .replace(">", "\\u003e")
+            .replace("&", "\\u0026")
         )
-
-    @lru_cache(maxsize=4)
-    def runtime_tags(self, base_html: str) -> str:
-        match = re.search(r"<head>([\s\S]*?)</head>", base_html, re.IGNORECASE)
-        if not match:
-            return ""
-        else:
-            return "\n".join(item.group(0).strip() for item in self.runtime_tag_re.finditer(match.group(1)))

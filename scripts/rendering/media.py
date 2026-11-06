@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from ..jsonio import read_json
-from . import dom
+from . import html_tags
 
 
 class Media:
@@ -44,19 +44,21 @@ class Media:
                 return tag
             original_src = html.unescape(src_match.group("value"))
             manifest = self.manifest.get(original_src)
-            tag = dom.set_tag_attr(tag, "src", str(manifest.get("src") if manifest else original_src))
+            tag = html_tags.set_tag_attr(tag, "src", str(manifest.get("src") if manifest else original_src))
             first_image = image_index == 0
             image_index += 1
-            tag = dom.set_tag_attr(tag, "loading", "eager" if first_image else "lazy")
-            tag = dom.set_tag_attr(tag, "decoding", "async")
-            tag = dom.set_tag_attr(tag, "fetchpriority", "high" if first_image else "low")
+            tag = html_tags.set_tag_attr(tag, "loading", "eager" if first_image else "lazy")
+            tag = html_tags.set_tag_attr(tag, "decoding", "async")
+            tag = html_tags.set_tag_attr(tag, "fetchpriority", "high" if first_image else "low")
             if manifest:
                 tag = self.apply_manifest(tag, manifest)
 
             if original_src.startswith("/media/"):
-                tag = dom.set_tag_attr(tag, "data-zoomable-image", "true")
-                tag = dom.set_tag_attr(tag, "data-full-image", str(manifest.get("src") if manifest else original_src))
-                tag = dom.add_tag_class(tag, "zoomable-image")
+                tag = html_tags.set_tag_attr(tag, "data-zoomable-image", "true")
+                tag = html_tags.set_tag_attr(
+                    tag, "data-full-image", str(manifest.get("src") if manifest else original_src)
+                )
+                tag = html_tags.add_tag_class(tag, "zoomable-image")
 
             return tag
 
@@ -69,7 +71,7 @@ class Media:
         width_match = Media.image_width_re.search(tag)
         requested_width = int(width_match.group("value")) if width_match else None
         if isinstance(width, int) and width > 0:
-            tag = dom.set_tag_attr(tag, "width", str(requested_width or width))
+            tag = html_tags.set_tag_attr(tag, "width", str(requested_width or width))
 
         if isinstance(height, int) and height > 0:
             rendered_height = (
@@ -77,10 +79,10 @@ class Media:
                 if requested_width and isinstance(width, int) and width > 0
                 else height
             )
-            tag = dom.set_tag_attr(tag, "height", str(rendered_height))
+            tag = html_tags.set_tag_attr(tag, "height", str(rendered_height))
 
         sizes = f"{requested_width}px" if requested_width else "(max-width: 900px) 100vw, 72ch"
-        tag = dom.set_tag_attr(tag, "sizes", sizes)
+        tag = html_tags.set_tag_attr(tag, "sizes", sizes)
         variants = manifest.get("variants")
         if isinstance(variants, list) and variants:
             srcset = ", ".join(
@@ -90,7 +92,7 @@ class Media:
             )
 
             if srcset:
-                tag = dom.set_tag_attr(tag, "srcset", srcset)
+                tag = html_tags.set_tag_attr(tag, "srcset", srcset)
 
         return tag
 

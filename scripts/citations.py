@@ -58,6 +58,8 @@ SUFFIX = "__"
 _START_RE = re.compile(rf"{re.escape(CS_PREFIX)}(\d+){re.escape(SUFFIX)}")
 _END_RE = re.compile(rf"{re.escape(CE_PREFIX)}(\d+){re.escape(SUFFIX)}")
 _REF_RE = re.compile(rf"{re.escape(CR_PREFIX)}(\d+)(?::([^{re.escape(SUFFIX)}]*))?{re.escape(SUFFIX)}")
+_BIB_FIELD_RE = re.compile(r"(\w+)\s*=\s*", re.IGNORECASE)
+_BIB_ENTRY_RE = re.compile(r"@(\w+)\s*\{\s*([^,]+)\s*,", re.IGNORECASE)
 
 
 def marker_start(num: int) -> str:
@@ -185,7 +187,7 @@ def read_bib(path: Path) -> dict[str, dict[str, str]]:
 
     pos = 0
     while True:
-        m = re.search(r"@(\w+)\s*\{\s*([^,]+)\s*,", text[pos:], re.IGNORECASE)
+        m = _BIB_ENTRY_RE.search(text, pos)
         if m is None:
             break
 
@@ -193,11 +195,11 @@ def read_bib(path: Path) -> dict[str, dict[str, str]]:
         key = m.group(2).strip()
 
         # Position of the opening { for this entry
-        open_brace = text.index("{", pos + m.start())
-        body_start = pos + m.end()  # after "key," — the field definitions
+        open_brace = text.index("{", m.start())
+        body_start = m.end()  # after "key," — the field definitions
         body_end = _matching_brace(text, open_brace + 1)
         if body_end == -1:
-            pos += m.end()
+            pos = m.end()
             continue
 
         body = text[body_start:body_end]
@@ -218,7 +220,7 @@ def _bib_fields(body: str) -> dict[str, str]:
     pos = 0
 
     while pos < len(body):
-        m = re.compile(r"(\w+)\s*=\s*", re.IGNORECASE).search(body, pos)
+        m = _BIB_FIELD_RE.search(body, pos)
         if m is None:
             break
 

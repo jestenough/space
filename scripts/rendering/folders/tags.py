@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import html
 from typing import Any, override
 
-from ... import routes
-from ...config import FolderType
-from ..context import FolderContext, ListShellContext, RouteRender
+from ... import generated, routes
+from ...config import FileType, FolderType
+from ..context import FolderContext, ListShellContext, RouteRender, Stat
 from .articles import ArticlesFolderRenderer
 from .base import FolderRenderer
 
@@ -29,11 +28,11 @@ class TagsFolderRenderer(FolderRenderer):
         )
 
     @override
-    def process_html(self, context: FolderContext) -> str:
+    def process(self, context: FolderContext) -> list[Stat]:
         tags = self.tag_counts(context.all_items, context.lang)
         page_items, total_pages = self.paginate(tags, context.page_size)
 
-        return ArticlesFolderRenderer.list_process_html(
+        return ArticlesFolderRenderer.list_process(
             context, min(context.page_size, len(page_items)), len(page_items), total_pages
         )
 
@@ -41,14 +40,12 @@ class TagsFolderRenderer(FolderRenderer):
     def extra_pages(self, context: FolderContext) -> list[RouteRender]:
         pages = []
         articles_by_slug = self.articles_by_slug(context.all_items)
+        article_list = list(articles_by_slug.values())
+        tags_by_lang = generated.collect_tags_by_lang(article_list)
+        tag_articles_by_lang = generated.tag_articles_by_lang(article_list)
 
-        tags_by_lang = self.collect_tags_by_lang(context.all_items)
         for tag in sorted(tags_by_lang.get(context.lang, set())):
-            tag_articles = [
-                article
-                for article in articles_by_slug.values()
-                if context.lang in article.get("languages", []) and tag in article.get("tags", [])
-            ]
+            tag_articles = tag_articles_by_lang.get(context.lang, {}).get(tag, [])
             page_items, total_pages = ArticlesFolderRenderer.paginate(tag_articles, context.lang, context.page_size)
             title = self.tag_title(context, tag)
             description = self.tag_description(context, tag)
@@ -59,8 +56,8 @@ class TagsFolderRenderer(FolderRenderer):
                     active_section=context.section_slug,
                     welcome_title=title,
                     welcome_lead=description,
-                    render_command=f'grep -R "tag:{html.escape(tag, quote=True)}" . | sort -k 6,7 -r | head -n 4',
-                    process_html=ArticlesFolderRenderer.list_process_html(
+                    render_command=f'grep -R "tag:{tag}" . | sort -k 6,7 -r | head -n 4',
+                    process=ArticlesFolderRenderer.list_process(
                         context, min(context.page_size, len(page_items)), len(page_items), total_pages, tag=tag
                     ),
                     stage_html=self.render_template(
@@ -71,7 +68,6 @@ class TagsFolderRenderer(FolderRenderer):
                         article_total_pages=total_pages,
                         tag_total_pages=1,
                     ),
-                    tag=tag,
                 )
             )
             pages.append(
@@ -83,7 +79,7 @@ class TagsFolderRenderer(FolderRenderer):
                     canonical_path=routes.tag_route(context.section_slug, context.lang, tag),
                     alternates=context.service.tag_alternates(context.section_slug, tag, tags_by_lang),
                     og_type="website",
-                    shell=shell,
+                    page=shell,
                 )
             )
         else:
@@ -103,70 +99,49 @@ class TagsFolderRenderer(FolderRenderer):
         return context.templates.render(
             "folders/tags.html",
             content_panel_class="panel directory-panel" if tag else "panel hidden directory-panel",
-            article_command_base=html.escape(f'grep -R "tag:{tag}" .' if tag else "", quote=True),
-            list_title=html.escape(title),
-            search_placeholder=html.escape(context.ui["search_placeholder"]),
-            sort_label=html.escape(context.ui["sort_label"]),
-            size_label=html.escape(context.ui["size_label"]),
-            date_desc_label=html.escape(context.ui["date_desc_label"]),
-            date_asc_label=html.escape(context.ui["date_asc_label"]),
-            title_asc_label=html.escape(context.ui["title_asc_label"]),
-            title_desc_label=html.escape(context.ui["title_desc_label"]),
-            articles_html=ArticlesFolderRenderer.render_article_cards(articles, context.lang, context.page_size),
+            article_command_base=f'grep -R "tag:{tag}" .' if tag else "",
+            list_title=title,
+            search_placeholder=context.ui["search_placeholder"],
+            sort_label=context.ui["sort_label"],
+            size_label=context.ui["size_label"],
+            date_desc_label=context.ui["date_desc_label"],
+            date_asc_label=context.ui["date_asc_label"],
+            title_asc_label=context.ui["title_asc_label"],
+            title_desc_label=context.ui["title_desc_label"],
+            articles=ArticlesFolderRenderer.cards(articles, context.lang, context.page_size),
             pager_class="pager-row hidden" if article_total_pages <= 1 else "pager-row",
-            page_prev=html.escape(context.ui["page_prev"]),
-            page_next=html.escape(context.ui["page_next"]),
-            page_info=html.escape(f"1/{article_total_pages}"),
+            page_prev=context.ui["page_prev"],
+            page_next=context.ui["page_next"],
+            page_info=f"1/{article_total_pages}",
             tags_panel_class="panel hidden directory-panel" if tag else "panel directory-panel",
-            tags_headline=html.escape(title),
-            tag_search_placeholder=html.escape(context.ui["tag_search_placeholder"]),
-            tag_sort_label=html.escape(context.ui["tag_sort_label"]),
-            tag_size_label=html.escape(context.ui["tag_size_label"]),
-            name_asc_label=html.escape(context.ui["name_asc_label"]),
-            name_desc_label=html.escape(context.ui["name_desc_label"]),
-            count_desc_label=html.escape(context.ui["count_desc_label"]),
-            count_asc_label=html.escape(context.ui["count_asc_label"]),
-            tags_html=self.render_tags(tags, context.lang, tag, context.section_slug, context.page_size),
+            tags_headline=title,
+            tag_search_placeholder=context.ui["tag_search_placeholder"],
+            tag_sort_label=context.ui["tag_sort_label"],
+            tag_size_label=context.ui["tag_size_label"],
+            name_asc_label=context.ui["name_asc_label"],
+            name_desc_label=context.ui["name_desc_label"],
+            count_desc_label=context.ui["count_desc_label"],
+            count_asc_label=context.ui["count_asc_label"],
+            tags=self.tag_cards(tags, context.lang, tag, context.section_slug, context.page_size),
             tag_pager_class="pager-row tag-pager-row hidden" if tag_total_pages <= 1 else "pager-row tag-pager-row",
-            tag_page_info=html.escape(f"1/{tag_total_pages}"),
+            tag_page_info=f"1/{tag_total_pages}",
         )
 
     @staticmethod
     def tag_counts(articles: list[dict[str, Any]], lang: str) -> list[dict[str, Any]]:
         counts: dict[str, int] = {}
         for article in articles:
-            if article.get("type") != "article" and str(article.get("type")) != "article":
-                continue
-
-            if lang not in article.get("languages", []):
+            if str(article.get("type")) != FileType.ARTICLE.value or lang not in article.get("languages", []):
                 continue
 
             for tag in article.get("tags", []):
                 counts[str(tag)] = counts.get(str(tag), 0) + 1
-        else:
-            return [{"name": name, "count": count} for name, count in sorted(counts.items(), key=lambda item: item[0])]
+
+        return [{"name": name, "count": count} for name, count in sorted(counts.items(), key=lambda item: item[0])]
 
     @staticmethod
     def articles_by_slug(items: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
-        return {
-            str(item["slug"]): item
-            for item in items
-            if item.get("type") == "article" or str(item.get("type")) == "article"
-        }
-
-    @staticmethod
-    def collect_tags_by_lang(items: list[dict[str, Any]]) -> dict[str, set[str]]:
-        result: dict[str, set[str]] = {}
-        for article in items:
-            if article.get("type") != "article" and str(article.get("type")) != "article":
-                continue
-
-            tags = [tag for tag in article.get("tags", []) if isinstance(tag, str)]
-            for lang in article.get("languages", []):
-                if isinstance(lang, str):
-                    result.setdefault(lang, set()).update(tags)
-        else:
-            return result
+        return {str(item["slug"]): item for item in items if str(item.get("type")) == FileType.ARTICLE.value}
 
     @staticmethod
     def paginate(tags: list[dict[str, Any]], page_size: int) -> tuple[list[dict[str, Any]], int]:
@@ -174,25 +149,26 @@ class TagsFolderRenderer(FolderRenderer):
         return tags, total_pages
 
     @staticmethod
-    def render_tags(
+    def tag_cards(
         tags: list[dict[str, Any]],
         lang: str,
         active_tag: str | None = None,
         tag_section: str | None = None,
         page_size: int | None = None,
-    ) -> str:
+    ) -> list[dict[str, Any]]:
         rows = []
         for index, tag in enumerate(tags):
             name = str(tag["name"])
-            count = int(tag["count"])
-            active = " is-active" if active_tag == name else ""
-            hidden = " hidden" if page_size is not None and index >= page_size else ""
-            href = routes.tag_route(tag_section or "tags", lang, name)
             rows.append(
-                f'<li class="tag-card"{hidden} data-list-item data-search="{html.escape(name.lower(), quote=True)}" data-sort-name="{html.escape(name.lower(), quote=True)}" data-sort-count="{count}"><a class="tag-row{active}" href="{html.escape(href, quote=True)}" data-tag="{html.escape(name, quote=True)}" data-internal="true"><span class="tag-name">#{html.escape(name)}</span><span class="tag-count">{count} file{"" if count == 1 else "s"}</span></a></li>'
+                {
+                    "href": routes.tag_route(tag_section or "tags", lang, name),
+                    "name": name,
+                    "count": int(tag["count"]),
+                    "active": active_tag == name,
+                    "hidden": page_size is not None and index >= page_size,
+                }
             )
-        else:
-            return "".join(rows)
+        return rows
 
     def tag_title(self, context: FolderContext, tag: str) -> str:
         return context.service.tag_page_meta(context.site_meta, context.lang, tag)["title"]

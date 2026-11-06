@@ -15,5 +15,6 @@
 @import "./articles.css";
 @import "./toc.css";
 @import "./utilities.css";
+@import "./motion.css";
 @import "./responsive.css";
 @import "./mobile-reader.css";

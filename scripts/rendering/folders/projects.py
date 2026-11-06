@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import html
 from typing import override
 
 from ...config import FileType, FolderType
-from ..context import FolderContext
+from ..context import FolderContext, Stat
 from ..files import project as project_file
 from .base import FolderRenderer
 
@@ -24,20 +23,20 @@ class ProjectsFolderRenderer(FolderRenderer):
         total_pages = project_file.ProjectPresenter.total_pages(context.items, context.lang, context.page_size)
         return context.templates.render(
             "folders/projects.html",
-            list_title=html.escape(self.title(context)),
-            sort_label=html.escape(context.ui["sort_label"]),
-            size_label=html.escape(context.ui["size_label"]),
-            date_desc_label=html.escape(context.ui["date_desc_label"]),
-            date_asc_label=html.escape(context.ui["date_asc_label"]),
-            title_asc_label=html.escape(context.ui["title_asc_label"]),
-            title_desc_label=html.escape(context.ui["title_desc_label"]),
-            items_html=project_file.ProjectPresenter.render_index(context.items, context.lang, context.page_size),
+            list_title=self.title(context),
+            sort_label=context.ui["sort_label"],
+            size_label=context.ui["size_label"],
+            date_desc_label=context.ui["date_desc_label"],
+            date_asc_label=context.ui["date_asc_label"],
+            title_asc_label=context.ui["title_asc_label"],
+            title_desc_label=context.ui["title_desc_label"],
+            cards=project_file.ProjectPresenter.cards(context.items, context.lang, context.page_size),
             pager_class="pager-row hidden" if total_pages <= 1 else "pager-row",
-            page_prev=html.escape(context.ui["page_prev"]),
-            page_next=html.escape(context.ui["page_next"]),
-            page_info=html.escape(f"1/{total_pages}"),
+            page_prev=context.ui["page_prev"],
+            page_next=context.ui["page_next"],
+            page_info=f"1/{total_pages}",
         )
 
     @override
-    def extra_stats(self, context: FolderContext) -> list[tuple[str, str]]:
+    def extra_stats(self, context: FolderContext) -> list[Stat]:
         return project_file.ProjectPresenter.process_stats(context.items)

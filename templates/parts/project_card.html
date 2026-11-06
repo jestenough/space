@@ -1,0 +1,20 @@
+{% macro card(item) -%}
+<article class="project-card"{% if item.hidden %} hidden{% endif %} data-list-item data-search="{{ item.search }}" data-sort-title="{{ item.label | lower }}" data-sort-date="{{ item.date }}">
+  <a class="project-card-main" href="{{ item.href }}" data-internal="true">
+    <span class="project-orbit" aria-hidden="true">{{ "%02d" | format(item.index) }}</span>
+    <span class="project-kicker project-status project-status--{{ item.status_key }}">{{ item.status }}</span>
+    <strong class="project-title">{{ item.label }}</strong>
+    <span class="project-description">{{ item.description }}</span>
+  </a>
+  <div class="project-stack" aria-label="{{ item.stack_label }}">
+{% for stack in item.stack %}
+    <span class="project-stack-chip">{{ stack }}</span>
+{% endfor %}
+  </div>
+  <div class="project-actions">
+{% for action in item.actions %}
+    <a class="project-link" href="{{ action.href }}" target="_blank" rel="noopener noreferrer">{{ action.label }}</a>
+{% endfor %}
+  </div>
+</article>
+{%- endmacro %}

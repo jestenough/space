@@ -1,0 +1,5 @@
+{% macro list(items) -%}
+{% for item in items %}
+<li class="toc-item toc-level-{{ item.level }}"><a href="#{{ item.id }}" data-heading-id="{{ item.id }}">{{ item.text }}</a></li>
+{% endfor %}
+{%- endmacro %}

@@ -1,0 +1,19 @@
+{% macro person(value) -%}
+{% if value.url %}
+{% if value.url.startswith("/") %}
+<a class="article-person" href="{{ value.url }}" data-internal="true">{{ value.name }}</a>
+{% elif value.url.startswith("mailto:") %}
+<a class="article-person" href="{{ value.url }}">{{ value.name }}</a>
+{% else %}
+<a class="article-person" href="{{ value.url }}" target="_blank" rel="noopener noreferrer">{{ value.name }}</a>
+{% endif %}
+{% else %}
+<span class="article-person">{{ value.name }}</span>
+{% endif %}
+{%- endmacro %}
+<dl class="article-byline">
+  <div class="article-byline-row"><dt>{{ labels.author }}:</dt><dd>{{ person(author) }}</dd></div>
+{% if coauthors %}
+  <div class="article-byline-row"><dt>{{ labels.coauthors }}:</dt><dd>{% for value in coauthors %}{{ person(value) }}{% if not loop.last %}, {% endif %}{% endfor %}</dd></div>
+{% endif %}
+</dl>

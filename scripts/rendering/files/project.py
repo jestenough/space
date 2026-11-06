@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import html
 from dataclasses import dataclass
 from typing import Any, override
 from urllib.parse import urlparse
@@ -10,7 +9,7 @@ from urllib.parse import urlparse
 from ... import content, routes
 from ...config import ContentExtension, FileType, FolderType
 from ...localization import exact_text, strict_text
-from ..context import FileIndexContext, FilePageContext, SourceRenderContext
+from ..context import FileIndexContext, FilePageContext, SourceRenderContext, Stat
 from .base import FileRenderer
 
 META_KEYS = ("projectUrl", "sourceUrl", "stack", "status")
@@ -63,19 +62,26 @@ class ProjectFileRenderer(FileRenderer):
     @override
     def render_source(self, context: SourceRenderContext) -> str:
         item = context.item
-
         source = context.source
-        if source.ext == ContentExtension.TEX:
-            body = context.convert_tex_to_html(source.path, item.path, item.section, item.slug, source.lang)
-        elif source.ext == ContentExtension.MARKDOWN:
-            body = context.convert_markdown_to_html(source.path, item.path, item.section, item.slug)
-        else:
-            body = ProjectPresenter.render_plain_text(source.path.read_text(encoding="utf-8"))
+        content = ""
+        paragraphs: list[str] = []
 
-        return f'<section class="file-document project-document" data-source="{html.escape(str(source.path))}">{body}</section>\n'
+        if source.ext == ContentExtension.TEX:
+            content = context.convert_tex_to_html(source.path, item.path, item.section, item.slug, source.lang)
+        elif source.ext == ContentExtension.MARKDOWN:
+            content = context.convert_markdown_to_html(source.path, item.path, item.section, item.slug)
+        else:
+            paragraphs = ProjectPresenter.paragraphs(source.path.read_text(encoding="utf-8"))
+
+        return context.templates.render(
+            "files/project_body.html",
+            source_path=str(source.path),
+            content=content,
+            paragraphs=paragraphs,
+        )
 
     @override
-    def template_context(self, context: FilePageContext) -> dict[str, str]:
+    def template_context(self, context: FilePageContext) -> dict[str, Any]:
         return ProjectPresenter.file_context(context.item, context.lang)
 
     @override
@@ -86,21 +92,17 @@ class ProjectFileRenderer(FileRenderer):
         return label or title or context.item_slug
 
     @override
-    def process_html(self, context: FilePageContext, display_name: str) -> str:
-        cwd = context.service.cwd_for_section(context.section_slug)
+    def process(self, context: FilePageContext, display_name: str) -> list[Stat]:
         file_path = self.display_file_path(context.section_slug, display_name)
         stack = ", ".join(context.item.get("stack", []))
 
-        return "".join(
-            [
-                context.service.shell_command_markup(f"stat {display_name}", cwd=cwd),
-                context.service.stat_row("File", file_path),
-                context.service.stat_row("Size", str(context.localized_meta.get("byteSize") or 0)),
-                context.service.stat_row("Stack", stack),
-                context.service.stat_row("lang", context.lang),
-                context.service.stat_row("type", str(context.item.get("type") or FileType.PROJECT)),
-            ]
-        )
+        return [
+            Stat("File", file_path),
+            Stat("Size", str(context.localized_meta.get("byteSize") or 0)),
+            Stat("Stack", stack),
+            Stat("lang", context.lang),
+            Stat("type", str(context.item.get("type") or FileType.PROJECT)),
+        ]
 
     @override
     def validate_item(self, section: content.Section, item: content.Item) -> None:
@@ -184,22 +186,45 @@ class ProjectPresenter:
         return PROJECT_TEXT_BY_LANG.get(lang, PROJECT_TEXT_BY_LANG["default"])
 
     @classmethod
-    def render_index(cls, files: list[dict[str, Any]], lang: str, page_size: int) -> str:
+    def cards(cls, files: list[dict[str, Any]], lang: str, page_size: int) -> list[dict[str, Any]]:
         text = cls.labels(lang)
+        localized = [item for item in files if lang in item.get("languages", [])]
+        localized.sort(
+            key=lambda item: (
+                str(item.get("date") or ""),
+                str(item.get("label", {}).get(lang) or item.get("slug") or ""),
+            ),
+            reverse=True,
+        )
         rows = []
-        for index, item in enumerate([item for item in files if lang in item.get("languages", [])], start=1):
-            rows.append(cls.render_card(Project(item, lang), index, text, hidden=index > page_size))
-
-        return "".join(rows)
+        for index, item in enumerate(localized, start=1):
+            project = Project(item, lang)
+            rows.append(
+                {
+                    "index": index,
+                    "href": project.href,
+                    "label": project.label,
+                    "description": project.description,
+                    "status": project.status,
+                    "status_key": project.status_key,
+                    "stack": project.stack,
+                    "stack_label": text.stack_label,
+                    "actions": cls.actions(project, text),
+                    "date": project.sort_date,
+                    "search": project.search,
+                    "hidden": index > page_size,
+                }
+            )
+        return rows
 
     @staticmethod
-    def process_stats(files: list[dict[str, Any]]) -> list[tuple[str, str]]:
+    def process_stats(files: list[dict[str, Any]]) -> list[Stat]:
         project_links = sum(1 for item in files if item.get("projectUrl"))
         stacks = sorted({stack for item in files for stack in Project.string_list(item.get("stack"))})
 
         return [
-            ("project urls", str(project_links)),
-            ("stack", ", ".join(stacks) or "n/a"),
+            Stat("project urls", str(project_links)),
+            Stat("stack", ", ".join(stacks) or "n/a"),
         ]
 
     @staticmethod
@@ -208,64 +233,33 @@ class ProjectPresenter:
         return max(1, (count + page_size - 1) // page_size)
 
     @classmethod
-    def render_card(cls, project: "Project", index: int, text: ProjectText, *, hidden: bool = False) -> str:
-        stack = "".join(cls.render_stack_chip(name) for name in project.stack)
-        actions = cls.render_actions(project, text)
-        hidden_attr = " hidden" if hidden else ""
-
-        return (
-            f'<article class="project-card"{hidden_attr} data-list-item data-search="{html.escape(project.search, quote=True)}" data-sort-title="{html.escape(project.label.lower(), quote=True)}" data-sort-date="{html.escape(project.sort_date, quote=True)}">'
-            f'<a class="project-card-main" href="{html.escape(project.href, quote=True)}" data-internal="true">'
-            f'<span class="project-orbit" aria-hidden="true">{index:02d}</span>'
-            f'<span class="project-kicker project-status project-status--{html.escape(project.status_key, quote=True)}">{html.escape(project.kicker)}</span>'
-            f'<strong class="project-title">{html.escape(project.label)}</strong>'
-            f'<span class="project-description">{html.escape(project.description)}</span>'
-            "</a>"
-            f'<div class="project-stack" aria-label="{html.escape(text.stack_label)}">{stack}</div>'
-            f'<div class="project-actions">{actions}</div>'
-            "</article>"
-        )
-
-    @classmethod
-    def file_context(cls, item: dict[str, Any], lang: str) -> dict[str, str]:
+    def file_context(cls, item: dict[str, Any], lang: str) -> dict[str, Any]:
         project = Project(item, lang)
         text = cls.labels(lang)
 
         return {
-            "project_status": html.escape(project.status),
-            "project_status_class": f"project-detail-kicker project-status project-status--{html.escape(project.status_key, quote=True)}",
-            "project_title": html.escape(project.title),
-            "project_description": html.escape(project.description),
-            "project_overview_label": html.escape(text.overview_label),
-            "project_stack_label": html.escape(text.stack_label),
-            "project_stack_html": "".join(cls.render_stack_chip(name) for name in project.stack),
-            "project_actions_html": cls.render_actions(project, text),
+            "project_status": project.status,
+            "project_status_class": f"project-detail-kicker project-status project-status--{project.status_key}",
+            "project_title": project.title,
+            "project_description": project.description,
+            "project_overview_label": text.overview_label,
+            "project_stack_label": text.stack_label,
+            "project_stack": project.stack,
+            "project_actions": cls.actions(project, text),
         }
 
     @staticmethod
-    def render_plain_text(source_text: str) -> str:
-        paragraphs = [paragraph.strip() for paragraph in source_text.strip().split("\n\n") if paragraph.strip()]
-        return "".join(f"<p>{html.escape(paragraph)}</p>" for paragraph in paragraphs)
-
-    @staticmethod
-    def render_stack_chip(name: str) -> str:
-        return f'<span class="project-stack-chip">{html.escape(name)}</span>'
+    def paragraphs(source_text: str) -> list[str]:
+        return [paragraph.strip() for paragraph in source_text.strip().split("\n\n") if paragraph.strip()]
 
     @classmethod
-    def render_actions(cls, project: "Project", text: ProjectText) -> str:
-        return "".join(
-            [
-                cls.external_link(project.project_url, text.open_label),
-                cls.external_link(project.source_url, text.source_label),
-            ]
-        )
-
-    @staticmethod
-    def external_link(href: str, label: str) -> str:
-        if not href:
-            return ""
-        else:
-            return f'<a class="project-link" href="{html.escape(href, quote=True)}" target="_blank" rel="noopener noreferrer">{html.escape(label)}</a>'
+    def actions(cls, project: "Project", text: ProjectText) -> list[dict[str, str]]:
+        actions = []
+        if project.project_url:
+            actions.append({"href": project.project_url, "label": text.open_label})
+        if project.source_url:
+            actions.append({"href": project.source_url, "label": text.source_label})
+        return actions
 
 
 class Project:

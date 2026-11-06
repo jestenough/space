@@ -6,14 +6,14 @@
 
 Исходный код сайта распространяется по лицензии [MIT License](https://opensource.org/license/mit).
 
-**Файл в репозитории**: *`LICENSE`*<br>
+**Файл в репозитории**: *`LICENSE.txt`*<br>
 **SPDX**: *[`MIT`](https://spdx.org/licenses/MIT.html)*
 
 ## Контент сайта
 
 Если явно не указано иное, статьи, заметки, описания в метаданных, изображения, сгенерированные PDF и редакционные материалы распространяются по лицензии [Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International](https://creativecommons.org/licenses/by-nc-nd/4.0/).
 
-**Файл в репозитории**: *`CONTENT-LICENSE.md`*<br>
+**Файл в репозитории**: *`CONTENT-LICENSE.txt`*<br>
 **SPDX**: *[`CC-BY-NC-ND-4.0`](https://spdx.org/licenses/CC-BY-NC-ND-4.0.html)*
 
 ## Локальные шрифты

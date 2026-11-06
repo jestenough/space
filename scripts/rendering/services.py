@@ -4,35 +4,40 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..templating import TemplateRenderer
+from ..templating import Templates
 from .context import FileShellContext, ListShellContext, RouteRender
 from .head import Head
 from .media import Media
 from .meta import Meta
+from .pages import PageCache
 from .shell import Shell
 
 
 class Services:
-    def __init__(self, templates: TemplateRenderer, media: Media, languages: list[str] | None = None) -> None:
+    def __init__(self, templates: Templates, media: Media, languages: list[str] | None = None) -> None:
+        self.templates = templates
         self.head = Head()
         self.media = media
         self.meta = Meta()
         self.shell = Shell(templates, languages)
+        self.pages = PageCache(templates)
 
     def set_languages(self, languages: list[str]) -> None:
         self.shell.set_languages(languages)
 
-    def page(self, base_html: str, route: RouteRender) -> str:
-        head = self.head.render(
-            route.lang,
-            route.title,
-            route.description,
-            route.canonical_path,
-            route.alternates,
-            route.og_type,
-            route.extra_head,
+    def page(self, route: RouteRender, assets: dict[str, list[str]]) -> str:
+        return self.pages.render(
+            route,
+            assets,
+            lambda: self.templates.render(
+                "base.html",
+                head=self.head.build(route, assets),
+                page=route.page,
+            ),
         )
-        return self.shell.apply(self.head.inject(base_html, head), route.shell)
+
+    def page_stats(self) -> str:
+        return self.pages.stats()
 
     def ui(self, lang: str) -> dict[str, str]:
         return self.shell.ui(lang)
@@ -42,15 +47,6 @@ class Services:
 
     def file_shell(self, context: FileShellContext) -> dict[str, Any]:
         return self.shell.file(context)
-
-    def shell_command_markup(self, command: str, cwd: str = "~") -> str:
-        return self.shell.command(command, cwd)
-
-    def stat_row(self, key: str, value: str) -> str:
-        return self.shell.stat_row(key, value)
-
-    def stat_row_html(self, key: str, value_html: str) -> str:
-        return self.shell.stat_row_html(key, value_html)
 
     def cwd_for_section(self, section: str | None) -> str:
         return self.shell.cwd(section)

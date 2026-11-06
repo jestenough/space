@@ -1,0 +1,38 @@
+name: Build images
+description: Build the frontend, content, and PDF images with GitHub Actions layer cache.
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build frontend image
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        file: docker/frontend/Dockerfile
+        tags: frontend
+        load: true
+        cache-from: type=gha,scope=frontend
+        cache-to: type=gha,mode=max,scope=frontend
+
+    - name: Build content image
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        file: docker/content/Dockerfile
+        tags: content
+        load: true
+        cache-from: type=gha,scope=content
+        cache-to: type=gha,mode=max,scope=content
+
+    - name: Build PDF image
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        file: docker/pdf/Dockerfile
+        tags: pdf
+        load: true
+        cache-from: type=gha,scope=pdf
+        cache-to: type=gha,mode=max,scope=pdf

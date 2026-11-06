@@ -8,10 +8,11 @@ import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 from . import content, generated, routes
 from .config import (
+    DEFAULT_LANG,
     DIST_DIR,
     GENERATED_DIR,
     GENERATED_FILE_META_DIR,
@@ -40,12 +41,12 @@ class Verify:
     required_files = (
         GENERATED_DIR / GENERATED_SITE_META_FILE,
         GENERATED_DIR / GENERATED_SECTIONS_INDEX_FILE,
+        DIST_DIR / "index.html",
+        DIST_DIR / "boot.js",
+        DIST_DIR / "404.css",
         DIST_DIR / "sitemap.xml",
         DIST_DIR / "robots.txt",
-        DIST_DIR / "_headers",
         DIST_DIR / "404.html",
-        DIST_DIR / GENERATED_DIR.name / GENERATED_SITE_META_FILE,
-        DIST_DIR / GENERATED_DIR.name / GENERATED_SECTIONS_INDEX_FILE,
     )
 
     def __init__(self) -> None:
@@ -56,12 +57,13 @@ class Verify:
         index = self.read_articles()
 
         self.check_generated_structure()
-        self.check_no_generated_artifacts()
-        self.check_no_dist_artifacts()
+        self.check_dist_structure()
+        self.check_asset_budget()
         self.check_generated_items()
         self.check_content_index(index)
         self.check_articles(index)
         self.check_seo(index)
+        self.check_root()
 
         for warning in self.warnings:
             logger.warning(warning)
@@ -91,27 +93,50 @@ class Verify:
         if missing:
             raise RuntimeError("Missing generated paths: " + ", ".join(map(str, missing)))
 
-    def check_no_generated_artifacts(self) -> None:
-        forbidden = [
-            GENERATED_DIR / "articles-index.json",
-            GENERATED_DIR / "articles",
-            GENERATED_DIR / "articles-meta",
-        ]
-        stale = [path for path in forbidden if path.exists()]
-        stale.extend(path for path in GENERATED_DIR.glob("*-index.json") if path.name != GENERATED_SECTIONS_INDEX_FILE)
-        stale.extend(GENERATED_DIR.rglob("*.br"))
-        if stale:
-            raise RuntimeError("Forbidden generated artifacts: " + ", ".join(str(path) for path in sorted(set(stale))))
+        expected = {
+            GENERATED_SECTIONS_INDEX_FILE,
+            GENERATED_SITE_META_FILE,
+            GENERATED_FILES_DIR.name,
+            GENERATED_FILE_META_DIR.name,
+            GENERATED_SECTIONS_DIR.name,
+        }
+        unexpected = {path.name for path in GENERATED_DIR.iterdir()} - expected
+        if unexpected:
+            raise RuntimeError("Unexpected generated entries: " + ", ".join(sorted(unexpected)))
 
     @staticmethod
-    def check_no_dist_artifacts() -> None:
-        forbidden = [
-            DIST_DIR / GENERATED_DIR.name / "files-meta",
-            DIST_DIR / "info",
-        ]
-        stale = [path for path in forbidden if path.exists()]
-        if stale:
-            raise RuntimeError("Forbidden dist artifacts: " + ", ".join(str(path) for path in sorted(stale)))
+    def check_dist_structure() -> None:
+        allowed = {
+            ".vite",
+            "assets",
+            "fonts",
+            "icons",
+            "media",
+            "index.html",
+            "404.html",
+            "404.css",
+            "boot.js",
+            "boot.js.gz",
+            "sitemap.xml",
+            "robots.txt",
+        }
+        allowed.update(generated.item_languages(generated.items()))
+        unexpected = {path.name for path in DIST_DIR.iterdir()} - allowed
+        if unexpected:
+            raise RuntimeError("Unexpected dist entries: " + ", ".join(sorted(unexpected)))
+
+    @staticmethod
+    def check_asset_budget() -> None:
+        assets = DIST_DIR / "assets"
+        js_size = sum(path.stat().st_size for path in assets.glob("*.js"))
+        css_size = sum(path.stat().st_size for path in assets.glob("*.css"))
+        boot_size = (DIST_DIR / "boot.js").stat().st_size
+        if js_size > 100_000:
+            raise RuntimeError(f"JavaScript budget exceeded: {js_size} bytes > 100000")
+        if css_size > 200_000:
+            raise RuntimeError(f"CSS budget exceeded: {css_size} bytes > 200000")
+        if boot_size > 20_000:
+            raise RuntimeError(f"Boot script budget exceeded: {boot_size} bytes > 20000")
 
     def check_generated_items(self) -> None:
         for item in generated.items():
@@ -121,7 +146,8 @@ class Verify:
             for lang in languages:
                 html_path = GENERATED_FILES_DIR / section / f"{slug}.{lang}.html"
                 meta_path = GENERATED_FILE_META_DIR / section / f"{slug}.{lang}.json"
-                read_text(html_path, f"Missing generated item HTML: {html_path}")
+                html = read_text(html_path, f"Missing generated item HTML: {html_path}")
+                self.check_media_links(html, f"{section}/{slug}.{lang}")
                 self.check_item_meta(meta_path, item, lang)
             self.check_download_paths(item)
 
@@ -146,11 +172,19 @@ class Verify:
         languages = self.get_languages(item, str(item.get("slug") or "item"))
         source_item = self.content_item(str(item.get("section") or ""), str(item.get("slug") or ""))
         downloadable = source_item is not None and source_item.meta.get("download") is True
+        index_paths = item.get("downloadPaths")
+        if not isinstance(index_paths, dict):
+            raise RuntimeError(f"Missing downloadPaths map for {item.get('section')}/{item.get('slug')}")
+
         for lang in languages:
             path = read_json(GENERATED_FILE_META_DIR / str(item["section"]) / f"{item['slug']}.{lang}.json").get(
                 "downloadPath"
             )
             if path is None:
+                if downloadable:
+                    raise RuntimeError(
+                        f"Missing downloadPath for {item.get('section')}/{item.get('slug')}.{lang}"
+                    )
                 continue
 
             if not downloadable:
@@ -162,6 +196,14 @@ class Verify:
                 raise RuntimeError(
                     f"Invalid downloadPath for {item.get('section')}/{item.get('slug')}.{lang}: {path!r}"
                 )
+
+            if index_paths.get(lang) != path:
+                raise RuntimeError(
+                    f"Index downloadPath mismatch for {item.get('section')}/{item.get('slug')}.{lang}"
+                )
+
+            if not (DIST_DIR / path.lstrip("/")).is_file():
+                raise RuntimeError(f"Missing download file: {DIST_DIR / path.lstrip('/')}")
 
     @staticmethod
     def content_item(section_slug: str, item_slug: str) -> content.Item | None:
@@ -282,7 +324,7 @@ class Verify:
             )
 
         self.check_math_markers(html, slug, lang)
-        self.check_article_media_links(html, slug, lang)
+        self.check_media_links(html, f"{slug}.{lang}")
 
     @staticmethod
     def check_math_markers(html: str, slug: str, lang: str) -> None:
@@ -296,7 +338,7 @@ class Verify:
 
         raise RuntimeError(f"Generated article contains raw math markers outside Pandoc math spans: {slug}.{lang}")
 
-    def check_article_media_links(self, html: str, slug: str, lang: str) -> None:
+    def check_media_links(self, html: str, label: str) -> None:
         paths = re.findall(r"(?:src|href)=[\"'](/media/[^\"']+)", html)
 
         for public_path in paths:
@@ -309,7 +351,7 @@ class Verify:
                         resolved_path = candidate
             dist_path = DIST_DIR / resolved_path.lstrip("/")
             if not dist_path.is_file():
-                raise RuntimeError(f"Missing article media asset for {slug}.{lang}: {public_path}")
+                raise RuntimeError(f"Missing media asset for {label}: {public_path}")
 
     def check_meta(self, path: Path, slug: str, lang: str) -> None:
         meta_text = read_text(path, f"Missing generated article metadata: {path}")
@@ -343,21 +385,14 @@ class Verify:
 
         if "xmlns:xhtml=" not in sitemap:
             raise RuntimeError("Sitemap must declare xhtml hreflang namespace")
-        if "xmlns:xhtml=" not in sitemap:
-            raise RuntimeError("Sitemap must declare xhtml hreflang namespace")
         if "xmlns:image=" not in sitemap:
             raise RuntimeError("Sitemap must declare image namespace")
-
-        headers = read_text(DIST_DIR / "_headers", "Missing dist/_headers")
-        self.check_cache_headers(headers)
 
         robots = read_text(DIST_DIR / "robots.txt", "Missing dist/robots.txt")
         if "Sitemap:" not in robots or SITE_URL not in robots:
             raise RuntimeError("robots.txt must reference sitemap.xml and SITE_URL")
-        if "Disallow: /generated/" not in robots:
-            raise RuntimeError("robots.txt should keep generated fragments out of the index")
 
-        for part in ("#/", "404", "/generated/"):
+        for part in ("#/", "404"):
             if part in sitemap:
                 raise RuntimeError(f"Sitemap must not contain: {part}")
 
@@ -375,9 +410,9 @@ class Verify:
                 f"{lang}/feed.xml",
             )
 
-        headers_paths = self.extract_headers_paths(headers)
         sitemap_paths = self.extract_sitemap_paths(sitemap)
         self.check_section_routes(sitemap_paths)
+        self.check_prerendered_pages(sitemap_paths)
         for article in index:
             slug = article["slug"]
             for lang in self.get_languages(article, slug):
@@ -387,8 +422,6 @@ class Verify:
                     raise RuntimeError(f"Sitemap is missing canonical route: {canonical}")
                 if pdf_route in sitemap_paths:
                     raise RuntimeError(f"Sitemap must not include PDF route: {pdf_route}")
-                if pdf_route not in headers_paths:
-                    raise RuntimeError(f"PDF canonical headers missing for {pdf_route}")
 
     def check_section_routes(self, sitemap_paths: set[str]) -> None:
         for section in generated.sections():
@@ -406,20 +439,23 @@ class Verify:
                     raise RuntimeError(f"Sitemap is missing section route: {route}")
 
     @staticmethod
-    def check_cache_headers(headers: str) -> None:
-        media_block = re.search(r"^/media/\*\n(?P<body>(?:  .+\n)+)", headers, re.M)
-        if media_block and "immutable" in media_block.group("body").lower():
-            raise RuntimeError("Article media must not be cached with immutable headers")
-        if not media_block or "public" not in media_block.group("body").lower() or "max-age=" not in media_block.group("body").lower():
-            raise RuntimeError("Article media must use a bounded public cache policy")
+    def check_root() -> None:
+        page = read_text(DIST_DIR / "index.html", "Missing dist/index.html")
+        if "noindex" not in page:
+            raise RuntimeError("dist/index.html must be noindex")
+        if f'href="/{DEFAULT_LANG}"' not in page or f'url=/{DEFAULT_LANG}' not in page:
+            raise RuntimeError("dist/index.html must redirect to the default language")
 
-        fonts_block = re.search(r"^/fonts/\*\n(?P<body>(?:  .+\n)+)", headers, re.M)
-        if not fonts_block or "immutable" not in fonts_block.group("body").lower():
-            raise RuntimeError("Versioned font assets must use immutable cache headers")
-
-        generated_block = re.search(r"^/generated/\*\n(?P<body>(?:  .+\n)+)", headers, re.M)
-        if not generated_block or "no-store" not in generated_block.group("body").lower():
-            raise RuntimeError("Generated JSON/HTML assets must use Cache-Control: no-store")
+    @staticmethod
+    def check_prerendered_pages(sitemap_paths: set[str]) -> None:
+        missing = []
+        for route in sorted(sitemap_paths):
+            relative = unquote(route).lstrip("/")
+            page = DIST_DIR / relative / "index.html"
+            if not page.is_file():
+                missing.append(f"- {route or '/'} -> {page}")
+        if missing:
+            raise RuntimeError("Sitemap routes have no prerendered pages:\n" + "\n".join(missing))
 
     @staticmethod
     def extract_sitemap_paths(sitemap: str) -> set[str]:
@@ -437,10 +473,6 @@ class Verify:
             ET.fromstring(value)
         except ET.ParseError as exc:
             raise RuntimeError(f"{label} is not valid XML: {exc}") from exc
-
-    @staticmethod
-    def extract_headers_paths(headers: str) -> set[str]:
-        return set(re.findall(r"^(/\S+)", headers, re.M))
 
     def check_pdf(self, path: Path) -> None:
         if not path.is_file():

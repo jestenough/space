@@ -2,17 +2,24 @@
 
 from __future__ import annotations
 
+import hashlib
 import html
+import json
 import logging
+import os
 import re
 import shutil
 import subprocess
 import tempfile
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from . import citations, content, routes
+from . import cache, citations, content, routes
 from .config import (
+    CACHE_DIR,
+    CACHE_MAX_ENTRIES,
+    DEFAULT_LANG,
     GENERATED_DIR,
     GENERATED_FILE_META_NAME,
     GENERATED_FILES_NAME,
@@ -22,15 +29,16 @@ from .config import (
     HOME_PAGE,
     ITEM_ASSETS_DIR,
     NOT_FOUND_PAGE,
+    ROOT_DIR,
     SYSTEM_SECTION,
     TAG_PAGE,
-    ContentExtension,
+    TEMPLATES_DIR,
     FileType,
     FolderType,
 )
 from .jsonio import write_json
-from .localization import exact_text
 from .rendering import registry
+from .templating import Templates
 from .rendering.context import FileIndexContext, LocalizedMetaContext, SourceRenderContext
 
 logger = logging.getLogger(__name__)
@@ -40,13 +48,20 @@ class Html:
     asset_src_re = re.compile(
         rf'(?P<prefix>\b(?:src|href)=["\'])(?P<path>{re.escape(ITEM_ASSETS_DIR)}/[^"\']+)(?P<suffix>["\'])'
     )
+    comment_re = re.compile(r"%.*")
+    tex_command_re = re.compile(r"\\[a-zA-Z]+\*?(?:\[[^\]]*\])?(?:\{([^{}]*)\})?")
+    non_word_re = re.compile(r"[^\wА-Яа-яЁё]+")
 
     def __init__(self, generated_dir: Path = GENERATED_DIR) -> None:
         self.generated_dir = generated_dir
         self.files_dir = generated_dir / GENERATED_FILES_NAME
         self.file_meta_dir = generated_dir / GENERATED_FILE_META_NAME
         self.sections_dir = generated_dir / GENERATED_SECTIONS_NAME
+        self.templates = Templates(TEMPLATES_DIR)
         self.tag_section_slug: str | None = None
+        self.cache_hits = 0
+        self.cache_misses = 0
+        self.force = os.environ.get("FORCE_HTML") == "1"
 
     def run(self) -> None:
         with tempfile.TemporaryDirectory(prefix="autophany-generated-", dir=GENERATED_DIR.parent) as temp_dir:
@@ -81,12 +96,17 @@ class Html:
             write_json(self.sections_dir / f"{section.slug}.json", index)
 
         for section in sections:
-            index = indexes[section.slug]
+            index_by_slug = {str(entry["slug"]): entry for entry in indexes[section.slug]}
             for item in section.items:
-                meta = next(entry for entry in index if entry["slug"] == item.slug)
-                self.generate_item(section, item, meta)
+                self.generate_item(section, item, index_by_slug[item.slug])
 
-        logger.info("Generated indexes for %s section(s) and %s article(s).", len(sections), len(articles))
+        logger.info(
+            "Generated indexes for %s section(s) and %s article(s); HTML cache: %s hit(s), %s miss(es).",
+            len(sections),
+            len(articles),
+            self.cache_hits,
+            self.cache_misses,
+        )
 
     def prepare(self) -> None:
         for path in (self.files_dir, self.file_meta_dir, self.sections_dir):
@@ -139,6 +159,7 @@ class Html:
 
     def item_meta(self, section: content.Section, item: content.Item) -> dict[str, Any]:
         languages = content.langs(item.sources)
+        canonical_lang = DEFAULT_LANG if DEFAULT_LANG in languages else languages[0]
         kind = content.item_type(item)
         title = item.meta.get("title") or item.meta.get("label") or item.slug
         description = item.meta.get("description") or {}
@@ -155,8 +176,13 @@ class Html:
             "description": description,
             "languages": languages,
             "translations": {lang: routes.item_route(section, lang, item.slug) for lang in languages},
-            "canonicalPath": routes.item_route(section, languages[0], item.slug),
-            "downloadPath": self.download_path(section, item, languages[0]) if self.is_downloadable(item) else None,
+            "canonicalPath": routes.item_route(section, canonical_lang, item.slug),
+            "downloadPath": self.download_path(section, item, canonical_lang) if self.is_downloadable(item) else None,
+            "downloadPaths": {
+                lang: path
+                for lang in languages
+                if self.is_downloadable(item) and (path := self.download_path(section, item, lang))
+            },
         }
         meta.update(
             registry.file_renderer(kind).index_meta(
@@ -168,33 +194,80 @@ class Html:
         return meta
 
     @staticmethod
-    def format_for(item: content.Item) -> ContentExtension:
-        ext = item.sources[0].ext if item.sources else ContentExtension.TXT
-        return ext
-
-    @staticmethod
     def download_path(section: content.Section, item: content.Item, lang: str) -> str | None:
         source = next((candidate for candidate in item.sources if candidate.lang == lang), None)
         if not source:
             return None
 
-        suffix = source.path.name.removeprefix(f"{item.slug}.{source.lang}.")
+        suffix = source.ext
         base = f"/{lang}/{item.slug}.{suffix}" if section.system else f"/{lang}/{section.slug}/{item.slug}.{suffix}"
 
         return base
 
+    def render_source(self, renderer: Any, context: SourceRenderContext) -> str:
+        key = self.fingerprint(context)
+        cached = CACHE_DIR / "html" / f"{key}.html"
+        if not self.force and cached.is_file():
+            self.cache_hits += 1
+            return cached.read_text(encoding="utf-8")
+
+        self.cache_misses += 1
+        rendered = renderer.render_source(context)
+        cached.parent.mkdir(parents=True, exist_ok=True)
+        cached.write_text(rendered, encoding="utf-8")
+        cache.prune(cached.parent, CACHE_MAX_ENTRIES)
+        return rendered
+
+    @classmethod
+    def fingerprint(cls, context: SourceRenderContext) -> str:
+        digest = hashlib.sha256()
+        digest.update(cls.renderer_fingerprint().encode())
+        digest.update(context.file_type.value.encode())
+        digest.update(str(context.source.path).encode())
+        digest.update(context.source.lang.encode())
+        digest.update(context.source.path.read_bytes())
+        digest.update(json.dumps(context.item.meta, sort_keys=True, ensure_ascii=False, default=str).encode())
+        bibliography = context.item.path / f"references.{context.source.lang}.bib"
+        if bibliography.is_file():
+            digest.update(bibliography.read_bytes())
+        return digest.hexdigest()
+
+    @staticmethod
+    @lru_cache(maxsize=1)
+    def pandoc_version() -> str:
+        try:
+            result = subprocess.run(["pandoc", "--version"], check=False, text=True, capture_output=True)
+        except FileNotFoundError:
+            return "missing"
+        return (result.stdout.splitlines()[0] if result.stdout else "unknown").strip()
+
+    @classmethod
+    @lru_cache(maxsize=1)
+    def renderer_fingerprint(cls) -> str:
+        digest = hashlib.sha256()
+        for path in sorted((ROOT_DIR / "scripts").rglob("*.py")):
+            digest.update(path.read_bytes())
+        for path in sorted(TEMPLATES_DIR.rglob("*.html")):
+            digest.update(path.read_bytes())
+        requirements = ROOT_DIR / "requirements.txt"
+        if requirements.is_file():
+            digest.update(requirements.read_bytes())
+        digest.update(cls.pandoc_version().encode())
+        return digest.hexdigest()
+
     def generate_item(self, section: content.Section, item: content.Item, meta: dict[str, Any]) -> None:
+        item_type = content.item_type(item)
+        renderer = registry.file_renderer(item_type)
         for source in item.sources:
-            renderer = registry.file_renderer(content.item_type(item))
-            html_text = renderer.render_source(
-                SourceRenderContext(
-                    source=source,
-                    item=item,
-                    file_type=content.item_type(item),
-                    convert_tex_to_html=self.convert_tex_to_html,
-                    convert_markdown_to_html=self.convert_markdown_to_html,
-                )
+            context = SourceRenderContext(
+                source=source,
+                item=item,
+                file_type=item_type,
+                templates=self.templates,
+                convert_tex_to_html=self.convert_tex_to_html,
+                convert_markdown_to_html=self.convert_markdown_to_html,
             )
+            html_text = self.render_source(renderer, context)
             out = self.files_dir / section.slug / f"{item.slug}.{source.lang}.html"
             meta_out = self.file_meta_dir / section.slug / f"{item.slug}.{source.lang}.json"
             out.parent.mkdir(parents=True, exist_ok=True)
@@ -330,26 +403,6 @@ class Html:
         return self.asset_src_re.sub(replace, value)
 
     @staticmethod
-    def link_neighbors(articles: list[dict[str, Any]]) -> None:
-        sorted_articles = sorted(articles, key=lambda item: (item.get("date") or "", item["slug"]), reverse=True)
-        for index, article in enumerate(sorted_articles):
-            previous_article = sorted_articles[index - 1] if index > 0 else None
-            next_article = sorted_articles[index + 1] if index + 1 < len(sorted_articles) else None
-            article["prev"] = Html.neighbor(previous_article, article["languages"]) if previous_article else None
-            article["next"] = Html.neighbor(next_article, article["languages"]) if next_article else None
-
-    @staticmethod
-    def neighbor(article: dict[str, Any] | None, preferred_languages: list[str]) -> dict[str, str] | None:
-        if article is None:
-            return None
-
-        lang = next((item for item in preferred_languages if item in article["languages"]), article["languages"][0])
-        return {
-            "title": exact_text(article["title"], lang),
-            "path": routes.item_route(article["section"], lang, article["slug"], article["section"] == SYSTEM_SECTION),
-        }
-
-    @staticmethod
     def tag_page_meta(tags_page: dict[str, Any]) -> dict[str, Any]:
         title = tags_page.get("title") if isinstance(tags_page.get("title"), dict) else {}
         description = tags_page.get("description") if isinstance(tags_page.get("description"), dict) else {}
@@ -359,17 +412,11 @@ class Html:
             "description": description,
         }
 
-    @staticmethod
-    def string_list(value: Any, path: str) -> list[str]:
-        if not isinstance(value, list) or any(not isinstance(item, str) or not item.strip() for item in value):
-            raise RuntimeError(f"{path} must be a string array")
-        return list(dict.fromkeys(item.strip() for item in value))
-
-    @staticmethod
-    def text_stats(source_text: str) -> dict[str, int]:
-        stripped = re.sub(r"%.*", "", source_text)
-        stripped = re.sub(r"\\[a-zA-Z]+\*?(?:\[[^\]]*\])?(?:\{([^{}]*)\})?", r" \1 ", stripped)
-        stripped = re.sub(r"[^\wА-Яа-яЁё]+", " ", stripped, flags=re.UNICODE)
+    @classmethod
+    def text_stats(cls, source_text: str) -> dict[str, int]:
+        stripped = cls.comment_re.sub("", source_text)
+        stripped = cls.tex_command_re.sub(r" \1 ", stripped)
+        stripped = cls.non_word_re.sub(" ", stripped)
         words = [word for word in stripped.split() if word]
 
         return {"words": len(words), "chars": len(source_text)}

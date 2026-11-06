@@ -1,6 +1,9 @@
 Autophany technical overview
+============================
+
 
 1. Source content
+-----------------
 
 Content lives in content/<section>/<item>/.
 
@@ -24,8 +27,10 @@ defaults to "files". Item type defaults to "page".
 
 
 2. Build pipeline
+-----------------
 
-The Python build pipeline is the source of truth.
+The Python build pipeline is the source of truth. Python dependencies are
+pinned in requirements.txt and installed in the content image.
 
 Main modules:
 - scripts/cli.py
@@ -51,13 +56,13 @@ Main modules:
   fingerprint caches in .cache/pdf/.
 
 - scripts/prerender.py
-  Reads dist/index.html as a shell/base document.
+  Reads Vite assets from dist/.vite/manifest.json.
   Reads generated data and localized file metadata.
-  Creates RouteRender objects through the rendering layer.
+  Renders templates/base.html through the rendering layer.
   Writes prerendered pages into dist/<lang>/.../index.html.
 
 - scripts/seo.py
-  Generates sitemap.xml, robots.txt, _headers, 404.html, and per-language feeds.
+  Generates sitemap.xml, robots.txt, 404.html, and per-language feeds.
 
 - scripts/verify.py
   Verifies generated and prerendered output.
@@ -66,7 +71,16 @@ Main modules:
   Validates source content before the build.
 
 - scripts/clean.py
-  Removes generated output, caches, generated public PDFs, and public media.
+  Removes generated output, caches, and generated public PDFs.
+
+- scripts/cache.py
+  Prunes content-addressed caches to a bounded number of entries.
+
+- scripts/check_tools.py
+  Checks host and Docker toolchain requirements.
+
+- scripts/dev.mjs
+  Local build/prerender/SEO/preview shortcut.
 
 - scripts/citations.py
   Preprocesses \citetext commands and builds localized reference HTML.
@@ -84,13 +98,14 @@ Main modules:
   Language normalization and localized text helpers.
 
 - scripts/templating.py
-  Small file-based template renderer for placeholders like {{ name }}.
+  Autoescaped Jinja2 environment for all build-time templates.
 
 - scripts/create.py
   Interactive content creation command.
 
 
 3. Rendering layer
+------------------
 
 The rendering layer lives in scripts/rendering/.
 
@@ -115,8 +130,14 @@ The rendering layer lives in scripts/rendering/.
 - media.py
   Responsive image enhancement from .cache/media-manifest.json.
 
-- dom.py
-  Small HTML string patch helpers.
+- code.py
+  Code block copy decoration for rendered content.
+
+- html_tags.py
+  Small HTML tag attribute helpers used by media enhancement.
+
+- pages.py
+  Content-addressed cache for fully rendered pages.
 
 - folders/
   Folder renderers: system, files, articles, notes, projects, tags.
@@ -126,8 +147,15 @@ The rendering layer lives in scripts/rendering/.
 
 
 4. Templates
+------------
 
-Templates are selected by Python only.
+Templates are rendered by Jinja2 with HTML autoescape.
+
+Page templates:
+- templates/base.html
+- templates/head.html
+- templates/system/404.html
+- templates/system/root.html
 
 Folder templates:
 - templates/folders/system.html
@@ -142,6 +170,9 @@ File templates:
 - templates/files/article.html
 - templates/files/project.html
 
+Shared partials:
+- templates/parts/*.html
+
 Selection happens in:
 - scripts/rendering/registry.py
 - scripts/rendering/folders/base.py
@@ -149,9 +180,11 @@ Selection happens in:
 
 Folder templates render the list-stage structure.
 File templates render the file-stage structure.
+Base and head templates render the full document.
 
 
 5. Generated stats and metadata
+-------------------------------
 
 Build-time metadata is generated in Python, not in TypeScript.
 
@@ -164,16 +197,18 @@ Examples:
 - readingTime
 - pdfPath
 - downloadPath
+- downloadPaths
 
 These values are used by scripts/prerender.py while building final pages.
 
 
 6. Final prerendered pages
+--------------------------
 
 The browser should receive already assembled pages.
 
 Examples:
-- dist/index.html
+- dist/index.html  (noindex redirect to /en)
 - dist/en/index.html
 - dist/en/profile/index.html
 - dist/en/articles/index.html
@@ -190,6 +225,7 @@ Each page already includes:
 
 
 7. Frontend runtime
+-------------------
 
 Frontend code is only a DOM enhancement layer.
 
@@ -229,7 +265,22 @@ Frontend modules:
   Theme switching.
 
 - src/services/storageService.ts
-  Local storage access for theme, language, and panel preferences.
+  Local storage access for theme and panel preferences.
+
+- src/styles/motion.css
+  Shared transitions, the pre-paint panel state handshake, and
+  reduced-motion-aware animations.
+
+- public/boot.js
+  Shared pre-paint theme and panel state logic used by the document head
+  and reused by themeService/panelController.
+
+- templates/base.html
+  Calls the shared pre-paint boot script so stored panel state is applied before
+  the deferred module bundle runs.
+
+- index.html
+  Minimal Vite entry point. Production pages are rendered from templates/base.html.
 
 TypeScript must not:
 - define content types
@@ -241,6 +292,7 @@ TypeScript must not:
 
 
 8. Preview and assets
+---------------------
 
 Vite config lives in:
 - vite.config.ts
@@ -248,14 +300,15 @@ Vite config lives in:
 It does not render content.
 It only:
 - builds frontend assets
-- serves generated assets and raw downloads in dev
+- serves raw downloads in dev
 - rewrites preview requests to prerendered dist/<lang>/.../index.html files
-- converts item images to WebP with responsive variants and writes
-  .cache/media-manifest.json
-- copies generated and media artifacts into dist where needed
+- converts item images to WebP with responsive variants, caches processed
+  outputs in .cache/media/, and writes .cache/media-manifest.json
+- copies optimized media and raw downloads into dist
 
 
 9. Command flow
+---------------
 
 CLI entry point:
 - scripts/cli.py
@@ -270,11 +323,21 @@ Typical production flow:
 7. python3 -m scripts.cli seo
 8. python3 -m scripts.cli verify
 
+Unit tests:
+- make test
+- make nginx-check
+
 Full local pipeline:
 - make build
 
+Docker pipeline:
+- make docker-build-site
+- make docker-site (images already built)
+- make docker-check (toolchain checks only)
+
 
 10. Rule of thumb for future changes
+------------------------------------
 
 If a new folder or file type is added:
 1. add enum value in scripts/config.py

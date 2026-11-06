@@ -8,7 +8,7 @@ from typing import Any, Callable
 
 from .. import content
 from ..config import FileType, FolderType
-from ..templating import TemplateRenderer
+from ..templating import Templates
 
 
 @dataclass(frozen=True)
@@ -20,8 +20,25 @@ class RouteRender:
     canonical_path: str
     alternates: dict[str, str]
     og_type: str
-    shell: dict[str, Any]
-    extra_head: str = ""
+    page: dict[str, Any]
+    images: tuple[dict[str, str], ...] = ()
+    json_ld: dict[str, Any] | None = None
+
+
+@dataclass(frozen=True)
+class Stat:
+    key: str
+    value: str = ""
+    field: str | None = None
+    tags: tuple[dict[str, str], ...] = ()
+    rule: bool = False
+
+
+@dataclass(frozen=True)
+class TocItem:
+    id: str
+    text: str
+    level: int
 
 
 @dataclass(frozen=True)
@@ -32,9 +49,8 @@ class ListShellContext:
     welcome_title: str
     welcome_lead: str
     render_command: str
-    process_html: str
+    process: list[Stat]
     stage_html: str
-    tag: str | None = None
 
 
 @dataclass(frozen=True)
@@ -47,7 +63,8 @@ class FileShellContext:
     welcome_lead: str
     welcome_command: str
     render_command: str
-    process_html: str
+    process_command: str
+    process: list[Stat]
     content_html: str
     back_href: str
     download_text: str
@@ -57,9 +74,9 @@ class FileShellContext:
     show_cite: bool = False
     show_edit: bool = False
     show_zen: bool = False
-    toc_html: str = ""
+    toc: list[TocItem] = field(default_factory=list)
     show_toc: bool = False
-    template_context: dict[str, str] | None = None
+    template_context: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -70,7 +87,7 @@ class FolderContext:
     sections: list[dict[str, Any]]
     all_items: list[dict[str, Any]]
     site_meta: dict[str, Any]
-    templates: TemplateRenderer
+    templates: Templates
     ui: dict[str, str]
     service: Any
     page_size: int
@@ -104,6 +121,7 @@ class SourceRenderContext:
     source: content.Source
     item: content.Item
     file_type: FileType
+    templates: Templates
     convert_tex_to_html: Callable[[Path, Path, str, str, str], str]
     convert_markdown_to_html: Callable[[Path, Path, str, str], str]
 
@@ -125,7 +143,7 @@ class FilePageContext:
     localized_meta: dict[str, Any]
     content_html: str
     sections: list[dict[str, Any]]
-    templates: TemplateRenderer
+    templates: Templates
     ui: dict[str, str]
     service: Any
     tag_section_slug: str | None

@@ -6,7 +6,6 @@ generated/
 coverage/
 
 public/**/*.pdf
-public/media/
 
 *.aux
 *.log

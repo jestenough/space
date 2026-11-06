@@ -23,9 +23,7 @@ This site does not sell, share, or monetize information about readers.
 The site may use **localStorage** for interface preferences only:
 
 - selected **theme**;
-- preferred **language**;
-- desktop panel state;
-- reader or zen mode preferences.
+- desktop panel state.
 
 These values stay in the browser. They are not sent to the server as a personal profile and are not used to identify a reader.
 

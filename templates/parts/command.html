@@ -1,0 +1,3 @@
+{% macro command(cwd, value) -%}
+<span class="stat-command"><span class="shell-prompt"><span class="shell-prompt-text">guest@cray-1:{{ cwd }}</span><span class="shell-prompt-sign">$</span></span><span class="shell-gap"> </span><span class="shell-cmd">{{ value }}</span></span>
+{%- endmacro %}
