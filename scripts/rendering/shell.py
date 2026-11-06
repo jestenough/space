@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-import html
-import re
 from typing import Any
 
 from .. import routes
 from ..config import DEFAULT_LANG
 from ..localization import strict_text
-from ..templating import TemplateRenderer
-from . import dom
+from ..templating import Templates
 from .context import FileShellContext, ListShellContext
 
 ASCII_LOGO = """#                                                                                                             
@@ -96,175 +93,114 @@ LOCALE_REGIONS = {
 
 
 class Shell:
-    def __init__(self, templates: TemplateRenderer, languages: list[str] | None = None) -> None:
+    def __init__(self, templates: Templates, languages: list[str] | None = None) -> None:
         self.templates = templates
         self.languages = languages or []
-        self._language_options: dict[str, str] = {}
+        self._language_options: dict[str, list[dict[str, Any]]] = {}
+        self._ui_cache: dict[str, dict[str, str]] = {}
 
     def set_languages(self, languages: list[str]) -> None:
         self.languages = languages
         self._language_options.clear()
 
     def ui(self, lang: str) -> dict[str, str]:
+        cached = self._ui_cache.get(lang)
+        if cached is not None:
+            return cached
+
         if lang == DEFAULT_LANG:
-            return dict(DEFAULT_UI)
-        if lang in UI_BY_LANG:
-            return {**DEFAULT_UI, **UI_BY_LANG[lang]}
+            cached = dict(DEFAULT_UI)
+        elif lang in UI_BY_LANG:
+            cached = {**DEFAULT_UI, **UI_BY_LANG[lang]}
+        else:
+            raise RuntimeError(
+                f"Missing shell UI translations for language `{lang}`. "
+                "Add this language to UI_BY_LANG in scripts/rendering/shell.py."
+            )
 
-        raise RuntimeError(
-            f"Missing shell UI translations for language `{lang}`. "
-            "Add this language to UI_BY_LANG in scripts/rendering/shell.py."
-        )
+        self._ui_cache[lang] = cached
+        return cached
 
-    def apply(self, page: str, shell: dict[str, Any]) -> str:
-        lang = str(shell["lang"])
-        ui = self.ui(lang)
-        cwd = str(shell.get("cwd") or "~")
-        page = dom.set_html_lang(page, lang)
-        page = dom.replace_inners(
-            page,
-            {
-                "ascii-logo": html.escape(ASCII_LOGO),
-                "pwd-line": self.command("tree -d -L 1 .", cwd="~"),
-                "theme-label": html.escape(ui["theme_label"]),
-                "lang-label": html.escape(ui["lang_label"]),
-                "session-title": html.escape(ui["window_session"]),
-                "navigation-title": html.escape(ui["window_navigation"]),
-                "metainfo-title": html.escape(ui["window_metainfo"]),
-                "systemnote-title": html.escape(ui["window_systemnote"]),
-                "drawer-title": html.escape(ui["window_drawer"]),
-                "mobile-sections-btn": html.escape(ui["mobile_sections"]),
-                "mobile-options-btn": html.escape(ui["mobile_options"]),
-                "mobile-contents-btn": html.escape(ui["mobile_contents"]),
-                "mobile-sections-title": html.escape(ui["mobile_sections"]),
-                "mobile-options-title": html.escape(ui["mobile_options"]),
-                "mobile-contents-title": html.escape(ui["mobile_contents"]),
-                "lang-switcher": self.language_options(lang),
-                "welcome-command": self.command(str(shell["welcome_command"]), cwd=cwd),
-                "welcome-title": html.escape(str(shell["welcome_title"])),
-                "welcome-lead": html.escape(str(shell["welcome_lead"])),
-                "welcome-body": html.escape(str(shell.get("welcome_body") or "")),
-                "render-indicator": self.command(str(shell["render_command"]), cwd=cwd),
-                "process-log": str(shell["process_html"]),
-                "content-list-view": str(shell.get("list_stage_html") or ""),
-                "file-view": str(shell.get("file_stage_html") or ""),
-                "toc-panel": f'<summary class="window-title">{html.escape(ui["window_headings"])}</summary><div class="side-window-body"><h3 class="toc-title">{html.escape(ui["toc_title"])}</h3><ul id="toc-list" class="toc-list">{shell.get("toc_html") or ""}</ul></div>',
-                "footer-motto": html.escape(ui["footer_motto"]),
-            },
-        )
-        page = dom.replace_options(
-            page,
-            {
-                "reading": ui["theme_reading"],
-                "light": ui["theme_light"],
-                "system": ui["theme_system"],
-                "dark": ui["theme_dark"],
-            },
-        )
-        page = self.quick_nav(page, shell)
-        return dom.set_attrs(
-            page,
-            {
-                "brand-link": {"href": f"/{shell['lang']}"},
-                "content-list-view": {
-                    "class": "list-stage hidden" if shell.get("view") != "list" else "list-stage"
-                },
-                "file-view": {
-                    "class": "file-stage" if shell.get("view") == "article" else "file-stage hidden"
-                },
-                "error-view": {
-                    "class": "file-stage" if shell.get("view") == "error" else "file-stage hidden"
-                },
-                "mobile-contents-btn": {"class": "" if shell.get("show_toc") else "hidden"},
-                "toc-panel": {
-                    "class": "side-window toc-panel" if shell.get("show_toc") else "side-window toc-panel hidden"
-                },
-            },
-        )
-
-    def quick_nav(self, page: str, shell: dict[str, Any]) -> str:
+    def nav(self, sections: list[dict[str, Any]], lang: str, active: str | None) -> list[dict[str, Any]]:
         links = []
-        active_section = shell.get("active_section")
-        lang = str(shell["lang"])
-
-        for section in shell["sections"]:
+        for section in sections:
             if section.get("system"):
                 continue
 
-            classes = "quick-link is-active" if section.get("slug") == active_section else "quick-link"
-            href = routes.generated_section_route(section, lang)
-            label = strict_text(section.get("label"), lang, f"sections.{section.get('slug')}.label")
+            slug = str(section.get("slug"))
             links.append(
-                f'<a class="{classes}" href="{html.escape(href, quote=True)}" data-internal="true">{html.escape(label)}</a>'
+                {
+                    "href": routes.generated_section_route(section, lang),
+                    "label": strict_text(section.get("label"), lang, f"sections.{slug}.label"),
+                    "active": slug == active,
+                }
             )
-        else:
-            return re.sub(
-                r'(<nav\b[^>]*class="quick-nav"[^>]*aria-label="Sections"[^>]*>)([\s\S]*?)(</nav>)',
-                lambda match: f"{match.group(1)}{''.join(links)}{match.group(3)}",
-                page,
-                count=1,
-            )
+        return links
 
     def list(self, context: ListShellContext) -> dict[str, Any]:
         return {
             "lang": context.lang,
             "cwd": self.cwd(context.active_section),
-            "sections": context.sections,
-            "active_section": context.active_section,
             "view": "list",
-            "tag": context.tag,
             "welcome_title": context.welcome_title,
             "welcome_lead": context.welcome_lead,
-            "welcome_body": "",
             "welcome_command": self.left_info_command(context.active_section),
             "render_command": context.render_command,
-            "process_html": context.process_html,
+            "process_command": "statfs ~",
+            "process": context.process,
             "list_stage_html": context.stage_html,
+            "toc": [],
             "show_toc": False,
+            "ascii_logo": ASCII_LOGO,
+            "nav": self.nav(context.sections, context.lang, context.active_section),
+            "languages": self.language_options(context.lang),
+            "ui": self.ui(context.lang),
         }
 
     def file(self, context: FileShellContext) -> dict[str, Any]:
         return {
             "lang": context.lang,
             "cwd": self.cwd(context.active_section),
-            "sections": context.sections,
-            "active_section": context.active_section,
             "view": "article",
             "welcome_title": context.welcome_title,
             "welcome_lead": context.welcome_lead,
-            "welcome_body": "",
             "welcome_command": context.welcome_command,
             "render_command": context.render_command,
-            "process_html": context.process_html,
+            "process_command": context.process_command,
+            "process": context.process,
             "file_stage_html": self.file_stage(context),
-            "toc_html": context.toc_html,
+            "toc": context.toc,
             "show_toc": context.show_toc,
+            "ascii_logo": ASCII_LOGO,
+            "nav": self.nav(context.sections, context.lang, context.active_section),
+            "languages": self.language_options(context.lang),
+            "ui": self.ui(context.lang),
         }
 
     def file_stage(self, shell: FileShellContext) -> str:
         ui = self.ui(shell.lang)
         context = {
-            "back_href": html.escape(shell.back_href, quote=True),
-            "back_label": html.escape(ui["back_label"]),
-            "back_title": html.escape(ui["back_title"], quote=True),
+            "back_href": shell.back_href,
+            "back_label": ui["back_label"],
+            "back_title": ui["back_title"],
             "download_class": "download-btn action-chip" if shell.download_href else "download-btn action-chip hidden",
-            "download_href": html.escape(shell.download_href or "", quote=True),
-            "download_text": html.escape(shell.download_text),
+            "download_href": shell.download_href or "",
+            "download_text": shell.download_text,
             "cite_class": "download-btn action-chip"
             if shell.show_cite and shell.cite_value
             else "download-btn action-chip hidden",
-            "cite_value": html.escape(shell.cite_value or "", quote=True).replace("\n", "&#10;"),
-            "cite_text": html.escape(ui["cite_text"]),
-            "copied_text": html.escape(ui["copied_text"]),
-            "copy_toast_success": html.escape(ui["copy_toast_success"]),
-            "copy_toast_failure": html.escape(ui["copy_toast_failure"]),
+            "cite_value": shell.cite_value or "",
+            "cite_text": ui["cite_text"],
+            "copied_text": ui["copied_text"],
+            "copy_toast_success": ui["copy_toast_success"],
+            "copy_toast_failure": ui["copy_toast_failure"],
             "edit_class": "download-btn action-chip"
             if shell.show_edit and shell.edit_href
             else "download-btn action-chip hidden",
-            "edit_href": html.escape(shell.edit_href or "", quote=True),
-            "edit_text": html.escape(ui["edit_text"]),
+            "edit_href": shell.edit_href or "",
+            "edit_text": ui["edit_text"],
             "zen_class": "download-btn action-chip" if shell.show_zen else "download-btn action-chip hidden",
-            "zen_text": html.escape(ui["zen_text"]),
+            "zen_text": ui["zen_text"],
             "content_html": shell.content_html,
         }
         if shell.template_context:
@@ -272,34 +208,17 @@ class Shell:
 
         return self.templates.render(f"files/{shell.file_type.value}.html", **context)
 
-    def language_options(self, active_lang: str) -> str:
+    def language_options(self, active_lang: str) -> list[dict[str, Any]]:
         cached = self._language_options.get(active_lang)
         if cached is not None:
             return cached
 
-        options = []
-        for lang in self.languages:
-            selected = ' selected="selected"' if lang == active_lang else ""
-            options.append(
-                f'<option value="{html.escape(lang, quote=True)}"{selected}>{html.escape(self.locale_name(lang))}</option>'
-            )
-        else:
-            rendered = "".join(options)
-            self._language_options[active_lang] = rendered
-            return rendered
-
-    @staticmethod
-    def command(command: str, cwd: str = "~") -> str:
-        prompt = f"guest@cray-1:{cwd}"
-        return f'<span class="stat-command"><span class="shell-prompt"><span class="shell-prompt-text">{html.escape(prompt)}</span><span class="shell-prompt-sign">$</span></span><span class="shell-gap"> </span><span class="shell-cmd">{html.escape(command)}</span></span>'
-
-    @staticmethod
-    def stat_row(key: str, value: str) -> str:
-        return Shell.stat_row_html(key, html.escape(value))
-
-    @staticmethod
-    def stat_row_html(key: str, value_html: str) -> str:
-        return f'<span class="stat-row"><span class="stat-key">{html.escape(key)}</span><span class="stat-sep">:</span><span class="stat-value">{value_html}</span></span>'
+        options = [
+            {"value": lang, "label": self.locale_name(lang), "selected": lang == active_lang}
+            for lang in self.languages
+        ]
+        self._language_options[active_lang] = options
+        return options
 
     @staticmethod
     def left_info_command(active_section: str | None) -> str:

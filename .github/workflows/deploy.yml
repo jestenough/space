@@ -23,10 +23,10 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Build check images
-        run: make docker-build
+        uses: ./.github/actions/build-images
 
       - name: Check Docker toolchains
-        run: make docker-toolchain
+        run: make docker-check
 
       - name: Check Python and source content
         run: |
@@ -35,11 +35,15 @@ jobs:
             content \
             sh -lc '
               python3 -m compileall -q scripts &&
-              make preflight
+              make preflight &&
+              make test
             '
 
       - name: Check TypeScript
         run: docker run --rm frontend npm run typecheck
+
+      - name: Check nginx config
+        run: make nginx-check
 
   build:
     name: Build and verify dist
@@ -49,6 +53,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+
+      - name: Build images
+        uses: ./.github/actions/build-images
 
       - name: Restore generated PDF cache
         uses: actions/cache@v6
@@ -60,8 +67,20 @@ jobs:
           restore-keys: |
             autophany-pdf-cache-${{ runner.os }}-
 
+      - name: Restore HTML and media cache
+        uses: actions/cache@v6
+        with:
+          path: |
+            .cache/html
+            .cache/media
+            .cache/pages
+            .cache/media-manifest.json
+          key: autophany-build-cache-${{ runner.os }}-${{ env.SITE_URL }}-${{ hashFiles('content/**', 'scripts/**', 'templates/**', 'vite.config.ts', 'requirements.txt', 'docker/content/Dockerfile') }}
+          restore-keys: |
+            autophany-build-cache-${{ runner.os }}-
+
       - name: Build and verify production dist
-        run: make docker-build-site
+        run: make docker-site
 
       - name: Show production artifact summary
         run: |

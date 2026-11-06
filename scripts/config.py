@@ -67,6 +67,8 @@ DIST_DIR = ROOT_DIR / "dist"
 TEMPLATES_DIR = ROOT_DIR / "templates"
 CACHE_DIR = ROOT_DIR / ".cache"
 MEDIA_MANIFEST_PATH = CACHE_DIR / "media-manifest.json"
+CACHE_MAX_ENTRIES = 2000
+MEDIA_CACHE_MAX_ENTRIES = 500
 
 # Localization
 DEFAULT_LANG = "en"

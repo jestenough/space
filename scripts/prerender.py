@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Iterator
+from urllib.parse import unquote
 
 from . import generated, routes
 from .config import (
@@ -24,14 +26,14 @@ from .rendering import registry
 from .rendering.context import FilePageContext, FolderContext, ListShellContext, RouteRender
 from .rendering.media import Media
 from .rendering.services import Services
-from .templating import TemplateRenderer
+from .templating import Templates
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
 class State:
-    base_html: str
+    assets: dict[str, list[str]]
     site_meta: dict[str, Any]
     sections: list[dict[str, Any]]
     section_items: dict[str, list[dict[str, Any]]]
@@ -41,17 +43,23 @@ class State:
 
 class Prerender:
     def __init__(self) -> None:
-        self.templates = TemplateRenderer(TEMPLATES_DIR)
+        self.templates = Templates(TEMPLATES_DIR)
         self.service = Services(self.templates, Media.load(MEDIA_MANIFEST_PATH))
 
     def run(self) -> None:
         state = self.load_state()
         for page in self.pages(state):
-            self.write_page(state.base_html, page)
+            self.write_page(page, state.assets)
 
+        self.write_root()
         localized_files = sum(len(item.get("languages", [])) for item in state.items)
 
-        logger.info("Prerendered %s section(s) and %s localized file item(s).", len(state.sections), localized_files)
+        logger.info(
+            "Prerendered %s section(s) and %s localized file item(s); page cache: %s.",
+            len(state.sections),
+            localized_files,
+            self.service.page_stats(),
+        )
 
     def load_state(self) -> State:
         sections = generated.sections()
@@ -60,14 +68,24 @@ class Prerender:
         self.service.set_languages(languages)
 
         section_items = {str(section["slug"]): generated.section_items(str(section["slug"])) for section in sections}
-        base_html = read_text(DIST_DIR / "index.html", "Missing dist/index.html; run vite build before prerender")
         site_meta = read_json(GENERATED_SITE_META_PATH)
 
-        return State(base_html, site_meta, sections, section_items, items, languages)
+        return State(self.load_assets(), site_meta, sections, section_items, items, languages)
+
+    @staticmethod
+    def load_assets() -> dict[str, list[str]]:
+        manifest = read_json(DIST_DIR / ".vite" / "manifest.json")
+        entry = manifest.get("index.html") if isinstance(manifest, dict) else None
+        if not isinstance(entry, dict) or not isinstance(entry.get("file"), str):
+            raise RuntimeError("Missing Vite index.html entry in dist/.vite/manifest.json")
+
+        styles = entry.get("css")
+        return {
+            "scripts": [entry["file"]],
+            "styles": [str(item) for item in styles] if isinstance(styles, list) else [],
+        }
 
     def pages(self, state: State) -> Iterator[RouteRender]:
-        yield self.home_page(state, DEFAULT_LANG, "/", "/")
-
         for lang in state.languages:
             yield self.home_page(state, lang, f"/{lang}", f"/{lang}")
 
@@ -79,7 +97,7 @@ class Prerender:
         section = next(section for section in state.sections if section.get("system"))
         renderer = registry.folder_renderer(FolderType.SYSTEM)
         context = self.folder_context(state, lang, section)
-        shell = self.service.list_shell(
+        page = self.service.list_shell(
             ListShellContext(
                 lang=lang,
                 sections=state.sections,
@@ -87,7 +105,7 @@ class Prerender:
                 welcome_title=page_meta["title"],
                 welcome_lead=page_meta["description"],
                 render_command=renderer.command(context),
-                process_html=renderer.process_html(context),
+                process=renderer.process(context),
                 stage_html=renderer.stage_html(context),
             )
         )
@@ -100,7 +118,7 @@ class Prerender:
             canonical_path=canonical_path,
             alternates=routes.alternates(state.languages, lambda item_lang: f"/{item_lang}"),
             og_type="website",
-            shell=shell,
+            page=page,
         )
 
     def section_pages(self, state: State) -> Iterator[RouteRender]:
@@ -157,12 +175,24 @@ class Prerender:
             tag,
         )
 
-    def write_page(self, base_html: str, page: RouteRender) -> None:
-        self.write_route(page.route, self.service.page(base_html, page))
+    def write_root(self) -> None:
+        content = self.templates.render("system/root.html", lang=DEFAULT_LANG)
+        (DIST_DIR / "index.html").write_text(content, encoding="utf-8")
+
+    def write_page(self, page: RouteRender, assets: dict[str, list[str]]) -> None:
+        self.write_route(page.route, self.service.page(page, assets))
 
     @staticmethod
     def write_route(route: str, content: str) -> None:
-        path = DIST_DIR / "index.html" if route == "/" else DIST_DIR / route.strip("/") / "index.html"
+        if route == "/":
+            relative = Path("index.html")
+        else:
+            parts = [part for part in unquote(route).strip("/").split("/") if part not in ("", ".")]
+            if any(part == ".." or any(char in part for char in '\\:<>"?*|') for part in parts):
+                raise RuntimeError(f"Unsafe prerender route: {route}")
+            relative = Path(*parts, "index.html")
+
+        path = DIST_DIR / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
 

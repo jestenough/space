@@ -28,6 +28,7 @@ const moveToMobile = ({ element, mobileParent }: Placement): void => {
 export const panelController = {
   init(): void {
     const media = window.matchMedia(DESKTOP_QUERY);
+    const boot = window.autophanyBoot;
     const panels = Array.from(document.querySelectorAll<HTMLDetailsElement>("details[data-panel-key]"));
     const defaults = new Map(panels.map((panel) => [panel, panel.open]));
     const contentsButton = document.querySelector<HTMLElement>('[data-mobile-overlay-open="contents"]');
@@ -49,11 +50,14 @@ export const panelController = {
       panels.forEach((panel) => {
         const key = panel.dataset.panelKey;
         if (!key) return;
-        panel.open = desktop
-          ? storageService.getBoolean(panelStorageKey(key)) ?? defaults.get(panel) ?? false
-          : key !== "systemnote";
+        panel.open = boot
+          ? boot.panelOpen(key, desktop)
+          : desktop
+            ? storageService.getBoolean(panelStorageKey(key)) ?? defaults.get(panel) ?? false
+            : key !== "systemnote";
       });
       document.body.dataset.mobileOverlays = "ready";
+      document.documentElement.dataset.panels = "ready";
     };
 
     panels.forEach((panel) => {

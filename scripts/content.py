@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -10,6 +11,8 @@ from typing import Any
 from .config import CONTENT_DIR, DEFAULT_LANG, ITEM_ASSETS_DIR, SYSTEM_SECTION, ContentExtension, FileType, FolderType
 from .jsonio import read_object
 from .localization import norm_lang
+
+SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 
 @dataclass(frozen=True)

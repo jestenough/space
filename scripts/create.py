@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 from enum import StrEnum, auto
 import logging
-import re
 import sys
 from dataclasses import dataclass
 from datetime import date
@@ -13,6 +12,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from .config import CONTENT_DIR, DEFAULT_LANG, ContentExtension, FileType, FolderType
+from .content import SLUG_RE
 from .jsonio import read_object, write_json
 from .localization import norm_lang
 
@@ -24,7 +24,6 @@ class ContentTarget(StrEnum):
     ITEM = auto()
 
 
-SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 DEFAULT_ARTICLE_AUTHOR = "Vyacheslav Dmitriev"
 
 

@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import html
 from typing import Any
 
 from ... import content, generated, routes
 from ...config import FileType, FolderType
 from ...localization import exact_text
-from ..context import FolderContext, ListShellContext, RouteRender
+from ..context import FolderContext, ListShellContext, RouteRender, Stat
 
 
 class FolderRenderer:
@@ -20,21 +19,25 @@ class FolderRenderer:
 
     def stage_html(self, context: FolderContext) -> str:
         return context.templates.render(
-            f"folders/{self.folder_type.value}.html", items_html=self.render_items(context.items, context.lang)
+            f"folders/{self.folder_type.value}.html",
+            rows=self.file_rows(context.items, context.lang),
         )
 
-    def render_items(self, items: list[dict[str, Any]], lang: str) -> str:
+    def file_rows(self, items: list[dict[str, Any]], lang: str) -> list[dict[str, str]]:
         rows = []
         for item in items:
             slug = str(item["slug"])
-            href = routes.generated_item_route(item, lang)
             label = exact_text(item.get("label"), lang) or slug
-            description = exact_text(item.get("description"), lang)
-            date = str(item.get("date") or "----------")
             rows.append(
-                f'<li class="info-file-row"><a class="info-file-link" href="{html.escape(href, quote=True)}" data-info-file-slug="{html.escape(slug, quote=True)}" data-internal="true" aria-label="{html.escape(f"{slug}: {description}", quote=True)}"><span class="info-file-perms">-rw-rw-r--  guest  {html.escape(date)}</span>  <span class="info-file-name">{html.escape(label or slug)}</span></a></li>'
+                {
+                    "href": routes.generated_item_route(item, lang),
+                    "slug": slug,
+                    "label": label,
+                    "description": exact_text(item.get("description"), lang),
+                    "date": str(item.get("date") or "----------"),
+                }
             )
-        return f'<ul class="info-file-tree">{"".join(rows)}</ul>' if rows else ""
+        return rows
 
     def title(self, context: FolderContext) -> str:
         return context.service.localized(
@@ -46,47 +49,31 @@ class FolderRenderer:
             context.section.get("description"), context.lang, f"sections.{context.section_slug}.description"
         )
 
-    def process_html(self, context: FolderContext) -> str:
-        rows = (
-            self.base_stats(context)
-            + self.extra_stats(context)
-            + [("index", f"generated/sections/{context.section_slug}.json")]
-        )
+    def process(self, context: FolderContext) -> list[Stat]:
+        return self.base_stats(context) + self.extra_stats(context)
 
-        return "".join(
-            [
-                context.service.shell_command_markup(
-                    "statfs ~",
-                    cwd=context.service.cwd_for_section(
-                        None if context.section.get("system") else context.section_slug
-                    ),
-                ),
-                render_stat_rows(context.service, rows),
-            ]
-        )
-
-    def base_stats(self, context: FolderContext) -> list[tuple[str, str]]:
+    def base_stats(self, context: FolderContext) -> list[Stat]:
         items = context.items
         languages = sorted({item_lang for item in items for item_lang in item.get("languages", [])})
         translated = sum(1 for item in items if context.lang in item.get("languages", []))
 
         return [
-            ("File system", "cray-1"),
-            (
+            Stat("File system", "cray-1"),
+            Stat(
                 "Mounted on",
                 f"/{context.lang}" if context.section.get("system") else f"/{context.lang}/{context.section_slug}",
             ),
-            ("Type", "system-section" if context.section.get("system") else "section"),
-            ("Flags", "ro, localized, indexed"),
-            ("__rule__", ""),
-            ("mode", context.section_slug if not context.section.get("system") else "home"),
-            ("lang", context.lang),
-            ("files", str(len(items))),
-            ("languages", ", ".join(languages) or context.lang),
-            ("translated", f"{translated}/{len(items)}"),
+            Stat("Type", "system-section" if context.section.get("system") else "section"),
+            Stat("Flags", "ro, localized, indexed"),
+            Stat("", rule=True),
+            Stat("mode", context.section_slug if not context.section.get("system") else "home"),
+            Stat("lang", context.lang),
+            Stat("files", str(len(items))),
+            Stat("languages", ", ".join(languages) or context.lang),
+            Stat("translated", f"{translated}/{len(items)}"),
         ]
 
-    def extra_stats(self, _: FolderContext) -> list[tuple[str, str]]:
+    def extra_stats(self, _: FolderContext) -> list[Stat]:
         return []
 
     def pages(self, context: FolderContext) -> list[RouteRender]:
@@ -100,7 +87,7 @@ class FolderRenderer:
                 welcome_title=title,
                 welcome_lead=description,
                 render_command=self.command(context),
-                process_html=self.process_html(context),
+                process=self.process(context),
                 stage_html=self.stage_html(context),
             )
         )
@@ -118,7 +105,7 @@ class FolderRenderer:
                     lambda item_lang: routes.generated_section_route(context.section, item_lang),
                 ),
                 og_type="website",
-                shell=shell,
+                page=shell,
             )
         ]
 
@@ -130,13 +117,3 @@ class FolderRenderer:
             raise RuntimeError(
                 f'Section `{section.slug}` items must set `type: "{self.expected_file_type.value}"` in {item.path / f"{item.slug}.meta"}'
             )
-
-
-def render_stat_rows(service: Any, rows: list[tuple[str, str]]) -> str:
-    rendered = []
-    for key, value in rows:
-        rendered.append(
-            '<span class="meta-rule" aria-hidden="true"></span>' if key == "__rule__" else service.stat_row(key, value)
-        )
-    else:
-        return "".join(rendered)

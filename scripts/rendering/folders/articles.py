@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import html
 from typing import Any, override
 
 from ... import routes
 from ...config import FileType, FolderType
-from ..context import FolderContext
+from ..context import FolderContext, Stat
 from .base import FolderRenderer
 
 
@@ -24,25 +23,25 @@ class ArticlesFolderRenderer(FolderRenderer):
         items, total_pages = self.paginate(context.items, context.lang, context.page_size)
         return context.templates.render(
             "folders/articles.html",
-            list_title=html.escape(self.title(context)),
-            search_placeholder=html.escape(context.ui["search_placeholder"]),
-            sort_label=html.escape(context.ui["sort_label"]),
-            size_label=html.escape(context.ui["size_label"]),
-            date_desc_label=html.escape(context.ui["date_desc_label"]),
-            date_asc_label=html.escape(context.ui["date_asc_label"]),
-            title_asc_label=html.escape(context.ui["title_asc_label"]),
-            title_desc_label=html.escape(context.ui["title_desc_label"]),
-            items_html=self.render_article_cards(items, context.lang, context.page_size),
+            list_title=self.title(context),
+            search_placeholder=context.ui["search_placeholder"],
+            sort_label=context.ui["sort_label"],
+            size_label=context.ui["size_label"],
+            date_desc_label=context.ui["date_desc_label"],
+            date_asc_label=context.ui["date_asc_label"],
+            title_asc_label=context.ui["title_asc_label"],
+            title_desc_label=context.ui["title_desc_label"],
+            cards=self.cards(items, context.lang, context.page_size),
             pager_class="pager-row hidden" if total_pages <= 1 else "pager-row",
-            page_prev=html.escape(context.ui["page_prev"]),
-            page_next=html.escape(context.ui["page_next"]),
-            page_info=html.escape(f"1/{total_pages}"),
+            page_prev=context.ui["page_prev"],
+            page_next=context.ui["page_next"],
+            page_info=f"1/{total_pages}",
         )
 
     @override
-    def process_html(self, context: FolderContext) -> str:
+    def process(self, context: FolderContext) -> list[Stat]:
         items, total_pages = self.paginate(context.items, context.lang, context.page_size)
-        return self.list_process_html(context, min(context.page_size, len(items)), len(items), total_pages)
+        return self.list_process(context, min(context.page_size, len(items)), len(items), total_pages)
 
     @staticmethod
     def paginate(items: list[dict[str, Any]], lang: str, page_size: int) -> tuple[list[dict[str, Any]], int]:
@@ -60,56 +59,43 @@ class ArticlesFolderRenderer(FolderRenderer):
         return sorted_items, total_pages
 
     @staticmethod
-    def render_article_cards(articles: list[dict[str, Any]], lang: str, page_size: int | None = None) -> str:
+    def cards(articles: list[dict[str, Any]], lang: str, page_size: int | None = None) -> list[dict[str, Any]]:
         rows = []
         for index, article in enumerate(articles):
             slug = str(article["slug"])
-            href = routes.generated_item_route(article, lang)
             title = str(article.get("title", {}).get(lang) or slug)
             label = str(article.get("label", {}).get(lang) or title)
             description = str(article.get("description", {}).get(lang) or "")
-            hidden = " hidden" if page_size is not None and index >= page_size else ""
-            tags = " ".join(
-                f'<span class="inline-tag">#{html.escape(str(tag))}</span>' for tag in article.get("tags", [])
-            )
-            search = " ".join(
-                filter(
-                    None,
-                    [
-                        slug,
-                        label,
-                        title,
-                        description,
-                        str(article.get("date") or ""),
-                        *(str(tag) for tag in article.get("tags", [])),
-                    ],
-                )
-            ).lower()
+            tags = [str(tag) for tag in article.get("tags", [])]
+            date = str(article.get("date") or "")
             rows.append(
-                f'<li class="article-card"{hidden} data-list-item data-search="{html.escape(search, quote=True)}" data-sort-title="{html.escape(label.lower(), quote=True)}" data-sort-date="{html.escape(str(article.get("date") or ""), quote=True)}"><a class="article-card-link article-card-full" href="{html.escape(href, quote=True)}" data-internal="true"><strong>{html.escape(label)}</strong><div class="meta">{html.escape(str(article.get("date") or ""))} · {html.escape(description)}</div><div class="meta tag-line">{tags}</div></a></li>'
+                {
+                    "href": routes.generated_item_route(article, lang),
+                    "label": label,
+                    "description": description,
+                    "date": date,
+                    "tags": tags,
+                    "search": " ".join([slug, label, title, description, date, *tags]).lower(),
+                    "hidden": page_size is not None and index >= page_size,
+                }
             )
-        else:
-            return "".join(rows)
+        return rows
 
     @staticmethod
-    def list_process_html(
+    def list_process(
         context: FolderContext, visible_items: int, total_items: int, total_pages: int, tag: str | None = None
-    ) -> str:
-        cwd = context.service.cwd_for_section(context.section_slug)
+    ) -> list[Stat]:
         scope = f"tag:{tag}" if tag else context.section_slug
-        return "".join(
-            [
-                context.service.shell_command_markup("statfs ~", cwd=cwd),
-                context.service.stat_row("Mounted on", f"/{context.lang}/{context.section_slug}"),
-                context.service.stat_row("Type", "section"),
-                context.service.stat_row("Flags", "ro, localized, indexed"),
-                '<span class="meta-rule" aria-hidden="true"></span>',
-                context.service.stat_row("mode", context.section_slug),
-                context.service.stat_row("lang", context.lang),
-                context.service.stat_row("scope", scope),
-                context.service.stat_row_html("shown", f'<span data-process-field="shown">{visible_items}</span>'),
-                context.service.stat_row_html("total", f'<span data-process-field="total">{total_items}</span>'),
-                context.service.stat_row_html("page", '<span data-process-field="page">1</span>'),
-                context.service.stat_row_html("pages", f'<span data-process-field="pages">{total_pages}</span>'),
-            ]
-        )
+        return [
+            Stat("Mounted on", f"/{context.lang}/{context.section_slug}"),
+            Stat("Type", "section"),
+            Stat("Flags", "ro, localized, indexed"),
+            Stat("", rule=True),
+            Stat("mode", context.section_slug),
+            Stat("lang", context.lang),
+            Stat("scope", scope),
+            Stat("shown", str(visible_items), field="shown"),
+            Stat("total", str(total_items), field="total"),
+            Stat("page", "1", field="page"),
+            Stat("pages", str(total_pages), field="pages"),
+        ]

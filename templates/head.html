@@ -1,0 +1,45 @@
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    {% for font in head.fonts %}
+    <link rel="preload" href="{{ font }}" as="font" type="font/woff2" crossorigin />
+    {% endfor %}
+    {% for style in head.styles %}
+    <link rel="preload" href="/{{ style }}" as="style" />
+    {% endfor %}
+    <script src="/boot.js" fetchpriority="high"></script>
+    {% for style in head.styles %}
+    <link rel="stylesheet" href="/{{ style }}" />
+    {% endfor %}
+    {% for script in head.scripts %}
+    <script type="module" src="/{{ script }}"></script>
+    {% endfor %}
+    <meta name="robots" content="index,follow" />
+    <title>{{ head.title }}</title>
+    <meta name="description" content="{{ head.description }}" />
+    <link rel="icon" type="image/png" sizes="96x96" href="/icons/favicon-96x96.png" />
+    <link rel="shortcut icon" href="/icons/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/icons/apple-touch-icon.png" />
+    <link rel="manifest" href="/icons/site.webmanifest" />
+    <link rel="canonical" href="{{ head.canonical }}" />
+    <meta property="og:title" content="{{ head.title }}" />
+    <meta property="og:description" content="{{ head.description }}" />
+    <meta property="og:url" content="{{ head.canonical }}" />
+    <meta property="og:type" content="{{ head.og_type }}" />
+    <meta property="og:locale" content="{{ head.og_locale }}" />
+    {% for image in head.images %}
+    {% if loop.first %}
+    <meta property="og:image" content="{{ image.url }}" />
+    <meta name="twitter:image" content="{{ image.url }}" />
+    <meta name="twitter:card" content="summary_large_image" />
+    {% if image.alt %}
+    <meta property="og:image:alt" content="{{ image.alt }}" />
+    {% endif %}
+    {% endif %}
+    {% endfor %}
+    {% for lang, href in head.alternates.items() %}
+    <link rel="alternate" hreflang="{{ lang }}" href="{{ href }}" />
+    {% endfor %}
+    {% if head.json_ld %}
+    <script type="application/ld+json">{{ head.json_ld | safe }}</script>
+    {% endif %}

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import xml.etree.ElementTree as ET
-from datetime import datetime
+from datetime import date, datetime
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
@@ -19,10 +19,12 @@ from .config import (
     MEDIA_MANIFEST_PATH,
     NOT_FOUND_PAGE,
     SITE_URL,
+    TEMPLATES_DIR,
     FileType,
     FolderType,
 )
 from .jsonio import read_json, read_object, read_text
+from .templating import Templates
 
 XML_HEADER = '<?xml version="1.0" encoding="UTF-8"?>'
 SITEMAP_ROOT = '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">'
@@ -56,6 +58,7 @@ class ArticleImageParser(HTMLParser):
 class Seo:
     def __init__(self) -> None:
         self.media_manifest = self.read_media_manifest()
+        self.templates = Templates(TEMPLATES_DIR)
 
     def run(self) -> None:
         if not DIST_DIR.exists():
@@ -70,11 +73,12 @@ class Seo:
         languages = generated.item_languages(files)
         tags_by_lang = generated.collect_tags_by_lang(articles)
 
-        sitemap = self.render_sitemap(self.build_sitemap_entries(articles, tags_by_lang, sections, files, tag_section))
+        sitemap = self.render_sitemap(
+            self.build_sitemap_entries(articles, tags_by_lang, sections, files, languages, tag_section)
+        )
         self.validate_xml(sitemap, "sitemap.xml")
         self.write_text(DIST_DIR / "sitemap.xml", sitemap)
         self.write_text(DIST_DIR / "robots.txt", self.render_robots())
-        self.write_text(DIST_DIR / "_headers", self.render_headers(articles))
         self.write_text(DIST_DIR / "404.html", self.render_404(site_meta))
 
         for lang in languages:
@@ -105,10 +109,11 @@ class Seo:
         tags_by_lang: dict[str, set[str]],
         sections: list[dict[str, Any]],
         files: list[dict[str, Any]],
+        languages: list[str],
         tag_section: str | None,
     ) -> list[dict[str, Any]]:
-        languages = generated.item_languages(files)
         latest = self.latest_date(articles)
+        tag_articles_by_lang = generated.tag_articles_by_lang(articles)
         entries: list[dict[str, Any]] = []
 
         for section in sections:
@@ -130,7 +135,7 @@ class Seo:
                 entries.append(
                     {
                         "path": routes.tag_route(tag_section or "tags", lang, tag),
-                        "lastmod": self.latest_date(self.articles_with_tag(articles, lang, tag)),
+                        "lastmod": self.latest_date(tag_articles_by_lang.get(lang, {}).get(tag, [])),
                         "alternates": self.tag_alternates(tag_section or "tags", tag, tags_by_lang),
                     }
                 )
@@ -141,7 +146,7 @@ class Seo:
                     {
                         "path": routes.generated_item_route(article, lang),
                         "lastmod": article["date"],
-                        "alternates": self.article_alternates(article),
+                        "alternates": self.item_alternates(article),
                         "images": self.article_images(article, lang),
                     }
                 )
@@ -195,70 +200,17 @@ class Seo:
 
     @staticmethod
     def render_robots() -> str:
-        return "\n".join(["User-agent: *", "Allow: /", "Disallow: /generated/", f"Sitemap: {SITE_URL}/sitemap.xml", ""])
-
-    def render_headers(self, articles: list[dict[str, Any]]) -> str:
-        lines = [
-            "/*",
-            "  X-Content-Type-Options: nosniff",
-            "  Referrer-Policy: strict-origin-when-cross-origin",
-            "  X-Frame-Options: DENY",
-            "  Cache-Control: no-cache, must-revalidate",
-            "",
-            "/assets/*",
-            "  Cache-Control: public, max-age=31536000, immutable",
-            "",
-            "/generated/*",
-            "  X-Robots-Tag: noindex, nofollow",
-            "  Cache-Control: no-store",
-            "",
-            "/media/*",
-            "  Cache-Control: public, max-age=86400, stale-while-revalidate=604800",
-            "",
-            "/fonts/*",
-            "  Cache-Control: public, max-age=31536000, immutable",
-            "",
-            "/404.html",
-            "  X-Robots-Tag: noindex, nofollow",
-            "  Cache-Control: no-cache, must-revalidate",
-            "",
-        ]
-
-        for article in articles:
-            for lang in article["languages"]:
-                article_path = routes.generated_item_route(article, lang)
-                lines.extend(
-                    [
-                        self.article_pdf_path(article, lang),
-                        f'  Link: <{routes.absolute_url(article_path)}>; rel="canonical"',
-                        "  X-Robots-Tag: index, follow",
-                        "  Cache-Control: no-cache, must-revalidate",
-                        "",
-                    ]
-                )
-
-        return "\n".join(lines)
+        return "\n".join(["User-agent: *", "Allow: /", f"Sitemap: {SITE_URL}/sitemap.xml", ""])
 
     def render_404(self, site_meta: dict[str, Any]) -> str:
         title = self.page_value(site_meta, NOT_FOUND_PAGE, "title", DEFAULT_LANG)
         description = self.page_value(site_meta, NOT_FOUND_PAGE, "description", DEFAULT_LANG)
-        return f"""<!doctype html>
-<html lang="{DEFAULT_LANG}" data-theme="dark">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="robots" content="noindex,nofollow" />
-    <meta name="description" content="{self.xml(description)}" />
-    <title>{self.xml(title)}</title>
-    <link rel="icon" type="image/png" sizes="96x96" href="/icons/favicon-96x96.png" />
-    <link rel="shortcut icon" href="/icons/favicon.ico" />
-    <link rel="apple-touch-icon" sizes="152x152" href="/icons/apple-touch-icon.png" />
-    <link rel="manifest" href="/icons/site.webmanifest" />
-    <style>:root{{color-scheme:dark;--text:#d7dde7;--accent:#8ab4f8;--accent2:#66e3c4;--border:rgba(141,153,170,.22)}}*{{box-sizing:border-box}}body{{min-height:100vh;margin:0;display:grid;place-items:center;background:linear-gradient(180deg,#080a0f,#0c1118);color:var(--text);font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}}main{{width:min(92vw,40rem);padding:2rem;border:1px dashed var(--border);text-align:center}}h1{{margin:0 0 1rem;color:var(--accent);font-size:clamp(2rem,9vw,5rem);font-weight:700;text-transform:lowercase}}a{{color:var(--text);text-decoration:none;border-bottom:1px dashed var(--accent2)}}</style>
-  </head>
-  <body><main aria-label="404"><h1>signal lost</h1><p>{self.xml(description)}</p><a href="/">cd /</a></main></body>
-</html>
-"""
+        return self.templates.render(
+            "system/404.html",
+            lang=DEFAULT_LANG,
+            title=title,
+            description=description,
+        )
 
     def render_feed(
         self,
@@ -316,23 +268,16 @@ class Seo:
                 return text.strip()
         return ""
 
-    def article_alternates(self, article: dict[str, Any]) -> dict[str, str]:
-        return routes.alternates(article["languages"], lambda lang: routes.generated_item_route(article, lang))
-
     def tag_alternates(self, section: str, tag: str, tags_by_lang: dict[str, set[str]]) -> dict[str, str]:
         alternates = {lang: routes.tag_route(section, lang, tag) for lang, tags in tags_by_lang.items() if tag in tags}
         alternates["x-default"] = alternates.get(DEFAULT_LANG) or next(iter(alternates.values()), "/")
         return alternates
 
     @staticmethod
-    def articles_with_tag(articles: list[dict[str, Any]], lang: str, tag: str) -> list[dict[str, Any]]:
-        return [article for article in articles if lang in article["languages"] and tag in article["tags"]]
-
-    @staticmethod
     def latest_date(articles: list[dict[str, Any]]) -> str:
         if not articles:
-            raise RuntimeError("Cannot calculate latest date: no articles")
-        return max(article["date"] for article in articles)
+            return date.today().isoformat()
+        return max(str(article.get("date") or "") for article in articles) or date.today().isoformat()
 
     @staticmethod
     def localized(values: dict[str, str], lang: str) -> str:
@@ -344,9 +289,6 @@ class Seo:
 
     def item_alternates(self, item: dict[str, Any]) -> dict[str, str]:
         return routes.alternates(item.get("languages", []), lambda lang: routes.generated_item_route(item, lang))
-
-    def article_pdf_path(self, article: dict[str, Any], lang: str) -> str:
-        return routes.generated_pdf_route(article, lang)
 
     def article_images(self, article: dict[str, Any], lang: str) -> list[dict[str, str]]:
         fragment_path = GENERATED_FILES_DIR / str(article["section"]) / f"{article['slug']}.{lang}.html"

@@ -1,8 +1,7 @@
 """
 Build cleanup utilities.
 
-Removes generated output, build directories, caches, generated public PDFs,
-and generated public media assets.
+Removes generated output, build directories, caches, and generated public PDFs.
 """
 
 from __future__ import annotations
@@ -30,7 +29,7 @@ class Clean:
 
         self.remove_generated_public_files()
 
-        logger.info("Removed generated output, caches, public PDFs and media assets.")
+        logger.info("Removed generated output, caches, and public PDFs.")
 
     @staticmethod
     def remove(path: Path) -> None:
@@ -42,8 +41,6 @@ class Clean:
 
         for pdf in PUBLIC_DIR.rglob("*.pdf"):
             pdf.unlink()
-
-        self.remove(PUBLIC_DIR / "media")
 
 
 def run() -> None:

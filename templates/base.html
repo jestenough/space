@@ -1,0 +1,141 @@
+{% from "parts/command.html" import command %}
+{% from "parts/stats.html" import rows as stat_rows %}
+{% from "parts/toc.html" import list as toc_list %}
+<!doctype html>
+<html lang="{{ page.lang }}">
+  <head>
+{% include "head.html" %}
+  </head>
+  <body class="terminal-only">
+    <header class="sessbar">
+      <div class="brandbox">
+        <a id="brand-link" class="brand-link" href="/{{ page.lang }}" aria-label="Open root">
+          <pre id="ascii-logo" class="ascii-logo" aria-label="autophany.space">{{ page.ascii_logo }}</pre>
+        </a>
+        <nav class="mobile-header-actions" aria-label="Mobile tools">
+          <button id="mobile-sections-btn" type="button" data-mobile-overlay-open="sections">{{ page.ui.mobile_sections }}</button>
+          <button id="mobile-options-btn" type="button" data-mobile-overlay-open="options">{{ page.ui.mobile_options }}</button>
+          <button id="mobile-contents-btn" type="button" class="{% if not page.show_toc %}hidden{% endif %}" data-mobile-overlay-open="contents">{{ page.ui.mobile_contents }}</button>
+        </nav>
+      </div>
+
+      <details class="session-window" open data-mobile-collapsible data-panel-key="session">
+        <summary id="session-title" class="window-title session-title">{{ page.ui.window_session }}</summary>
+        <div class="sessctl">
+          <label class="control-box">
+            <span id="theme-label">{{ page.ui.theme_label }}</span>
+            <select id="theme-switcher" aria-label="Theme switcher" data-theme-switcher>
+              <option value="reading">{{ page.ui.theme_reading }}</option>
+              <option value="light">{{ page.ui.theme_light }}</option>
+              <option value="system">{{ page.ui.theme_system }}</option>
+              <option value="dark">{{ page.ui.theme_dark }}</option>
+            </select>
+          </label>
+          <label class="control-box">
+            <span id="lang-label">{{ page.ui.lang_label }}</span>
+            <select id="lang-switcher" aria-label="Language switcher" data-lang-switcher>
+              {% for language in page.languages %}
+              <option value="{{ language.value }}"{% if language.selected %} selected="selected"{% endif %}>{{ language.label }}</option>
+              {% endfor %}
+            </select>
+          </label>
+        </div>
+      </details>
+    </header>
+
+    <div id="mobile-overlay-backdrop" class="mobile-overlay-backdrop hidden" data-mobile-overlay-close></div>
+    <section id="mobile-sections-panel" class="mobile-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="mobile-sections-title" data-mobile-overlay="sections">
+      <button class="mobile-overlay-close" type="button" aria-label="Close" data-mobile-overlay-close>×</button>
+      <h2 id="mobile-sections-title" class="mobile-overlay-title">{{ page.ui.mobile_sections }}</h2>
+      <div class="mobile-overlay-body" data-mobile-sections-body></div>
+    </section>
+    <section id="mobile-options-panel" class="mobile-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="mobile-options-title" data-mobile-overlay="options">
+      <button class="mobile-overlay-close" type="button" aria-label="Close" data-mobile-overlay-close>×</button>
+      <h2 id="mobile-options-title" class="mobile-overlay-title">{{ page.ui.mobile_options }}</h2>
+      <div class="mobile-overlay-body" data-mobile-options-body></div>
+    </section>
+    <section id="mobile-contents-panel" class="mobile-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="mobile-contents-title" data-mobile-overlay="contents">
+      <button class="mobile-overlay-close" type="button" aria-label="Close" data-mobile-overlay-close>×</button>
+      <h2 id="mobile-contents-title" class="mobile-overlay-title">{{ page.ui.mobile_contents }}</h2>
+      <div class="mobile-overlay-body" data-mobile-contents-body></div>
+    </section>
+
+    <main class="tty">
+      <section class="userpane" aria-live="polite" data-panel-group="left">
+        <details class="side-window nav-window" open data-mobile-collapsible data-panel-key="navigation">
+          <summary id="navigation-title" class="window-title">{{ page.ui.window_navigation }}</summary>
+          <div class="side-window-body">
+            <p id="pwd-line" class="cmdline">{{ command("~", "tree -d -L 1 .") }}</p>
+            <nav class="quick-nav" aria-label="Sections" data-quick-nav>
+              {% for link in page.nav %}
+              <a class="quick-link{% if link.active %} is-active{% endif %}" href="{{ link.href }}" data-internal="true">{{ link.label }}</a>
+              {% endfor %}
+            </nav>
+          </div>
+        </details>
+
+        <details id="welcome-panel" class="side-window motd" open data-mobile-collapsible data-panel-key="metainfo" aria-label="Welcome message">
+          <summary id="metainfo-title" class="window-title">{{ page.ui.window_metainfo }}</summary>
+          <div class="side-window-body">
+            <p id="welcome-command" class="cmdline welcome-command">{{ command(page.cwd, page.welcome_command) }}</p>
+            <h1 id="welcome-title" class="welcome-title">{{ page.welcome_title }}</h1>
+            <p id="welcome-lead">{{ page.welcome_lead }}</p>
+            <p id="welcome-body"></p>
+          </div>
+        </details>
+      </section>
+
+      <section class="mainpane">
+        <section class="main-stage-shell" aria-label="Content shell">
+          <p id="render-indicator" class="cmdrun">{{ command(page.cwd, page.render_command) }}</p>
+
+          <section id="content-list-view" class="list-stage{% if page.view != "list" %} hidden{% endif %}" aria-live="polite" data-list-view>{{ page.list_stage_html | safe }}</section>
+
+          <article id="file-view" class="file-stage{% if page.view != "article" %} hidden{% endif %}" aria-live="polite" data-file-view>{{ page.file_stage_html | safe }}</article>
+
+          <section id="error-view" class="file-stage hidden" aria-live="assertive">
+            <h2 id="error-title">Could not load file</h2>
+            <p id="error-text">The requested path could not be resolved.</p>
+          </section>
+        </section>
+      </section>
+
+      <aside class="rightpane" aria-label="Side information" data-panel-group="right">
+        <details id="toc-panel" class="side-window toc-panel{% if not page.show_toc %} hidden{% endif %}" open data-mobile-collapsible data-panel-key="headings" aria-label="Article headings" data-toc-panel>
+          <summary class="window-title">{{ page.ui.window_headings }}</summary>
+          <div class="side-window-body">
+            <h3 class="toc-title">{{ page.ui.toc_title }}</h3>
+            <ul id="toc-list" class="toc-list">{{ toc_list(page.toc) }}</ul>
+          </div>
+        </details>
+
+        <details class="statpane side-window" open data-mobile-collapsible data-panel-key="systemnote" data-panel-mobile-open="false" aria-label="Status feed">
+          <summary id="systemnote-title" class="window-title">{{ page.ui.window_systemnote }}</summary>
+          <div class="side-window-body">
+            <pre id="process-log" data-process-log>{{ command(page.cwd, page.process_command) }}{{ stat_rows(page.process) }}</pre>
+          </div>
+        </details>
+      </aside>
+    </main>
+
+    <button id="zen-exit-btn" class="zen-exit-btn" type="button" aria-label="Exit zen mode" data-zen-exit>×</button>
+    <div id="copy-toast" class="toast-status" role="status" aria-live="polite" aria-atomic="true"></div>
+    <div id="image-viewer" class="image-viewer hidden" role="dialog" aria-modal="true" aria-label="Image viewer" aria-hidden="true">
+      <figure class="image-viewer-figure">
+        <img id="image-viewer-img" class="image-viewer-img" alt="" />
+        <figcaption id="image-viewer-caption" class="image-viewer-caption"></figcaption>
+      </figure>
+    </div>
+
+    <footer class="footbar">
+      <p id="footer-motto" class="motto">{{ page.ui.footer_motto }}</p>
+      <nav aria-label="Contacts">
+        <a href="https://github.com/jestenough/space" target="_blank" rel="noreferrer" aria-label="GitHub">[git]</a>
+        <a href="mailto:jestenough.personal@gmail.com" aria-label="Mail">[mail]</a>
+        <a href="https://t.me/jestenough" target="_blank" rel="noreferrer" aria-label="Telegram">[tg]</a>
+      </nav>
+    </footer>
+
+    <script>window.autophanyBoot?.applyPanels();</script>
+  </body>
+</html>

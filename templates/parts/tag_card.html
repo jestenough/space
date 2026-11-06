@@ -1,0 +1,3 @@
+{% macro card(item) -%}
+<li class="tag-card"{% if item.hidden %} hidden{% endif %} data-list-item data-search="{{ item.name | lower }}" data-sort-name="{{ item.name | lower }}" data-sort-count="{{ item.count }}"><a class="tag-row{% if item.active %} is-active{% endif %}" href="{{ item.href }}" data-tag="{{ item.name }}" data-internal="true"><span class="tag-name">#{{ item.name }}</span><span class="tag-count">{{ item.count }} file{% if item.count != 1 %}s{% endif %}</span></a></li>
+{%- endmacro %}

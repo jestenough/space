@@ -1,0 +1,3 @@
+{% macro card(item) -%}
+<li class="article-card"{% if item.hidden %} hidden{% endif %} data-list-item data-search="{{ item.search }}" data-sort-title="{{ item.label | lower }}" data-sort-date="{{ item.date }}"><a class="article-card-link article-card-full" href="{{ item.href }}" data-internal="true"><strong>{{ item.label }}</strong><div class="meta">{{ item.date }} · {{ item.description }}</div><div class="meta tag-line">{% for tag in item.tags %}<span class="inline-tag">#{{ tag }}</span>{% if not loop.last %} {% endif %}{% endfor %}</div></a></li>
+{%- endmacro %}

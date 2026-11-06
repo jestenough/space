@@ -1,0 +1,66 @@
+@layer motion {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /*
+   * The boot script in public/boot.js runs before the deferred module bundle
+   * and before first paint. These rules keep panels invisible until that script
+   * has applied the stored open/closed state, so closed panels never flash open.
+   */
+  html[data-panels="pending"] .sessbar > .session-window,
+  html[data-panels="pending"] .userpane > .side-window,
+  html[data-panels="pending"] .rightpane > .side-window {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    body.terminal-only,
+    .sessbar,
+    .side-window,
+    .main-stage-shell,
+    .footbar,
+    .article-card,
+    .note-card,
+    .project-card,
+    .tag-row,
+    .info-file-link,
+    .control-box,
+    select,
+    .search-input,
+    button,
+    .action-chip,
+    .back-link,
+    .heading-anchor,
+    .image-viewer,
+    .mobile-overlay,
+    .mobile-overlay-backdrop,
+    #file-content,
+    #file-content a,
+    #file-content .cited,
+    #file-content .ref-item {
+      transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+      transition-duration: var(--duration-normal);
+      transition-timing-function: var(--ease-standard);
+    }
+
+    .mobile-overlay:not(.hidden),
+    .mobile-overlay-backdrop:not(.hidden),
+    .image-viewer:not(.hidden) {
+      animation: motion-reveal var(--duration-normal) var(--ease-standard);
+    }
+  }
+
+  @keyframes motion-reveal {
+    from {
+      opacity: 0;
+      transform: translateY(0.35rem);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}

@@ -19,7 +19,11 @@ def _section_slug(section: SectionLike | str) -> str:
 
 
 def _section_system(section: SectionLike | str, system: bool | None) -> bool:
-    return bool(section.system) if hasattr(section, "system") else bool(system)
+    if hasattr(section, "system"):
+        return bool(section.system)
+    if system is not None:
+        return bool(system)
+    return str(section) == SYSTEM_SECTION
 
 
 def item_route(section: SectionLike | str, lang: str, slug: str, system: bool | None = None) -> str:

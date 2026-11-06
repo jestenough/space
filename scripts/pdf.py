@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import tempfile
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -41,7 +42,8 @@ class Pdf:
 
         sources = self.scan_sources()
         if not sources:
-            raise RuntimeError("No article sources found")
+            logger.info("No article sources found; skipping PDF generation.")
+            return
 
         built = skipped = 0
         for source in sources:
@@ -109,9 +111,23 @@ class Pdf:
     def fingerprint_path(source: ArticleSource) -> Path:
         return CACHE_DIR / "pdf" / source.section / f"{source.slug}.{source.lang}.sha256"
 
+    @staticmethod
+    @lru_cache(maxsize=1)
+    def compiler_version() -> str:
+        versions = []
+        for binary in ("latexmk", "xelatex"):
+            try:
+                result = subprocess.run([binary, "--version"], check=False, text=True, capture_output=True)
+            except FileNotFoundError:
+                versions.append(f"{binary}: missing")
+            else:
+                versions.append(f"{binary}: {(result.stdout.splitlines() or ['unknown'])[0].strip()}")
+        return " | ".join(versions)
+
     @classmethod
     def fingerprint(cls, source: ArticleSource) -> str:
         digest = hashlib.sha256()
+        digest.update(cls.compiler_version().encode())
         for path in cls.dependencies(source):
             relative = path.relative_to(ROOT_DIR) if path.is_relative_to(ROOT_DIR) else Path(path.name)
             digest.update(str(relative).encode("utf-8"))

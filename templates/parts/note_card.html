@@ -1,0 +1,3 @@
+{% macro card(item) -%}
+<li class="note-card"{% if item.hidden %} hidden{% endif %} data-list-item data-search="{{ item.search }}" data-sort-title="{{ item.label | lower }}" data-sort-date="{{ item.date }}"><a class="note-card-link" href="{{ item.href }}" data-internal="true"><span class="note-card-kicker">{{ item.kicker }}</span><strong class="note-card-title">{{ item.label }}</strong><span class="note-card-description">{{ item.description }}</span><span class="note-card-date">{{ item.date_label }}</span></a></li>
+{%- endmacro %}

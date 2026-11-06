@@ -1,0 +1,3 @@
+{% macro row(item) -%}
+<li class="info-file-row"><a class="info-file-link" href="{{ item.href }}" data-info-file-slug="{{ item.slug }}" data-internal="true" aria-label="{{ item.slug }}: {{ item.description }}"><span class="info-file-perms">-rw-rw-r--  guest  {{ item.date }}</span>  <span class="info-file-name">{{ item.label }}</span></a></li>
+{%- endmacro %}

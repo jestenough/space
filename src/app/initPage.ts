@@ -41,7 +41,6 @@ const initLanguage = (): void => {
   switcher.value = document.documentElement.lang || DEFAULT_LANG;
   switcher.addEventListener("change", () => {
     const lang = normalizeLang(switcher.value);
-    storageService.set(StorageKey.Lang, lang);
     const alternate = Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="alternate"][hreflang]'))
       .find((link) => link.hreflang === lang);
     if (alternate) {

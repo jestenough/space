@@ -32,7 +32,6 @@ logger = logging.getLogger(__name__)
 
 class Preflight:
     required_paths = (ROOT_DIR, CONTENT_DIR, SRC_DIR, PACKAGE_JSON, TSCONFIG, VITE_CONFIG)
-    slug_re = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
     iso_date_re = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
     def run(self) -> None:
@@ -121,6 +120,12 @@ class Preflight:
         self.check_item_languages(item)
 
         kind = content.item_type(item)
+        if kind == FileType.ARTICLE and not item.meta.get("date"):
+            raise RuntimeError(
+                f"Missing required `date` for article `{item.section}/{item.slug}` in {meta_path}\n"
+                "Articles need a date for feeds, sitemap entries, and article metadata."
+            )
+
         registry.folder_renderer(section.kind).validate_item_membership(section, item, kind)
         registry.file_renderer(kind).validate_item(section, item)
         if kind == FileType.ARTICLE:
@@ -128,11 +133,11 @@ class Preflight:
 
     @staticmethod
     def check_article_bibliography(item: content.Item) -> None:
-        legacy = item.path / "references.bib"
-        if legacy.exists():
+        shared_bibliography = item.path / "references.bib"
+        if shared_bibliography.exists():
             raise RuntimeError(
-                f"Legacy shared bibliography is not allowed: {legacy}\n"
-                "Rename it to one explicit file per source language, for example `references.en.bib`."
+                f"Shared bibliography is not allowed: {shared_bibliography}\n"
+                "Use one explicit file per source language, for example `references.en.bib`."
             )
 
         source_langs = {source.lang for source in item.sources}
@@ -223,7 +228,7 @@ class Preflight:
                 )
 
     def check_slug(self, slug: str) -> None:
-        if not self.slug_re.fullmatch(slug):
+        if not content.SLUG_RE.fullmatch(slug):
             raise RuntimeError(
                 f"Invalid slug `{slug}`. Use lowercase letters, numbers and hyphens only, for example `hello-world`."
             )

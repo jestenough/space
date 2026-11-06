@@ -6,14 +6,14 @@ This page lists the main licenses used by autophany.space.
 
 The website source code is licensed under the [MIT License](https://opensource.org/license/mit).
 
-**Repository file**: *`LICENSE`*<br>
+**Repository file**: *`LICENSE.txt`*<br>
 **SPDX**: *[`MIT`](https://spdx.org/licenses/MIT.html)*
 
 ## Site Content
 
 Unless explicitly stated otherwise, articles, notes, metadata descriptions, images, generated PDFs, and editorial materials are licensed under [Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International](https://creativecommons.org/licenses/by-nc-nd/4.0/).
 
-**Repository file**: *`CONTENT-LICENSE.md`*<br>
+**Repository file**: *`CONTENT-LICENSE.txt`*<br>
 **SPDX**: *[`CC-BY-NC-ND-4.0`](https://spdx.org/licenses/CC-BY-NC-ND-4.0.html)*
 
 ## Local Fonts

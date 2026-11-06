@@ -1,0 +1,9 @@
+<nav class="article-breadcrumbs" aria-label="Breadcrumbs"><a href="/{{ lang }}" data-internal="true">root</a> / <a href="{{ section_href }}" data-internal="true">{{ section }}</a> / <span>{{ slug }}</span></nav>
+{{ content | safe }}
+<nav class="article-seo-links" aria-label="Article links">
+  <p class="article-tag-links">tags: {% for tag in tags %}<a class="meta-tag-link" href="{{ tag.href }}" data-internal="true">{{ tag.label }}</a>{% if not loop.last %} {% endif %}{% endfor %}</p>
+  <p class="article-file-links"><a href="{{ pdf_href }}" target="_blank" rel="noopener noreferrer">download PDF</a></p>
+{% if neighbors %}
+  <p class="article-neighbor-links">{% for item in neighbors %}<a href="{{ item.href }}" data-internal="true">{{ item.label }}</a>{% if not loop.last %} · {% endif %}{% endfor %}</p>
+{% endif %}
+</nav>

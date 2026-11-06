@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import html
 from typing import Any, override
 
 from ... import routes
 from ...config import DEFAULT_LANG, FolderType
-from ..context import FolderContext
+from ..context import FolderContext, Stat
 from .base import FolderRenderer
 
 
@@ -27,41 +26,38 @@ class NotesFolderRenderer(FolderRenderer):
         notes, total_pages = self.paginate(context.items, context.lang, context.page_size)
         return context.templates.render(
             "folders/notes.html",
-            list_title=html.escape(self.title(context)),
-            search_placeholder=html.escape(context.ui["search_placeholder"]),
-            sort_label=html.escape(context.ui["sort_label"]),
-            size_label=html.escape(context.ui["size_label"]),
-            date_desc_label=html.escape(context.ui["date_desc_label"]),
-            date_asc_label=html.escape(context.ui["date_asc_label"]),
-            title_asc_label=html.escape(context.ui["title_asc_label"]),
-            title_desc_label=html.escape(context.ui["title_desc_label"]),
-            items_html=self.render_note_cards(notes, context.lang, context.page_size),
+            list_title=self.title(context),
+            search_placeholder=context.ui["search_placeholder"],
+            sort_label=context.ui["sort_label"],
+            size_label=context.ui["size_label"],
+            date_desc_label=context.ui["date_desc_label"],
+            date_asc_label=context.ui["date_asc_label"],
+            title_asc_label=context.ui["title_asc_label"],
+            title_desc_label=context.ui["title_desc_label"],
+            cards=self.cards(notes, context.lang, context.page_size),
+            empty_text=self.note_ui(context.lang)["empty"],
             pager_class="pager-row hidden" if total_pages <= 1 else "pager-row",
-            page_prev=html.escape(context.ui["page_prev"]),
-            page_next=html.escape(context.ui["page_next"]),
-            page_info=html.escape(f"1/{total_pages}" if total_pages else "0/0"),
+            page_prev=context.ui["page_prev"],
+            page_next=context.ui["page_next"],
+            page_info=f"1/{total_pages}" if total_pages else "0/0",
         )
 
     @override
-    def process_html(self, context: FolderContext) -> str:
+    def process(self, context: FolderContext) -> list[Stat]:
         notes, total_pages = self.paginate(context.items, context.lang, context.page_size)
         shown = min(context.page_size, len(notes))
-        cwd = context.service.cwd_for_section(context.section_slug)
-        return "".join(
-            [
-                context.service.shell_command_markup("statfs ~", cwd=cwd),
-                context.service.stat_row("Mounted on", f"/{context.lang}/{context.section_slug}"),
-                context.service.stat_row("Type", "notes-section"),
-                context.service.stat_row("Flags", "ro, localized, indexed, snippets"),
-                '<span class="meta-rule" aria-hidden="true"></span>',
-                context.service.stat_row("mode", context.section_slug),
-                context.service.stat_row("lang", context.lang),
-                context.service.stat_row_html("shown", f'<span data-process-field="shown">{shown}</span>'),
-                context.service.stat_row_html("total", f'<span data-process-field="total">{len(notes)}</span>'),
-                context.service.stat_row_html("page", f'<span data-process-field="page">{1 if total_pages else 0}</span>'),
-                context.service.stat_row_html("pages", f'<span data-process-field="pages">{total_pages}</span>'),
-            ]
-        )
+        return [
+            Stat("Mounted on", f"/{context.lang}/{context.section_slug}"),
+            Stat("Type", "notes-section"),
+            Stat("Flags", "ro, localized, indexed, snippets"),
+            Stat("", rule=True),
+            Stat("mode", context.section_slug),
+            Stat("lang", context.lang),
+            Stat("shown", str(shown), field="shown"),
+            Stat("total", str(len(notes)), field="total"),
+            Stat("page", "1" if total_pages else "0", field="page"),
+            Stat("pages", str(total_pages), field="pages"),
+        ]
 
     @staticmethod
     def paginate(items: list[dict[str, Any]], lang: str, page_size: int) -> tuple[list[dict[str, Any]], int]:
@@ -78,22 +74,28 @@ class NotesFolderRenderer(FolderRenderer):
         return sorted_items, total_pages
 
     @staticmethod
-    def render_note_cards(notes: list[dict[str, Any]], lang: str, page_size: int | None = None) -> str:
+    def cards(notes: list[dict[str, Any]], lang: str, page_size: int | None = None) -> list[dict[str, Any]]:
         rows = []
         ui = NotesFolderRenderer.note_ui(lang)
         for index, note in enumerate(notes):
             slug = str(note["slug"])
-            href = routes.generated_item_route(note, lang)
             title = str(note.get("title", {}).get(lang) or slug)
             label = str(note.get("label", {}).get(lang) or title)
             description = str(note.get("description", {}).get(lang) or "")
             date = str(note.get("date") or "")
-            hidden = " hidden" if page_size is not None and index >= page_size else ""
-            search = " ".join(filter(None, [slug, label, title, description, date])).lower()
             rows.append(
-                f'<li class="note-card"{hidden} data-list-item data-search="{html.escape(search, quote=True)}" data-sort-title="{html.escape(label.lower(), quote=True)}" data-sort-date="{html.escape(date, quote=True)}"><a class="note-card-link" href="{html.escape(href, quote=True)}" data-internal="true"><span class="note-card-kicker">{html.escape(ui["note"])}</span><strong class="note-card-title">{html.escape(label)}</strong><span class="note-card-description">{html.escape(description)}</span><span class="note-card-date">{html.escape(date or ui["undated"])}</span></a></li>'
+                {
+                    "href": routes.generated_item_route(note, lang),
+                    "label": label,
+                    "description": description,
+                    "date": date,
+                    "date_label": date or ui["undated"],
+                    "kicker": ui["note"],
+                    "search": " ".join(filter(None, [slug, label, title, description, date])).lower(),
+                    "hidden": page_size is not None and index >= page_size,
+                }
             )
-        return "".join(rows) or f'<li class="note-empty">{html.escape(ui["empty"])}</li>'
+        return rows
 
     @staticmethod
     def note_ui(lang: str) -> dict[str, str]:

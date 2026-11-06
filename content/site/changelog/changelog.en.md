@@ -1,3 +1,21 @@
+## v2.0.0
+
+Date: **2026.11.06**
+- Rebuilt the HTML layer on Jinja2 with autoescaping and full-page templates
+- Removed regex-based shell patching and the custom HTML patch layer
+- Stopped publishing `generated/` and `_headers`; nginx is now the only header and cache policy source
+- Added content-addressed HTML, media, and rendered-page caches with bounded pruning
+- Switched precompressed assets to gzip with `gzip_static`
+- Added Docker image layer caching in the deploy workflow
+- Preloaded critical font subsets and added reduced-motion-aware transitions
+- Consolidated pre-paint theme/panel boot logic; removed page-load layout animations and font-swap jitter
+- Compacted the System Note layout
+- Redirected `/` to `/en` and removed extra directory `301` redirects
+- Added CSP, HSTS, and nginx config validation
+- Added unit tests for routes, templates, caching, and nginx invariants
+- Fixed localized raw downloads for every available language
+- Articles now require an explicit `date`
+
 ## v1.5.0
 
 Date: **2026.08.21**

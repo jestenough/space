@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import html
-import json
 import re
 from datetime import UTC, datetime
 from typing import Any
 
-from ... import content, routes
+from ... import content, generated, routes
 from ...config import DEFAULT_LANG, SYSTEM_SECTION, WORDS_PER_MINUTE, ContentExtension, FileType, FolderType
 from ...localization import exact_text, strict_text
 from ..context import (
@@ -18,7 +16,10 @@ from ..context import (
     LocalizedMetaContext,
     RouteRender,
     SourceRenderContext,
+    Stat,
 )
+from .. import code
+from ..head import Head
 from .base import FileRenderer
 
 BYLINE_UI = {
@@ -29,18 +30,20 @@ BYLINE_UI = {
 
 class ArticleFileRenderer(FileRenderer):
     file_type = FileType.ARTICLE
+    bibtex_key_re = re.compile(r"[^a-z0-9]+")
 
     def index_meta(self, context: FileIndexContext) -> dict[str, Any]:
         author, coauthors = self.article_people(
             context.item.meta,
             context.item.path / f"{context.item.slug}.meta",
         )
+        canonical_lang = DEFAULT_LANG if DEFAULT_LANG in context.languages else context.languages[0]
         return {
             "tags": self.string_list(context.item.meta.get("tags", []), f"{context.item.slug}.tags"),
             "author": author,
             "coAuthors": coauthors,
             "tagSection": context.tag_section_slug,
-            "pdfPath": f"{routes.item_route(context.section, context.languages[0], context.item.slug)}.pdf",
+            "pdfPath": f"{routes.item_route(context.section, canonical_lang, context.item.slug)}.pdf",
             "prev": None,
             "next": None,
         }
@@ -63,30 +66,33 @@ class ArticleFileRenderer(FileRenderer):
     def render_source(self, context: SourceRenderContext) -> str:
         source = context.source
         item = context.item
-        body = self.decorate_code_blocks(
+        body = code.decorate(
             context.convert_tex_to_html(source.path, item.path, item.section, item.slug, source.lang),
             source.lang,
         )
-        byline = self.render_byline(source.lang, item.meta, item.path / f"{item.slug}.meta")
-        return f"""<article class="article" lang="{html.escape(source.lang)}">
-{byline}
-  <div class="article__content">
-{body}
-  </div>
-</article>
-"""
+        byline = context.templates.render(
+            "parts/byline.html", **self.byline_data(item.meta, source.lang, item.path / f"{item.slug}.meta")
+        )
+        return context.templates.render(
+            "files/article_body.html", lang=source.lang, byline=byline, content=body
+        )
 
     def render_page(self, context: FilePageContext) -> RouteRender:
         article_html = context.content_html
         tag_section = (
             context.tag_section_slug
-            or self.first_section_slug(context.sections, FolderType.TAGS)
+            or generated.first_section_slug(context.sections, FolderType.TAGS)
             or context.section_slug
         )
-        decorated_html = self.decorate_html(context.lang, context.item, article_html, tag_section)
-        toc_html = self.render_toc(article_html)
+        decorated_html = context.templates.render(
+            "parts/article_nav.html",
+            content=article_html,
+            **self.nav_data(context.lang, context.item, tag_section),
+        )
+        toc = self.render_toc(article_html)
         cite_value = self.tex_citation(context.item, context.lang)
         article_images = context.service.extract_content_images(article_html)
+        schema = self.schema(context.item, context.lang, article_images)
         title = context.item["title"][context.lang]
         description = context.item["description"][context.lang]
         shell = context.service.file_shell(
@@ -94,14 +100,15 @@ class ArticleFileRenderer(FileRenderer):
                 lang=context.lang,
                 sections=context.sections,
                 file_type=FileType.ARTICLE,
-                active_section=str(context.item.get("section")),
+                active_section=None if context.section.get("system") else context.section_slug,
                 welcome_title=title,
                 welcome_lead=description,
                 welcome_command=f"sed -n '1,2p' {context.item_slug}.meta",
                 render_command=f"cat {context.item_slug}.tex",
-                process_html=self.process_html(context),
+                process_command=f"stat {context.item_slug}.tex",
+                process=self.process(context),
                 content_html=decorated_html,
-                back_href=routes.section_route(str(context.item["section"]), context.lang),
+                back_href=routes.generated_section_route(context.section, context.lang),
                 download_text="pdf",
                 download_href=routes.generated_pdf_route(context.item, context.lang),
                 cite_value=cite_value,
@@ -109,8 +116,8 @@ class ArticleFileRenderer(FileRenderer):
                 show_cite=True,
                 show_edit=True,
                 show_zen=True,
-                toc_html=toc_html,
-                show_toc=bool(toc_html),
+                toc=toc,
+                show_toc=bool(toc),
             )
         )
         return RouteRender(
@@ -123,47 +130,49 @@ class ArticleFileRenderer(FileRenderer):
                 context.item["languages"], lambda item_lang: routes.generated_item_route(context.item, item_lang)
             ),
             og_type="article",
-            shell=shell,
-            extra_head=self.head_extras(context.item, context.lang, article_images),
+            page=shell,
+            images=tuple(article_images),
+            json_ld=schema,
         )
 
-    def process_html(self, context: FilePageContext) -> str:  # type: ignore[override]
+    def process(self, context: FilePageContext) -> list[Stat]:  # type: ignore[override]
         stamp = f"{context.item.get('date') or '1970-01-01'} 00:00:00 +0000"
-        cwd = context.service.cwd_for_section(str(context.item["section"]))
-        file_name = f"{context.item['slug']}.tex"
-        file_path = f"~/{context.item['section']}/{context.item['slug']}.tex"
-        tags_html = " ".join(
-            f'<a class="meta-tag-link" href="{html.escape(routes.tag_route(str(context.item.get("tagSection") or context.item["section"]), context.lang, str(tag)), quote=True)}" data-internal="true">#{html.escape(str(tag))}</a>'
+        file_path = (
+            f"~/{context.item['slug']}.tex"
+            if context.section.get("system")
+            else f"~/{context.item['section']}/{context.item['slug']}.tex"
+        )
+        tag_section = str(context.item.get("tagSection") or context.item["section"])
+        tags = tuple(
+            {
+                "href": routes.tag_route(tag_section, context.lang, str(tag)),
+                "label": f"#{tag}",
+            }
             for tag in context.item.get("tags", [])
         )
-        return "".join(
-            [
-                context.service.shell_command_markup(f"stat {file_name}", cwd=cwd),
-                context.service.stat_row("File", file_path),
-                context.service.stat_row("Size", str(context.localized_meta.get("byteSize") or 0)),
-                context.service.stat_row("Blocks", "8"),
-                context.service.stat_row("IO", "4096 regular file"),
-                context.service.stat_row("Inode", "042"),
-                context.service.stat_row("Access", "(0664/-rw-rw-r--)"),
-                context.service.stat_row("Uid", "(1000/guest)"),
-                context.service.stat_row("Gid", "(1000/guest)"),
-                context.service.stat_row("Birth", stamp),
-                context.service.stat_row("Mtime", stamp),
-                '<span class="meta-rule" aria-hidden="true"></span>',
-                context.service.stat_row("slug", str(context.item["slug"])),
-                context.service.stat_row("lang", context.lang),
-                context.service.stat_row("langs", ", ".join(context.item.get("languages", []))),
-                context.service.stat_row_html("tags", tags_html),
-                context.service.stat_row("words", str(context.localized_meta.get("wordCount") or 0)),
-                context.service.stat_row("chars", str(context.localized_meta.get("charCount") or 0)),
-                context.service.stat_row(
-                    "pdf",
-                    str(
-                        context.localized_meta.get("pdfPath") or routes.generated_pdf_route(context.item, context.lang)
-                    ),
-                ),
-            ]
-        )
+        return [
+            Stat("File", file_path),
+            Stat("Size", str(context.localized_meta.get("byteSize") or 0)),
+            Stat("Blocks", "8"),
+            Stat("IO", "4096 regular file"),
+            Stat("Inode", "042"),
+            Stat("Access", "(0664/-rw-rw-r--)"),
+            Stat("Uid", "(1000/guest)"),
+            Stat("Gid", "(1000/guest)"),
+            Stat("Birth", stamp),
+            Stat("Mtime", stamp),
+            Stat("", rule=True),
+            Stat("slug", str(context.item["slug"])),
+            Stat("lang", context.lang),
+            Stat("langs", ", ".join(context.item.get("languages", []))),
+            Stat("tags", tags=tags),
+            Stat("words", str(context.localized_meta.get("wordCount") or 0)),
+            Stat("chars", str(context.localized_meta.get("charCount") or 0)),
+            Stat(
+                "pdf",
+                str(context.localized_meta.get("pdfPath") or routes.generated_pdf_route(context.item, context.lang)),
+            ),
+        ]
 
     def validate_item(self, _: content.Section, item: content.Item) -> None:
         for source in item.sources:
@@ -175,25 +184,17 @@ class ArticleFileRenderer(FileRenderer):
         self.check_tags(item.meta.get("tags"), item.path / f"{item.slug}.meta")
         self.article_people(item.meta, item.path / f"{item.slug}.meta")
 
-    def head_extras(self, article: dict[str, Any], lang: str, images: list[dict[str, str]]) -> str:
-        lines: list[str] = []
-
-        first_image = images[0] if images else None
-        if first_image:
-            image_url = routes.absolute_url(first_image["src"])
-            lines.append(f'    <meta property="og:image" content="{html.escape(image_url, quote=True)}" />')
-            lines.append(f'    <meta name="twitter:image" content="{html.escape(image_url, quote=True)}" />')
-            lines.append('    <meta name="twitter:card" content="summary_large_image" />')
-            if first_image.get("alt"):
-                lines.append(
-                    f'    <meta property="og:image:alt" content="{html.escape(first_image["alt"], quote=True)}" />'
-                )
-
+    def schema(self, article: dict[str, Any], lang: str, images: list[dict[str, str]]) -> dict[str, Any]:
+        image_urls = [url for image in images if (url := Head.image_url(image.get("src")))]
         payload: dict[str, Any] = {
             "@context": "https://schema.org",
             "@type": "Article",
-            "headline": strict_text(article.get("title"), lang, f"articles.{article.get('slug')}.title"),
-            "description": strict_text(article.get("description"), lang, f"articles.{article.get('slug')}.description"),
+            "headline": strict_text(
+                article.get("title"), lang, f"{article.get('section')}.{article.get('slug')}.title"
+            ),
+            "description": strict_text(
+                article.get("description"), lang, f"{article.get('section')}.{article.get('slug')}.description"
+            ),
             "datePublished": article.get("date") or "",
             "dateModified": article.get("date") or "",
             "inLanguage": lang,
@@ -213,18 +214,15 @@ class ArticleFileRenderer(FileRenderer):
         if authors:
             payload["author"] = authors
 
-        image_urls = [routes.absolute_url(image["src"]) for image in images if image.get("src")]
         if image_urls:
             payload["image"] = image_urls
 
-        lines.append('    <script type="application/ld+json">')
-        lines.append(json.dumps(payload, ensure_ascii=False))
-        lines.append("    </script>")
-
-        return "\n".join(lines)
+        return payload
 
     def tex_citation(self, article: dict[str, Any], lang: str) -> str:
-        title = strict_text(article.get("title"), lang, f"articles.{article.get('slug')}.title")
+        title = strict_text(
+            article.get("title"), lang, f"{article.get('section')}.{article.get('slug')}.title"
+        )
         year = str(article.get("date") or "").split("-", 1)[0] or "n.d."
         article_url = routes.absolute_url(routes.generated_item_route(article, lang))
         access_date = datetime.now(UTC).date().isoformat()
@@ -246,9 +244,9 @@ class ArticleFileRenderer(FileRenderer):
         )
         return "\n".join(lines)
 
-    @staticmethod
-    def bibtex_key(value: str) -> str:
-        return re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-") or "item"
+    @classmethod
+    def bibtex_key(cls, value: str) -> str:
+        return cls.bibtex_key_re.sub("-", value.lower()).strip("-") or "item"
 
     @staticmethod
     def escape_tex(value: str) -> str:
@@ -266,47 +264,32 @@ class ArticleFileRenderer(FileRenderer):
         return "".join(replacements.get(char, char) for char in value)
 
     @staticmethod
-    def decorate_html(lang: str, article: dict[str, Any], article_html: str, tag_section: str) -> str:
-        slug = str(article["slug"])
-        top_nav = (
-            '<nav class="article-breadcrumbs" aria-label="Breadcrumbs">'
-            f'<a href="/{html.escape(lang, quote=True)}" data-internal="true">root</a>'
-            " / "
-            f'<a href="{html.escape(routes.section_route(str(article["section"]), lang), quote=True)}" data-internal="true">articles</a>'
-            " / "
-            f"<span>{html.escape(slug)}</span>"
-            "</nav>"
-        )
-        tags = " ".join(
-            f'<a class="meta-tag-link" href="{html.escape(routes.tag_route(tag_section, lang, str(tag)), quote=True)}" data-internal="true">#{html.escape(str(tag))}</a>'
-            for tag in article.get("tags", [])
-        )
-        files = f'<p class="article-file-links"><a href="{html.escape(routes.generated_pdf_route(article, lang), quote=True)}" target="_blank" rel="noopener noreferrer">download PDF</a></p>'
-
+    def nav_data(lang: str, article: dict[str, Any], tag_section: str) -> dict[str, Any]:
+        section_slug = str(article["section"])
         neighbors = []
-        previous = article.get("prev")
-        next_article = article.get("next")
-        if isinstance(previous, dict) and previous.get("path") and previous.get("title"):
-            neighbors.append(
-                f'<a href="{html.escape(str(previous["path"]), quote=True)}" data-internal="true">previous: {html.escape(str(previous["title"]))}</a>'
-            )
-        if isinstance(next_article, dict) and next_article.get("path") and next_article.get("title"):
-            neighbors.append(
-                f'<a href="{html.escape(str(next_article["path"]), quote=True)}" data-internal="true">next: {html.escape(str(next_article["title"]))}</a>'
-            )
-        neighbors_html = f'<p class="article-neighbor-links">{" · ".join(neighbors)}</p>' if neighbors else ""
-        bottom_nav = (
-            '<nav class="article-seo-links" aria-label="Article links">'
-            f'<p class="article-tag-links">tags: {tags}</p>'
-            f"{files}"
-            f"{neighbors_html}"
-            "</nav>"
-        )
+        for key, label in (("prev", "previous"), ("next", "next")):
+            value = article.get(key)
+            if isinstance(value, dict) and value.get("path") and value.get("title"):
+                neighbors.append({"href": str(value["path"]), "label": f"{label}: {value['title']}"})
 
-        return f"{top_nav}{article_html}{bottom_nav}"
+        return {
+            "lang": lang,
+            "slug": str(article["slug"]),
+            "section": section_slug,
+            "section_href": routes.section_route(section_slug, lang),
+            "tags": [
+                {
+                    "href": routes.tag_route(tag_section, lang, str(tag)),
+                    "label": f"#{tag}",
+                }
+                for tag in article.get("tags", [])
+            ],
+            "pdf_href": routes.generated_pdf_route(article, lang),
+            "neighbors": neighbors,
+        }
 
     @classmethod
-    def render_byline(cls, lang: str, meta: dict[str, Any], path: object) -> str:
+    def byline_data(cls, meta: dict[str, Any], lang: str, path: object) -> dict[str, Any]:
         ui = BYLINE_UI.get(lang)
         if ui is None:
             raise RuntimeError(
@@ -314,19 +297,11 @@ class ArticleFileRenderer(FileRenderer):
             )
 
         author, coauthors = cls.article_people(meta, path)
-        rows = [
-            '<div class="article-byline-row">'
-            f'<dt>{html.escape(ui["author"])}:</dt><dd>{cls.person_html(author)}</dd>'
-            "</div>"
-        ]
-        if coauthors:
-            rows.append(
-                '<div class="article-byline-row">'
-                f'<dt>{html.escape(ui["coauthors"])}:</dt>'
-                f'<dd>{", ".join(cls.person_html(person) for person in coauthors)}</dd>'
-                "</div>"
-            )
-        return f'<dl class="article-byline">{"".join(rows)}</dl>'
+        return {
+            "author": author,
+            "coauthors": coauthors,
+            "labels": {"author": ui["author"], "coauthors": ui["coauthors"]},
+        }
 
     @classmethod
     def article_people(cls, meta: dict[str, Any], path: object) -> tuple[dict[str, str], list[dict[str, str]]]:
@@ -365,20 +340,6 @@ class ArticleFileRenderer(FileRenderer):
         return person
 
     @staticmethod
-    def person_html(person: dict[str, str]) -> str:
-        name = html.escape(person["name"])
-        url = person.get("url")
-        if not url:
-            return f'<span class="article-person">{name}</span>'
-
-        escaped_url = html.escape(url, quote=True)
-        if url.startswith("/"):
-            return f'<a class="article-person" href="{escaped_url}" data-internal="true">{name}</a>'
-        if url.startswith("mailto:"):
-            return f'<a class="article-person" href="{escaped_url}">{name}</a>'
-        return f'<a class="article-person" href="{escaped_url}" target="_blank" rel="noopener noreferrer">{name}</a>'
-
-    @staticmethod
     def neighbor(article: dict[str, Any] | None, preferred_languages: list[str]) -> dict[str, str] | None:
         if article is None:
             return None
@@ -390,17 +351,6 @@ class ArticleFileRenderer(FileRenderer):
                     article["section"], lang, article["slug"], article["section"] == SYSTEM_SECTION
                 ),
             }
-
-    @staticmethod
-    def first_section_slug(sections: list[dict[str, Any]], kind: FolderType) -> str | None:
-        for section in sections:
-            section_kind = FolderType.SYSTEM if section.get("system") else section.get("kind")
-            if section_kind == kind:
-                slug = section.get("slug")
-                if isinstance(slug, str):
-                    return slug
-        else:
-            return None
 
     @staticmethod
     def string_list(value: Any, path: str) -> list[str]:

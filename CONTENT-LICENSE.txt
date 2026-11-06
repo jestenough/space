@@ -1,4 +1,5 @@
-# Content License
+Content License
+===============
 
 Unless explicitly stated otherwise, all articles, LaTeX source files, generated PDFs, images, notes, essays, metadata descriptions, and editorial materials in this repository and on autophany.space are licensed under:
 

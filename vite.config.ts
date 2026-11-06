@@ -2,15 +2,17 @@ import { defineConfig, type Plugin, type ViteDevServer } from "vite";
 import viteCompression from "vite-plugin-compression";
 import sharp from "sharp";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { resolve, extname } from "node:path";
+import { resolve, extname, sep } from "node:path";
 import { fileURLToPath, URL } from "node:url";
 import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
-import { copyFile, mkdir, readdir, rm, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { copyFile, mkdir, readdir, rm, stat, writeFile } from "node:fs/promises";
 
 type FileRecord = {
   section?: string;
   slug: string;
   downloadPath?: string | null;
+  downloadPaths?: Record<string, string>;
 };
 
 type MediaManifestEntry = {
@@ -27,9 +29,15 @@ const cacheDir = resolve(rootDir, ".cache");
 const mediaManifestPath = resolve(cacheDir, "media-manifest.json");
 const generatedDir = resolve(rootDir, "generated");
 const contentDir = resolve(rootDir, "content");
+const contentRootWithSep = contentDir.endsWith(sep) ? contentDir : `${contentDir}${sep}`;
 const distDir = resolve(rootDir, "dist");
-const distGeneratedDir = resolve(distDir, "generated");
 const distMediaDir = resolve(distDir, "media");
+const mediaCacheDir = resolve(cacheDir, "media");
+const MEDIA_CACHE_MAX_ENTRIES = 500;
+const buildConfigHash = createHash("sha256")
+  .update(readFileSync(resolve(rootDir, "vite.config.ts")))
+  .update(readFileSync(resolve(rootDir, "package-lock.json")))
+  .digest("hex");
 const DEFAULT_LANG = "en";
 const LANGUAGE_TAG_PATTERN = /^[a-z]{2,3}(?:-[A-Z]{2})?$/;
 const TRANSFORM_IMAGE_EXTENSIONS = new Set([".jpg", ".jpeg", ".png"]);
@@ -58,6 +66,13 @@ const variantPublicPath = (target: string, width: number): string => target.repl
 const isLang = (value: string | undefined): boolean => Boolean(value && LANGUAGE_TAG_PATTERN.test(normalizeLang(value)));
 const hasFileExtension = (path: string): boolean => /\.[a-zA-Z0-9]+$/.test(path);
 const readJson = <T>(path: string): T | null => existsSync(path) ? JSON.parse(readFileSync(path, "utf8")) as T : null;
+const readCache = <T>(path: string): T | null => {
+  try {
+    return readJson<T>(path);
+  } catch {
+    return null;
+  }
+};
 let downloadRoutesCache: Map<string, string> | null = null;
 
 const sourceName = (slug: string, downloadPath: string): string => {
@@ -75,8 +90,10 @@ const loadDownloadRoutes = (): Map<string, string> => {
   for (const section of sections) {
     const files = readJson<FileRecord[]>(resolve(generatedDir, "sections", `${section.slug}.json`)) ?? [];
     for (const file of files) {
-      if (!file.downloadPath) continue;
-      routes.set(file.downloadPath, resolve(contentDir, section.slug, file.slug, sourceName(file.slug, file.downloadPath)));
+      const paths = file.downloadPaths ?? (file.downloadPath ? { [normalizeLang(file.downloadPath.split("/")[1] ?? DEFAULT_LANG)]: file.downloadPath } : {});
+      for (const publicPath of Object.values(paths)) {
+        routes.set(publicPath, resolve(contentDir, section.slug, file.slug, sourceName(file.slug, publicPath)));
+      }
     }
   }
   downloadRoutesCache = routes;
@@ -89,14 +106,19 @@ const invalidateDownloadRoutes = (path: string): void => {
 
 const prerenderTarget = (url: string): { url: string; status?: number; redirect?: string } => {
   const [rawPath = "/"] = url.split("?");
-  const path = rawPath.length > 1 ? rawPath.replace(/\/+$/g, "") : rawPath;
+  const decodedPath = safeDecodeURIComponent(rawPath);
+  if (decodedPath === null || decodedPath.includes("\0")) return { url: "/404.html", status: 404 };
+
+  const path = decodedPath.length > 1 ? decodedPath.replace(/\/+$/g, "") : decodedPath;
+  if (path.split("/").some((segment) => segment === "." || segment === "..")) {
+    return { url: "/404.html", status: 404 };
+  }
 
   if (path === "/") return { url: rawPath, status: 302, redirect: `/${DEFAULT_LANG}` };
   if (
     path.startsWith("/@") ||
     path.startsWith("/src/") ||
     path.startsWith("/node_modules/") ||
-    path.startsWith("/generated/") ||
     path.startsWith("/media/")
   ) return { url: rawPath };
   if (hasFileExtension(path)) return { url: rawPath };
@@ -105,6 +127,9 @@ const prerenderTarget = (url: string): { url: string; status?: number; redirect?
   if (!isLang(lang)) return { url: "/404.html", status: 404 };
 
   const candidate = resolve(distDir, path.replace(/^\/+/, ""), "index.html");
+  const distRoot = distDir.endsWith(sep) ? distDir : `${distDir}${sep}`;
+  if (!candidate.startsWith(distRoot)) return { url: "/404.html", status: 404 };
+
   return existsSync(candidate)
     ? { url: `${path}/index.html`.replace(/\/+/g, "/") }
     : { url: "/404.html", status: 404 };
@@ -124,15 +149,16 @@ const serveStaticDirectory = (
   }
 
   const relative = safeDecodeURIComponent(rawPath.slice(basePath.length));
-  if (!relative || relative.includes("..")) {
+  if (!relative || relative.includes("..") || relative.includes("\0")) {
     res.statusCode = 404;
     next();
     return;
   }
 
   const root = resolve(directory);
+  const rootWithSep = root.endsWith(sep) ? root : `${root}${sep}`;
   const filePath = resolve(root, relative);
-  if (!filePath.startsWith(root) || !existsSync(filePath) || !statSync(filePath).isFile()) {
+  if (!filePath.startsWith(rootWithSep) || !existsSync(filePath) || !statSync(filePath).isFile()) {
     res.statusCode = 404;
     next();
     return;
@@ -159,24 +185,22 @@ const previewRouteRewrite = (): Plugin => ({
         return;
       }
 
+      if (target.status === 404) {
+        const notFound = resolve(distDir, "404.html");
+        if (!existsSync(notFound)) {
+          res.statusCode = 404;
+          res.end?.();
+          return;
+        }
+        res.statusCode = 404;
+        res.setHeader?.("Content-Type", "text/html; charset=utf-8");
+        createReadStream(notFound).pipe(res as never);
+        return;
+      }
+
       req.url = target.url;
-      if (target.status) res.statusCode = target.status;
       next();
     });
-  }
-});
-
-const generatedAssetsPlugin = (): Plugin => ({
-  name: "generated-assets",
-  configureServer: (server) => {
-    server.middlewares.use((req, res, next) => {
-      serveStaticDirectory("/generated/", generatedDir, req, res, next);
-    });
-  },
-  closeBundle: async () => {
-    if (!existsSync(generatedDir)) return;
-    await rm(distGeneratedDir, { recursive: true, force: true });
-    await copyDirectory(generatedDir, distGeneratedDir, { skip: new Set(["files-meta"]) });
   }
 });
 
@@ -189,7 +213,12 @@ const contentFilesPlugin = (): Plugin => ({
     server.middlewares.use((req, res, next) => {
       const rawPath = req.url?.split("?")[0] ?? "";
       const filePath = loadDownloadRoutes().get(rawPath);
-      if (!filePath || !existsSync(filePath) || !statSync(filePath).isFile()) {
+      if (
+        !filePath ||
+        !filePath.startsWith(contentRootWithSep) ||
+        !existsSync(filePath) ||
+        !statSync(filePath).isFile()
+      ) {
         next();
         return;
       }
@@ -230,12 +259,44 @@ const contentMediaPlugin = (): Plugin => ({
     }
     await mkdir(cacheDir, { recursive: true });
     await writeFile(mediaManifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+    await pruneDirectory(mediaCacheDir, MEDIA_CACHE_MAX_ENTRIES);
   }
 });
+
+const pruneDirectory = async (root: string, limit: number): Promise<void> => {
+  if (!existsSync(root)) return;
+  const entries = (await readdir(root, { withFileTypes: true })).map((entry) => ({
+    name: entry.name,
+    path: resolve(root, entry.name),
+  }));
+  if (entries.length <= limit) return;
+
+  const dated = await Promise.all(
+    entries.map(async (entry) => ({ ...entry, mtime: (await stat(entry.path)).mtimeMs }))
+  );
+  dated.sort((left, right) => right.mtime - left.mtime);
+  await Promise.all(dated.slice(limit).map((entry) => rm(entry.path, { recursive: true, force: true })));
+};
+
+type MediaCache = {
+  files: string[];
+  entry: MediaManifestEntry | null;
+};
+
+const mediaCacheKey = (source: string, relative: string): string => {
+  const digest = createHash("sha256");
+  digest.update(buildConfigHash);
+  digest.update(relative);
+  digest.update(extname(source));
+  digest.update(readFileSync(source));
+  digest.update(JSON.stringify([MAX_IMAGE_DIMENSION, RESPONSIVE_WIDTHS]));
+  return digest.digest("hex");
+};
 
 const buildMediaDirectory = async (from: string, to: string, manifest: Record<string, MediaManifestEntry>): Promise<void> => {
   await mkdir(to, { recursive: true });
   for (const entry of await readdir(from, { withFileTypes: true })) {
+    if (entry.name.startsWith(".")) continue;
     const source = resolve(from, entry.name);
     const target = resolve(to, entry.name);
     if (entry.isDirectory()) {
@@ -249,39 +310,61 @@ const buildMediaDirectory = async (from: string, to: string, manifest: Record<st
     const ext = extname(entry.name).toLowerCase();
     const transformable = TRANSFORM_IMAGE_EXTENSIONS.has(ext);
     const raster = RASTER_IMAGE_EXTENSIONS.has(ext);
-    const outputPath = transformable ? replaceExtension(target, ".webp") : target;
+    const outputName = transformable ? replaceExtension(entry.name, ".webp") : entry.name;
     const outputPublicPath = transformable ? replaceExtension(originalPublicPath, ".webp") : originalPublicPath;
+    const cacheEntryDir = resolve(mediaCacheDir, mediaCacheKey(source, relative));
+    const cacheMetaPath = resolve(cacheEntryDir, "meta.json");
+    let cached = readCache<MediaCache>(cacheMetaPath);
+    if (!cached || !Array.isArray(cached.files)) cached = null;
 
-    if (!raster) {
-      await copyFile(source, outputPath);
-      continue;
+    if (!cached) {
+      await mkdir(cacheEntryDir, { recursive: true });
+      const outputPath = resolve(cacheEntryDir, outputName);
+
+      if (!raster) {
+        await copyFile(source, outputPath);
+        cached = { files: [outputName], entry: null };
+      } else {
+        const metadata = await optimizeMediaAsset(source, outputPath, ext);
+        const variants: Array<{ src: string; width: number; height: number }> = [];
+        const files = [outputName];
+
+        for (const variantWidth of responsiveVariantTargets(metadata.width)) {
+          const variantName = variantFilePath(outputName, variantWidth);
+          const variantPath = resolve(cacheEntryDir, variantName);
+          await sharp(outputPath)
+            .resize({ width: variantWidth, withoutEnlargement: true })
+            .webp({ quality: 84, effort: 6, smartSubsample: true })
+            .toFile(variantPath);
+          const variantMeta = await sharp(variantPath).metadata();
+          files.push(variantName);
+          variants.push({
+            src: variantPublicPath(outputPublicPath, variantWidth),
+            width: variantMeta.width ?? variantWidth,
+            height: variantMeta.height ?? metadata.height,
+          });
+        }
+
+        variants.push({ src: outputPublicPath, width: metadata.width, height: metadata.height });
+        variants.sort((left, right) => left.width - right.width);
+        cached = {
+          files,
+          entry: {
+            src: outputPublicPath,
+            width: metadata.width,
+            height: metadata.height,
+            originalWidth: metadata.originalWidth,
+            originalHeight: metadata.originalHeight,
+            variants,
+          },
+        };
+      }
+
+      await writeFile(cacheMetaPath, `${JSON.stringify(cached, null, 2)}\n`, "utf8");
     }
 
-    const metadata = await optimizeMediaAsset(source, outputPath, ext);
-    const variants: Array<{ src: string; width: number; height: number }> = [];
-    for (const variantWidth of responsiveVariantTargets(metadata.width)) {
-      const variantPath = variantFilePath(outputPath, variantWidth);
-      await sharp(outputPath)
-        .resize({ width: variantWidth, withoutEnlargement: true })
-        .webp({ quality: 84, effort: 6, smartSubsample: true })
-        .toFile(variantPath);
-      const variantMeta = await sharp(variantPath).metadata();
-      variants.push({
-        src: variantPublicPath(outputPublicPath, variantWidth),
-        width: variantMeta.width ?? variantWidth,
-        height: variantMeta.height ?? metadata.height,
-      });
-    }
-    variants.push({ src: outputPublicPath, width: metadata.width, height: metadata.height });
-    variants.sort((left, right) => left.width - right.width);
-    manifest[originalPublicPath] = {
-      src: outputPublicPath,
-      width: metadata.width,
-      height: metadata.height,
-      originalWidth: metadata.originalWidth,
-      originalHeight: metadata.originalHeight,
-      variants,
-    };
+    await Promise.all(cached.files.map((file) => copyFile(resolve(cacheEntryDir, file), resolve(to, file))));
+    if (cached.entry) manifest[originalPublicPath] = cached.entry;
   }
 };
 
@@ -321,17 +404,6 @@ const optimizeMediaAsset = async (source: string, target: string, ext: string): 
   };
 };
 
-const copyDirectory = async (from: string, to: string, options?: { skip?: Set<string> }): Promise<void> => {
-  await mkdir(to, { recursive: true });
-  for (const entry of await readdir(from, { withFileTypes: true })) {
-    if (options?.skip?.has(entry.name)) continue;
-    const source = resolve(from, entry.name);
-    const target = resolve(to, entry.name);
-    if (entry.isDirectory()) await copyDirectory(source, target, options);
-    else if (entry.isFile()) await copyFile(source, target);
-  }
-};
-
 const contentType = (ext: string): string => {
   if (ext === ".html") return "text/html; charset=utf-8";
   if (ext === ".json") return "application/json; charset=utf-8";
@@ -352,6 +424,7 @@ const contentType = (ext: string): string => {
 };
 
 export default defineConfig({
+  appType: "mpa",
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
@@ -359,18 +432,18 @@ export default defineConfig({
   },
   plugins: [
     previewRouteRewrite(),
-    generatedAssetsPlugin(),
     contentFilesPlugin(),
     contentMediaPlugin(),
     viteCompression({
-      algorithm: "brotliCompress",
-      ext: ".br",
+      algorithm: "gzip",
+      ext: ".gz",
       threshold: 1024,
       deleteOriginFile: false,
-      filter: /\.(js|css|svg|json|xml)$/i,
+      filter: /\.(js|css|svg)$/i,
     }),
   ],
   build: {
+    manifest: true,
     sourcemap: false,
     rollupOptions: {
       input: {

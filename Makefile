@@ -1,41 +1,51 @@
-SHELL := /bin/bash
 FRONTEND_IMAGE ?= frontend
 CONTENT_IMAGE ?= content
 PDF_IMAGE ?= pdf
-HOST_UID := $(shell id -u)
-HOST_GID := $(shell id -g)
 
-DOCKER_ENV = -e SITE_URL="$${SITE_URL:-https://autophany.space}" -e STRICT_PDF=1
-DOCKER_VOLUMES = -v "$$PWD/content:/app/content:ro" -v "$$PWD/scripts:/app/scripts:ro" -v "$$PWD/templates:/app/templates:ro" -v "$$PWD/public:/app/public" -v "$$PWD/dist:/app/dist" -v "$$PWD/generated:/app/generated" -v "$$PWD/.cache:/app/.cache"
+ifeq ($(OS),Windows_NT)
+PYTHON ?= python
+HOST_UID ?= 1000
+HOST_GID ?= 1000
+else
+PYTHON ?= python3
+HOST_UID ?= $(shell id -u)
+HOST_GID ?= $(shell id -g)
+endif
+
+SITE_URL ?= https://autophany.space
+CLI = $(PYTHON) -m scripts.cli
+
+DOCKER_ENV = -e SITE_URL="$(SITE_URL)" -e STRICT_PDF=1
+DOCKER_VOLUMES = \
+	-v "$(CURDIR)/content:/app/content:ro" \
+	-v "$(CURDIR)/scripts:/app/scripts:ro" \
+	-v "$(CURDIR)/templates:/app/templates:ro" \
+	-v "$(CURDIR)/public:/app/public" \
+	-v "$(CURDIR)/dist:/app/dist" \
+	-v "$(CURDIR)/generated:/app/generated" \
+	-v "$(CURDIR)/.cache:/app/.cache"
 DOCKER_RUN = docker run --rm $(DOCKER_ENV) $(DOCKER_VOLUMES)
+DOCKER_CLI = $(DOCKER_RUN) $(CONTENT_IMAGE) python3 -m scripts.cli
+DOCKER_FRONTEND = $(DOCKER_RUN) $(FRONTEND_IMAGE)
+DOCKER_PDF = $(DOCKER_RUN) $(PDF_IMAGE) python3 -m scripts.cli
 
-.PHONY: help install dev dev-host preview typecheck preflight toolchain create html pdf frontend prerender seo verify build clean docker-build docker-toolchain docker-build-site docker-shell
+.PHONY: help install dev dev-host preview typecheck test nginx-check preflight toolchain create html pdf frontend prerender seo verify build clean docker-build docker-check docker-toolchain docker-site docker-build-site docker-preview docker-shell
 
 help:
 	@echo "autophany.space build commands"
-	@echo "  make install           install npm dependencies"
-	@echo "  make dev               build prerendered pages and preview locally"
-	@echo "  make dev-host          build prerendered pages and preview on 0.0.0.0:4173"
-	@echo "  make preview           preview current production build"
-	@echo "  make typecheck         run TypeScript checks"
-	@echo "  make preflight         validate source content"
-	@echo "  make toolchain         validate required external tools"
-	@echo "  make create            create content sections and items"
-	@echo "  make html              generate content HTML fragments and metadata"
-	@echo "  make pdf               generate PDF files"
-	@echo "  make frontend          build Vite frontend"
-	@echo "  make prerender         prerender static HTML routes"
-	@echo "  make seo               generate sitemap, robots, headers, feeds and 404"
-	@echo "  make verify            verify generated production output"
-	@echo "  make build             run full production pipeline"
-	@echo "  make clean             remove generated output and caches"
-	@echo "  make docker-build      build frontend/content/pdf images"
-	@echo "  make docker-toolchain  validate Docker image tools"
-	@echo "  make docker-build-site run full build in Docker containers"
-	@echo "  make docker-shell      open a container shell"
+	@echo "  make install           install npm and Python dependencies"
+	@echo "  make dev               build pages and preview locally"
+	@echo "  make build             full production build"
+	@echo "  make test              run Python tests"
+	@echo "  make nginx-check       validate nginx config"
+	@echo "  make clean             remove build output and caches"
+	@echo "  make docker-build-site build images and run full Docker build"
+	@echo "  make docker-site       run full build in existing images"
+	@echo "  make docker-preview    serve dist with nginx on :8080"
 
 install:
 	npm ci
+	$(PYTHON) -m pip install -r requirements.txt
 
 dev: html frontend prerender
 	npm run preview
@@ -49,64 +59,81 @@ preview:
 typecheck:
 	npm run typecheck
 
+test:
+	$(PYTHON) -m unittest discover -s tests -v
+
+nginx-check:
+	sh deploy/nginx/check.sh
+
 preflight:
-	python3 -m scripts.cli preflight
+	$(CLI) preflight
 
 toolchain:
-	@for binary in node npm pandoc latexmk xelatex; do \
-		command -v "$$binary" >/dev/null || { echo "Missing required build tool: $$binary"; exit 1; }; \
-	done
+	$(PYTHON) scripts/check_tools.py host
 
 create:
-	python3 -m scripts.cli create $(ARGS)
+	$(CLI) create $(ARGS)
 
 html:
-	python3 -m scripts.cli html
+	$(CLI) html
 
 pdf:
-	python3 -m scripts.cli pdf
+	$(CLI) pdf
 
 frontend:
 	npm run build
 
 prerender:
-	python3 -m scripts.cli prerender
+	$(CLI) prerender
 
 seo:
-	python3 -m scripts.cli seo
+	$(CLI) seo
 
 verify:
-	python3 -m scripts.cli verify
+	$(CLI) verify
 
-build: preflight toolchain html pdf typecheck frontend prerender seo verify
+build: preflight toolchain test html pdf typecheck frontend prerender seo verify
 
 clean:
-	python3 -m scripts.cli clean
+	$(CLI) clean
 
 docker-build:
 	docker build -f docker/frontend/Dockerfile -t $(FRONTEND_IMAGE) .
 	docker build -f docker/content/Dockerfile -t $(CONTENT_IMAGE) .
 	docker build -f docker/pdf/Dockerfile -t $(PDF_IMAGE) .
 
-docker-toolchain: docker-build
-	docker run --rm $(CONTENT_IMAGE) sh -lc 'for binary in python3 pandoc; do command -v "$$binary" >/dev/null || { echo "content image missing: $$binary"; exit 1; }; done'
-	docker run --rm $(PDF_IMAGE) sh -lc 'for binary in python3 latexmk xelatex; do command -v "$$binary" >/dev/null || { echo "pdf image missing: $$binary"; exit 1; }; done'
-	docker run --rm $(FRONTEND_IMAGE) sh -lc 'for binary in node npm; do command -v "$$binary" >/dev/null || { echo "frontend image missing: $$binary"; exit 1; }; done'
+docker-check:
+	docker run --rm $(CONTENT_IMAGE) python3 scripts/check_tools.py content
+	docker run --rm $(PDF_IMAGE) python3 scripts/check_tools.py pdf
+	docker run --rm $(FRONTEND_IMAGE) node --version
+	docker run --rm $(FRONTEND_IMAGE) npm --version
+
+docker-toolchain: docker-build docker-check
+
+docker-site:
+	$(PYTHON) -c "import pathlib; [pathlib.Path(p).mkdir(parents=True, exist_ok=True) for p in ('dist','public','generated','.cache')]"
+	$(DOCKER_RUN) $(CONTENT_IMAGE) sh -lc "rm -rf /app/dist/* /app/generated/* && mkdir -p /app/dist /app/generated /app/public /app/.cache"
+	$(DOCKER_CLI) preflight
+	$(DOCKER_RUN) $(CONTENT_IMAGE) python3 -m unittest discover -s tests -v
+	$(DOCKER_CLI) html
+	$(DOCKER_PDF) pdf
+	$(DOCKER_FRONTEND) npm run typecheck
+	$(DOCKER_FRONTEND) npm run build
+	$(DOCKER_CLI) prerender
+	$(DOCKER_CLI) seo
+	$(DOCKER_CLI) verify
+	$(DOCKER_RUN) $(CONTENT_IMAGE) chown -R "$(HOST_UID):$(HOST_GID)" /app/public /app/dist /app/generated /app/.cache
 
 docker-build-site: docker-toolchain
-	mkdir -p dist public generated .cache
-	$(DOCKER_RUN) $(CONTENT_IMAGE) sh -lc 'rm -rf /app/dist/* /app/generated/* && mkdir -p /app/dist /app/generated /app/public /app/.cache'
-	$(DOCKER_RUN) $(CONTENT_IMAGE) python3 -m scripts.cli preflight
-	$(DOCKER_RUN) $(CONTENT_IMAGE) python3 -m scripts.cli html
-	$(DOCKER_RUN) $(PDF_IMAGE) python3 -m scripts.cli pdf
-	$(DOCKER_RUN) $(FRONTEND_IMAGE) npm run typecheck
-	$(DOCKER_RUN) $(FRONTEND_IMAGE) npm run build
-	$(DOCKER_RUN) $(CONTENT_IMAGE) python3 -m scripts.cli prerender
-	$(DOCKER_RUN) $(CONTENT_IMAGE) python3 -m scripts.cli seo
-	$(DOCKER_RUN) $(CONTENT_IMAGE) python3 -m scripts.cli verify
-	$(DOCKER_RUN) $(CONTENT_IMAGE) chown -R "$(HOST_UID):$(HOST_GID)" /app/public /app/dist /app/generated /app/.cache
+	$(MAKE) docker-site
+
+docker-preview:
+	docker run --rm -p 8080:80 \
+		-v "$(CURDIR)/dist:/usr/share/nginx/html:ro" \
+		-v "$(CURDIR)/deploy/nginx/preview.conf:/etc/nginx/conf.d/default.conf:ro" \
+		nginx:alpine
 
 docker-shell:
 	docker build -f docker/content/Dockerfile -t $(CONTENT_IMAGE) .
-	mkdir -p dist public generated .cache
+	$(PYTHON) -c "import pathlib; [pathlib.Path(p).mkdir(parents=True, exist_ok=True) for p in ('dist','public','generated','.cache')]"
 	docker run --rm -it $(DOCKER_ENV) $(DOCKER_VOLUMES) $(CONTENT_IMAGE) sh
