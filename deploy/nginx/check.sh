@@ -22,4 +22,4 @@ http {
 }
 EOF
 
-docker run --rm -v "$tmp:/tmp/nginx:ro" nginx:alpine nginx -t -c /tmp/nginx/nginx.conf
+docker run --rm -v "$tmp:/tmp/nginx:ro" nginx:1.24-alpine nginx -t -c /tmp/nginx/nginx.conf
