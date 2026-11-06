@@ -24,8 +24,8 @@ class NginxTests(unittest.TestCase):
         self.assertIn("script-src-attr 'none'", self.config)
 
     def test_http2_and_quoted_pdf_regex(self) -> None:
-        self.assertIn("http2 on;", self.config)
-        self.assertNotIn("ssl http2", self.config)
+        self.assertIn("listen 443 ssl http2;", self.config)
+        self.assertNotIn("http2 on;", self.config)
         self.assertIn('location ~ "^/(?<lang>', self.config)
 
     def test_cache_locations_are_protected_from_regex_override(self) -> None:
