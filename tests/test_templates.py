@@ -63,6 +63,16 @@ class TemplateTests(unittest.TestCase):
         self.assertIn('content="noindex,follow"', html)
         self.assertIn('rel="next"', html)
 
+    def test_social_image_falls_back_to_png_for_webp(self) -> None:
+        self.assertEqual(
+            Head.social_image({"url": "https://autophany.space/media/x.webp", "alt": "X"}),
+            "https://autophany.space/icons/og-image.png",
+        )
+        self.assertEqual(
+            Head.social_image({"url": "https://autophany.space/media/x.png", "alt": "X"}),
+            "https://autophany.space/media/x.png",
+        )
+
     def test_head_renders_page_structured_data(self) -> None:
         route = replace(
             self.route,
