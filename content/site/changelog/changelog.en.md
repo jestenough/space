@@ -5,6 +5,7 @@ Date: **2026.11.08**
 - Added WebSite, Person, and BlogPosting JSON-LD
 - Added localized RSS feeds and linked them from page heads and the footer
 - Kept image entries inside sitemap `<url>` records and added sitemap image validation
+- Served sitemap.xml uncompressed for clients that do not decode gzip
 - Excluded empty sections and thin tag pages from the sitemap and marked them noindex
 - Removed the always-present client error block and its unused styles
 - Added rel next/prev updates to client-side pagination
