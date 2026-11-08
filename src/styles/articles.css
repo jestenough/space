@@ -3,8 +3,7 @@
     min-width: 0;
   }
 
-  .main-stage-shell>.file-stage,
-  .main-stage-shell>#error-view {
+  .main-stage-shell>.file-stage {
     border: 0;
     background: transparent;
     box-shadow: none;
@@ -199,26 +198,6 @@
     opacity: 1;
   }
 
-  .error-stage,
-  #error-view {
-    border-left: 3px solid var(--color-accent);
-  }
-
-  #error-text {
-    color: var(--color-muted);
-  }
-
-  #error-text .shell-prompt {
-    font-weight: 800;
-  }
-
-  #error-text .shell-prompt-text {
-    color: var(--color-accent);
-  }
-
-  #error-text .shell-prompt-sign {
-    color: var(--color-muted);
-  }
 }
 
 @layer components {

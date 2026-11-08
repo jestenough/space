@@ -22,7 +22,9 @@ from .config import (
     GENERATED_SITE_META_FILE,
     MEDIA_MANIFEST_PATH,
     SITE_URL,
+    TAG_INDEX_MIN_ARTICLES,
     FileType,
+    FolderType,
 )
 from .jsonio import read_json, read_text
 
@@ -47,6 +49,8 @@ class Verify:
         DIST_DIR / "sitemap.xml",
         DIST_DIR / "robots.txt",
         DIST_DIR / "404.html",
+        DIST_DIR / "icons" / "favicon.svg",
+        DIST_DIR / "icons" / "og-image.png",
     )
 
     def __init__(self) -> None:
@@ -411,8 +415,11 @@ class Verify:
             )
 
         sitemap_paths = self.extract_sitemap_paths(sitemap)
-        self.check_section_routes(sitemap_paths)
+        self.check_sitemap_images(sitemap)
+        self.check_section_routes()
         self.check_prerendered_pages(sitemap_paths)
+        self.check_indexability(sitemap_paths)
+        self.check_page_metadata(index)
         for article in index:
             slug = article["slug"]
             for lang in self.get_languages(article, slug):
@@ -423,7 +430,88 @@ class Verify:
                 if pdf_route in sitemap_paths:
                     raise RuntimeError(f"Sitemap must not include PDF route: {pdf_route}")
 
-    def check_section_routes(self, sitemap_paths: set[str]) -> None:
+    @staticmethod
+    def check_sitemap_images(sitemap: str) -> None:
+        root = ET.fromstring(sitemap)
+        namespaces = {
+            "sm": "http://www.sitemaps.org/schemas/sitemap/0.9",
+            "image": "http://www.google.com/schemas/sitemap-image/1.1",
+        }
+        if root.findall("image:loc", namespaces):
+            raise RuntimeError("Sitemap images must be nested inside <url><image:image>")
+        for image in root.findall("sm:url/image:image", namespaces):
+            loc = image.find("image:loc", namespaces)
+            if loc is None or not (loc.text or "").strip():
+                raise RuntimeError("Sitemap image entry is missing <image:loc>")
+
+    def check_indexability(self, sitemap_paths: set[str]) -> None:
+        files = generated.items(generated.sections())
+        articles = generated.articles()
+        tags_by_lang = generated.collect_tags_by_lang(articles)
+        tag_articles_by_lang = generated.tag_articles_by_lang(articles)
+        tag_section = generated.first_section_slug(generated.sections(), FolderType.TAGS) or "tags"
+        files_by_section_lang: dict[str, set[str]] = {}
+        for item in files:
+            section = str(item.get("section") or "")
+            for lang in item.get("languages", []):
+                if isinstance(lang, str):
+                    files_by_section_lang.setdefault(section, set()).add(lang)
+
+        for section in generated.sections():
+            for lang in generated.section_languages(section):
+                if str(section.get("kind")) == FolderType.TAGS.value:
+                    indexable = bool(tags_by_lang.get(lang))
+                else:
+                    indexable = lang in files_by_section_lang.get(str(section.get("slug")), set())
+                route = routes.generated_section_route(section, lang)
+                if indexable:
+                    if route.rstrip("/") not in sitemap_paths:
+                        raise RuntimeError(f"Indexable section is missing from sitemap: {route}")
+                    continue
+                self.check_noindex(route)
+                if route.rstrip("/") in sitemap_paths:
+                    raise RuntimeError(f"Empty section must not be in sitemap: {route}")
+
+        for lang, tags in tags_by_lang.items():
+            for tag in tags:
+                if len(tag_articles_by_lang.get(lang, {}).get(tag, [])) >= TAG_INDEX_MIN_ARTICLES:
+                    continue
+                route = routes.tag_route(tag_section, lang, tag)
+                self.check_noindex(route)
+                if route.rstrip("/") in sitemap_paths:
+                    raise RuntimeError(f"Thin tag page must not be in sitemap: {route}")
+
+    @staticmethod
+    def check_noindex(route: str) -> None:
+        page = DIST_DIR / unquote(route).lstrip("/") / "index.html"
+        html = read_text(page, f"Missing prerendered page: {page}")
+        if not re.search(r'<meta name="robots" content="noindex', html, re.I):
+            raise RuntimeError(f"Expected noindex robots meta on thin page: {route}")
+
+    @staticmethod
+    def check_page_metadata(index: list[dict[str, Any]]) -> None:
+        home = read_text(DIST_DIR / DEFAULT_LANG / "index.html", "Missing localized home page")
+        required = (
+            'property="og:image"',
+            'name="twitter:card"',
+            'type="application/rss+xml"',
+            '"@type":"WebSite"',
+            '"@type":"Person"',
+        )
+        for token in required:
+            if token not in home:
+                raise RuntimeError(f"Home page metadata is missing: {token}")
+
+        for article in index:
+            for lang in Verify.get_languages(article, str(article["slug"])):
+                path = DIST_DIR / routes.generated_item_route(article, lang).lstrip("/") / "index.html"
+                html = read_text(path, f"Missing prerendered article: {path}")
+                for token in ('property="og:image"', 'name="twitter:card"', '"@type":"BlogPosting"'):
+                    if token not in html:
+                        raise RuntimeError(f"Article metadata is missing {token}: {path}")
+
+    @staticmethod
+    def check_section_routes() -> None:
         for section in generated.sections():
             slug = section.get("slug")
             if not isinstance(slug, str):
@@ -432,11 +520,6 @@ class Verify:
             section_index_path = GENERATED_SECTIONS_DIR / f"{slug}.json"
             if not section_index_path.is_file():
                 raise RuntimeError(f"Missing section index: {section_index_path}")
-
-            for lang in generated.section_languages(section):
-                route = routes.generated_section_route(section, lang)
-                if route.rstrip("/") not in sitemap_paths:
-                    raise RuntimeError(f"Sitemap is missing section route: {route}")
 
     @staticmethod
     def check_root() -> None:

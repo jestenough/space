@@ -396,7 +396,6 @@
     .main-stage-shell,
     .main-stage-shell > .list-stage,
     .main-stage-shell > .file-stage,
-    .main-stage-shell > #error-view,
     .info-file-tree,
     .info-file-link {
       max-width: 100%;
@@ -426,13 +425,11 @@
     }
 
     .main-stage-shell > .list-stage,
-    .main-stage-shell > .file-stage,
-    .main-stage-shell > #error-view {
+    .main-stage-shell > .file-stage {
       padding: clamp(1rem, 4.5vw, 1.35rem);
     }
 
     .main-stage-shell > .file-stage,
-    .main-stage-shell > #error-view,
     .main-stage-shell .panel {
       box-shadow: none;
     }

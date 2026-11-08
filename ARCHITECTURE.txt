@@ -124,6 +124,9 @@ The rendering layer lives in scripts/rendering/.
 - head.py
   Document head rendering for prerendered routes.
 
+- schema.py
+  Structured data builders for WebSite, Person, WebPage, and BlogPosting.
+
 - meta.py
   Localized route metadata helpers.
 

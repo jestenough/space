@@ -36,6 +36,10 @@ class NginxTests(unittest.TestCase):
         self.assertIn("gzip_static on;", self.config)
         self.assertNotIn("/generated/", self.config)
 
+    def test_404_page_is_not_indexed(self) -> None:
+        self.assertIn("error_page 404 /404.html;", self.config)
+        self.assertIn('X-Robots-Tag "noindex, nofollow"', self.config)
+
     def test_preview_keeps_directory_routes_without_redirects(self) -> None:
         preview = PREVIEW.read_text(encoding="utf-8")
         self.assertIn("absolute_redirect off;", preview)

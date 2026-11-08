@@ -38,5 +38,9 @@ class ProjectsFolderRenderer(FolderRenderer):
         )
 
     @override
+    def page_count(self, context: FolderContext) -> int:
+        return project_file.ProjectPresenter.total_pages(context.items, context.lang, context.page_size)
+
+    @override
     def extra_stats(self, context: FolderContext) -> list[Stat]:
         return project_file.ProjectPresenter.process_stats(context.items)

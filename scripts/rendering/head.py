@@ -6,6 +6,7 @@ import json
 from typing import Any
 
 from .. import routes
+from . import schema
 from .context import RouteRender
 
 FONTS = {
@@ -29,22 +30,36 @@ class Head:
             for image in route.images
             if (url := self.image_url(image.get("src")))
         ]
+        primary_image = images[0] if images else None
+        og_image = primary_image["url"] if primary_image else routes.absolute_url(schema.DEFAULT_SOCIAL_IMAGE)
+        og_image_alt = (primary_image.get("alt") if primary_image else "") or route.title
+        payload = schema.graph(
+            schema.website(route.lang),
+            schema.person(),
+            schema.web_page(route),
+            *route.structured_data,
+        )
 
         return {
             "lang": route.lang,
+            "site_name": schema.SITE_NAME,
             "title": route.title,
             "description": route.description,
             "canonical": routes.absolute_url(route.canonical_path),
             "alternates": {
                 lang: routes.absolute_url(path) for lang, path in route.alternates.items()
             },
+            "robots": "index,follow" if route.indexable else "noindex,follow",
             "og_type": route.og_type,
             "og_locale": route.lang,
+            "og_image": og_image,
+            "og_image_alt": og_image_alt,
+            "feed": routes.absolute_url(f"/{route.lang}/feed.xml"),
+            "list_next": routes.absolute_url(f"{route.canonical_path}?page=2") if route.page_count > 1 else None,
             "scripts": assets.get("scripts", []),
             "styles": assets.get("styles", []),
             "fonts": FONTS.get(route.lang, FONTS["en"]),
-            "images": images,
-            "json_ld": self.json_ld(route.json_ld),
+            "json_ld": self.json_ld(payload),
         }
 
     @staticmethod
@@ -57,12 +72,9 @@ class Head:
         return ""
 
     @staticmethod
-    def json_ld(payload: dict[str, Any] | None) -> str | None:
-        if not payload:
-            return None
-
+    def json_ld(payload: dict[str, Any]) -> str:
         return (
-            json.dumps(payload, ensure_ascii=False)
+            json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
             .replace("<", "\\u003c")
             .replace(">", "\\u003e")
             .replace("&", "\\u0026")

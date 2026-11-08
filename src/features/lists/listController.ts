@@ -141,6 +141,29 @@ export class ListController {
     if (next !== `${window.location.pathname}${window.location.search}${window.location.hash}`) {
       window.history.replaceState({}, "", next);
     }
+    this.syncPaginationLinks(totalPages);
+  }
+
+  private syncPaginationLinks(totalPages: number): void {
+    document.querySelectorAll<HTMLLinkElement>("link[data-list-rel]").forEach((link) => link.remove());
+    if (totalPages <= 1) return;
+
+    const pageUrl = (page: number): string => {
+      const params = new URLSearchParams(window.location.search);
+      if (page > 1) params.set("page", String(page)); else params.delete("page");
+      return `${window.location.pathname}${params.toString() ? `?${params}` : ""}`;
+    };
+
+    if (this.currentPage > 1) this.appendPaginationLink("prev", pageUrl(this.currentPage - 1));
+    if (this.currentPage < totalPages) this.appendPaginationLink("next", pageUrl(this.currentPage + 1));
+  }
+
+  private appendPaginationLink(rel: "prev" | "next", href: string): void {
+    const link = document.createElement("link");
+    link.rel = rel;
+    link.href = href;
+    link.dataset.listRel = rel;
+    document.head.append(link);
   }
 
   private scheduleRender(): void {
