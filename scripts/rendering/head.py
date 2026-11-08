@@ -31,7 +31,7 @@ class Head:
             if (url := self.image_url(image.get("src")))
         ]
         primary_image = images[0] if images else None
-        og_image = primary_image["url"] if primary_image else routes.absolute_url(schema.DEFAULT_SOCIAL_IMAGE)
+        og_image = self.social_image(primary_image)
         og_image_alt = (primary_image.get("alt") if primary_image else "") or route.title
         payload = schema.graph(
             schema.website(route.lang),
@@ -61,6 +61,12 @@ class Head:
             "fonts": FONTS.get(route.lang, FONTS["en"]),
             "json_ld": self.json_ld(payload),
         }
+
+    @staticmethod
+    def social_image(image: dict[str, str] | None) -> str:
+        if image and not image["url"].split("?", 1)[0].lower().endswith(".webp"):
+            return image["url"]
+        return routes.absolute_url(schema.DEFAULT_SOCIAL_IMAGE)
 
     @staticmethod
     def image_url(value: Any) -> str:
