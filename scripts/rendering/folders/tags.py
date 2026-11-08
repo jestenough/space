@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any, override
 
 from ... import generated, routes
-from ...config import FileType, FolderType
+from ...config import TAG_INDEX_MIN_ARTICLES, FileType, FolderType
 from ..context import FolderContext, ListShellContext, RouteRender, Stat
 from .articles import ArticlesFolderRenderer
 from .base import FolderRenderer
@@ -26,6 +26,15 @@ class TagsFolderRenderer(FolderRenderer):
         return self.render_template(
             context, tags=page_items, articles=[], tag=None, article_total_pages=1, tag_total_pages=total_pages
         )
+
+    @override
+    def page_count(self, context: FolderContext) -> int:
+        tags = self.tag_counts(context.all_items, context.lang)
+        return self.paginate(tags, context.page_size)[1]
+
+    @override
+    def indexable(self, context: FolderContext) -> bool:
+        return bool(self.tag_counts(context.all_items, context.lang))
 
     @override
     def process(self, context: FolderContext) -> list[Stat]:
@@ -80,6 +89,8 @@ class TagsFolderRenderer(FolderRenderer):
                     alternates=context.service.tag_alternates(context.section_slug, tag, tags_by_lang),
                     og_type="website",
                     page=shell,
+                    indexable=len(tag_articles) >= TAG_INDEX_MIN_ARTICLES,
+                    page_count=total_pages,
                 )
             )
         else:

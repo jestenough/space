@@ -12,10 +12,11 @@ The site is versioned. After meaningful project changes, update the project vers
 
 Current version:
 
-- `2.0.0` in `package.json`.
+- `2.1.0` in `package.json`.
+- `2.0.0` was the Jinja2/rendering-layer release.
 - `1.0.0` was the first complete version of the site.
 
-Release commits follow the existing pattern, for example `chore(release): v2.0.0`.
+Release commits follow the existing pattern, for example `chore(release): v2.1.0`.
 
 ## Content Structure
 
@@ -354,7 +355,7 @@ The rendering layer lives in `scripts/rendering/`:
 - `registry.py` maps `FolderType` and `FileType` to renderer instances
 - `context.py` defines shared render contexts and view models (`RouteRender`, `Stat`, `TocItem`, and the `*Context` dataclasses); shell data is assembled by `shell.py`
 - `services.py` is the facade used by renderers
-- `shell.py`, `head.py`, `meta.py`, `media.py`, `html_tags.py` handle page context, head data, metadata, media, and attribute patching
+- `shell.py`, `head.py`, `schema.py`, `meta.py`, `media.py`, `html_tags.py` handle page context, head data, structured data, metadata, media, and attribute patching
 - `pages.py` caches fully rendered pages
 - `folders/` contains folder renderers (`system`, `files`, `articles`, `notes`, `projects`, `tags`)
 - `files/` contains file renderers (`page`, `article`, `project`)

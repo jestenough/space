@@ -22,7 +22,9 @@ class RouteRender:
     og_type: str
     page: dict[str, Any]
     images: tuple[dict[str, str], ...] = ()
-    json_ld: dict[str, Any] | None = None
+    structured_data: tuple[dict[str, Any], ...] = ()
+    indexable: bool = True
+    page_count: int = 1
 
 
 @dataclass(frozen=True)

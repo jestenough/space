@@ -39,6 +39,10 @@ class ArticlesFolderRenderer(FolderRenderer):
         )
 
     @override
+    def page_count(self, context: FolderContext) -> int:
+        return self.paginate(context.items, context.lang, context.page_size)[1]
+
+    @override
     def process(self, context: FolderContext) -> list[Stat]:
         items, total_pages = self.paginate(context.items, context.lang, context.page_size)
         return self.list_process(context, min(context.page_size, len(items)), len(items), total_pages)

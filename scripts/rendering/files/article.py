@@ -9,6 +9,7 @@ from typing import Any
 from ... import content, generated, routes
 from ...config import DEFAULT_LANG, SYSTEM_SECTION, WORDS_PER_MINUTE, ContentExtension, FileType, FolderType
 from ...localization import exact_text, strict_text
+from .. import code, schema
 from ..context import (
     FileIndexContext,
     FilePageContext,
@@ -18,8 +19,6 @@ from ..context import (
     SourceRenderContext,
     Stat,
 )
-from .. import code
-from ..head import Head
 from .base import FileRenderer
 
 BYLINE_UI = {
@@ -92,7 +91,6 @@ class ArticleFileRenderer(FileRenderer):
         toc = self.render_toc(article_html)
         cite_value = self.tex_citation(context.item, context.lang)
         article_images = context.service.extract_content_images(article_html)
-        schema = self.schema(context.item, context.lang, article_images)
         title = context.item["title"][context.lang]
         description = context.item["description"][context.lang]
         shell = context.service.file_shell(
@@ -132,7 +130,7 @@ class ArticleFileRenderer(FileRenderer):
             og_type="article",
             page=shell,
             images=tuple(article_images),
-            json_ld=schema,
+            structured_data=(schema.blog_posting(context.item, context.lang, article_images),),
         )
 
     def process(self, context: FilePageContext) -> list[Stat]:  # type: ignore[override]
@@ -183,41 +181,6 @@ class ArticleFileRenderer(FileRenderer):
 
         self.check_tags(item.meta.get("tags"), item.path / f"{item.slug}.meta")
         self.article_people(item.meta, item.path / f"{item.slug}.meta")
-
-    def schema(self, article: dict[str, Any], lang: str, images: list[dict[str, str]]) -> dict[str, Any]:
-        image_urls = [url for image in images if (url := Head.image_url(image.get("src")))]
-        payload: dict[str, Any] = {
-            "@context": "https://schema.org",
-            "@type": "Article",
-            "headline": strict_text(
-                article.get("title"), lang, f"{article.get('section')}.{article.get('slug')}.title"
-            ),
-            "description": strict_text(
-                article.get("description"), lang, f"{article.get('section')}.{article.get('slug')}.description"
-            ),
-            "datePublished": article.get("date") or "",
-            "dateModified": article.get("date") or "",
-            "inLanguage": lang,
-            "mainEntityOfPage": routes.absolute_url(routes.generated_item_route(article, lang)),
-            "url": routes.absolute_url(routes.generated_item_route(article, lang)),
-        }
-
-        people = [article.get("author"), *article.get("coAuthors", [])]
-        authors = []
-        for person in people:
-            if not isinstance(person, dict) or not person.get("name"):
-                continue
-            author: dict[str, str] = {"@type": "Person", "name": str(person["name"])}
-            if person.get("url"):
-                author["url"] = str(person["url"])
-            authors.append(author)
-        if authors:
-            payload["author"] = authors
-
-        if image_urls:
-            payload["image"] = image_urls
-
-        return payload
 
     def tex_citation(self, article: dict[str, Any], lang: str) -> str:
         title = strict_text(

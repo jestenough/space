@@ -19,6 +19,7 @@ from .config import (
     MEDIA_MANIFEST_PATH,
     NOT_FOUND_PAGE,
     SITE_URL,
+    TAG_INDEX_MIN_ARTICLES,
     TEMPLATES_DIR,
     FileType,
     FolderType,
@@ -114,11 +115,14 @@ class Seo:
     ) -> list[dict[str, Any]]:
         latest = self.latest_date(articles)
         tag_articles_by_lang = generated.tag_articles_by_lang(articles)
+        files_by_section_lang = self.files_by_section_lang(files)
         entries: list[dict[str, Any]] = []
 
         for section in sections:
             section_languages = generated.section_languages(section)
             for lang in section_languages:
+                if not self.section_is_indexable(section, lang, files_by_section_lang, tags_by_lang):
+                    continue
                 entries.append(
                     {
                         "path": routes.generated_section_route(section, lang),
@@ -132,10 +136,13 @@ class Seo:
 
         for lang in languages:
             for tag in sorted(tags_by_lang.get(lang, set())):
+                tag_articles = tag_articles_by_lang.get(lang, {}).get(tag, [])
+                if len(tag_articles) < TAG_INDEX_MIN_ARTICLES:
+                    continue
                 entries.append(
                     {
                         "path": routes.tag_route(tag_section or "tags", lang, tag),
-                        "lastmod": self.latest_date(tag_articles_by_lang.get(lang, {}).get(tag, [])),
+                        "lastmod": self.latest_date(tag_articles),
                         "alternates": self.tag_alternates(tag_section or "tags", tag, tags_by_lang),
                     }
                 )
@@ -164,6 +171,27 @@ class Seo:
                 )
 
         return entries
+
+    @staticmethod
+    def files_by_section_lang(files: list[dict[str, Any]]) -> dict[str, set[str]]:
+        result: dict[str, set[str]] = {}
+        for item in files:
+            section = str(item.get("section") or "")
+            for lang in item.get("languages", []):
+                if isinstance(lang, str):
+                    result.setdefault(section, set()).add(lang)
+        return result
+
+    @staticmethod
+    def section_is_indexable(
+        section: dict[str, Any],
+        lang: str,
+        files_by_section_lang: dict[str, set[str]],
+        tags_by_lang: dict[str, set[str]],
+    ) -> bool:
+        if str(section.get("kind")) == FolderType.TAGS.value:
+            return bool(tags_by_lang.get(lang))
+        return lang in files_by_section_lang.get(str(section.get("slug")), set())
 
     def render_sitemap(self, entries: list[dict[str, Any]]) -> str:
         return "\n".join(

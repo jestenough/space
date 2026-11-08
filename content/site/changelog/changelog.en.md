@@ -1,3 +1,16 @@
+## v2.1.0
+
+Date: **2026.11.08**
+- Added default Open Graph and Twitter preview images, including a generated site card
+- Added WebSite, Person, and BlogPosting JSON-LD
+- Added localized RSS feeds and linked them from page heads and the footer
+- Kept image entries inside sitemap `<url>` records and added sitemap image validation
+- Excluded empty sections and thin tag pages from the sitemap and marked them noindex
+- Removed the always-present client error block and its unused styles
+- Added rel next/prev updates to client-side pagination
+- Added an SVG favicon
+- Hardened 404 output checks
+
 ## v2.0.0
 
 Date: **2026.11.06**

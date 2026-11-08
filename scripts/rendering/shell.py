@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from .. import routes
-from ..config import DEFAULT_LANG
+from ..config import DEFAULT_LANG, FolderType
 from ..localization import strict_text
 from ..templating import Templates
 from .context import FileShellContext, ListShellContext
@@ -125,6 +125,11 @@ class Shell:
         links = []
         for section in sections:
             if section.get("system"):
+                continue
+            if (
+                str(section.get("kind")) != FolderType.TAGS.value
+                and int(section.get("count") or 0) <= 0
+            ):
                 continue
 
             slug = str(section.get("slug"))

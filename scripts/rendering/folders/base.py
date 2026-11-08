@@ -76,6 +76,12 @@ class FolderRenderer:
     def extra_stats(self, _: FolderContext) -> list[Stat]:
         return []
 
+    def page_count(self, _: FolderContext) -> int:
+        return 1
+
+    def indexable(self, context: FolderContext) -> bool:
+        return any(context.lang in item.get("languages", []) for item in context.items)
+
     def pages(self, context: FolderContext) -> list[RouteRender]:
         title = self.title(context)
         description = self.description(context)
@@ -106,6 +112,8 @@ class FolderRenderer:
                 ),
                 og_type="website",
                 page=shell,
+                indexable=self.indexable(context),
+                page_count=self.page_count(context),
             )
         ]
 

@@ -92,11 +92,6 @@
           <section id="content-list-view" class="list-stage{% if page.view != "list" %} hidden{% endif %}" aria-live="polite" data-list-view>{{ page.list_stage_html | safe }}</section>
 
           <article id="file-view" class="file-stage{% if page.view != "article" %} hidden{% endif %}" aria-live="polite" data-file-view>{{ page.file_stage_html | safe }}</article>
-
-          <section id="error-view" class="file-stage hidden" aria-live="assertive">
-            <h2 id="error-title">Could not load file</h2>
-            <p id="error-text">The requested path could not be resolved.</p>
-          </section>
         </section>
       </section>
 
@@ -133,6 +128,7 @@
         <a href="https://github.com/jestenough/space" target="_blank" rel="noreferrer" aria-label="GitHub">[git]</a>
         <a href="mailto:jestenough.personal@gmail.com" aria-label="Mail">[mail]</a>
         <a href="https://t.me/jestenough" target="_blank" rel="noreferrer" aria-label="Telegram">[tg]</a>
+        <a href="/{{ page.lang }}/feed.xml" type="application/rss+xml" aria-label="RSS">[rss]</a>
       </nav>
     </footer>
 

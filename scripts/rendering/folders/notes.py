@@ -43,6 +43,10 @@ class NotesFolderRenderer(FolderRenderer):
         )
 
     @override
+    def page_count(self, context: FolderContext) -> int:
+        return self.paginate(context.items, context.lang, context.page_size)[1]
+
+    @override
     def process(self, context: FolderContext) -> list[Stat]:
         notes, total_pages = self.paginate(context.items, context.lang, context.page_size)
         shown = min(context.page_size, len(notes))

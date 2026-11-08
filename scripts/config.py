@@ -51,6 +51,7 @@ TAG_PAGE = "tag"
 NOT_FOUND_PAGE = "notFound"
 WORDS_PER_MINUTE = 220
 LIST_PAGE_SIZE = 4
+TAG_INDEX_MIN_ARTICLES = 2
 
 # Generated output
 GENERATED_FILES_NAME = "files"

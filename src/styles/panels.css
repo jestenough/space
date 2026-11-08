@@ -176,47 +176,4 @@
     border-bottom-color: var(--color-accent);
   }
 
-  body.not-found-mode .statpane {
-    border-style: dashed;
-    background: repeating-linear-gradient(180deg, color-mix(in srgb, var(--color-surface-2) 88%, black 12%) 0, color-mix(in srgb, var(--color-surface-2) 88%, black 12%) 6px, color-mix(in srgb, var(--color-surface) 86%, black 14%) 6px, color-mix(in srgb, var(--color-surface) 86%, black 14%) 12px);
-  }
-
-
-  body.not-found-mode #error-view {
-    min-height: 18rem;
-    display: grid;
-    place-content: center;
-    gap: 0.75rem;
-    text-align: center;
-  }
-
-  body.not-found-mode #error-title {
-    margin: 0;
-    color: var(--color-accent);
-    font-size: clamp(1.8rem, 6vw, 4.6rem);
-    letter-spacing: 0.02em;
-    text-transform: lowercase;
-  }
-
-  body.not-found-mode #error-text {
-    margin: 0;
-  }
-
-  .error-root-link {
-    color: var(--color-ok);
-    text-decoration: none;
-    border-bottom: 1px dashed var(--color-ok);
-    font-size: clamp(1rem, 2vw, 1.25rem);
-  }
-
-  .error-root-link:hover,
-  .error-root-link:focus-visible {
-    color: var(--color-accent);
-    border-bottom-color: var(--color-accent);
-  }
-
-  body.not-found-mode #process-log {
-    color: var(--color-danger);
-  }
-
 }
